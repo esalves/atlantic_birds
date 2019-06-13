@@ -1,0 +1,137 @@
+---
+title: "Shrinking body size in Atlantic Forest birds as a response to climate change"
+author: 
+- Eduardo S.A. Santos
+- João C.T. Menezes
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+bibliography: atlantic_bird_bibliography.bib  
+---
+
+# Introductory paragraph
+Guidelines^[The paper should then start with an introductory paragraph (not abstract) of no more than 200 words, summarizing the background, rationale, main results (introduced by ‘Here we show’ or some equivalent phrase) and implications of the study. This paragraph should be fully referenced. Check other guidelines to **Nature Climate Change** here: https://www.nature.com/nclimate/about/content]
+
+Climate change can cause rapid phenotypic change as a consequence of ecological and evolutionary processes [@ozgul_dynamics_2009].
+
+
+# Data manipulation, plots, models
+## Load libraries
+
+```{r libraries, echo=FALSE,cache=TRUE}
+library(tidyverse)
+```
+
+## Load data
+
+```{r data,echo=FALSE, cache=TRUE}
+birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv")
+```
+
+## New variables
+Subsetting the original dataframe into sets to explore:
+```{r newdataframes,cache=TRUE}
+birdsCc <- birds %>%
+          filter(Year >= 1990, Sex != "Unknown", Age == "Adult", Binomial == "Chiroxiphia caudata", G200_regio == "Atlantic Forests") %>%
+          group_by(Binomial) %>%
+            mutate(
+              scaled_body_mass = scale(Body_mass.g.)
+            ) 
+
+birdsTf <- birds %>%
+          filter(Year >= 1990, Sex != "Unknown", Age == "Adult", Binomial == "Tachyphonus rufus", G200_regio == "Atlantic Forests") %>%
+          group_by(Binomial) %>%
+            mutate(
+              scaled_body_mass = scale(Body_mass.g.)
+            ) 
+
+birdsTm <- birds %>%
+          filter(Year >= 1990, Sex != "Unknown", Age == "Adult", Binomial == "Trichothraupis melanops", G200_regio == "Atlantic Forests") %>%
+          group_by(Binomial) %>%
+            mutate(
+              scaled_body_mass = scale(Body_mass.g.)
+            )
+
+birdsHu <- birds %>%
+          filter(Year >= 1990, Sex != "Unknown", Age == "Adult", Binomial == "Haplospiza unicolor", G200_regio == "Atlantic Forests") %>%
+          group_by(Binomial) %>%
+            mutate(
+              scaled_body_mass = scale(Body_mass.g.)
+            )
+
+birds90 <- birds %>%
+          filter(Year >= 1990, Sex != "Unknown", Age == "Adult", Order == "Passeriformes", G200_regio == "Atlantic Forests") %>%
+          group_by(Binomial) %>%
+            mutate(
+              scaled_body_mass = scale(Body_mass.g.)
+            ) 
+```
+
+
+## Exploratory plots
+Plotting some relationships:
+```{r plots, cache=TRUE}
+g0 <- ggplot(data = birdsCc, aes(x = Year, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
+            geom_point() +
+            stat_smooth(method = "lm", se = FALSE)
+
+g0
+
+g0_Tr <- ggplot(data = birdsTf, aes(x = Year, y = Wing_length.mm., group = Sex, colour = Sex)) +
+            geom_point() +
+            stat_smooth(method = "lm", se = FALSE)
+
+g0_Tr
+
+g0_Hu <- ggplot(data = birdsHu, aes(x = Year, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
+            geom_point() +
+            stat_smooth(method = "lm", se = FALSE)
+
+g0_Hu
+
+g0_Tm <- ggplot(data = birdsTm, aes(x = Year, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
+            geom_point() +
+            stat_smooth(method = "lm", se = FALSE)
+
+g0_Tm
+
+g0_passeriformes <- ggplot(data = birds90, aes(x = Year, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
+            geom_point() +
+            stat_smooth(method = "lm", se = FALSE) +
+            facet_wrap(~Family, scales = "free_y")
+
+g0_passeriformes
+
+g1 <- ggplot(data = birdsCc, aes(x = Year, y = Tarsus_length_right.mm., group = Sex, colour = Sex)) +
+            geom_point() +
+            stat_smooth(method = "lm", se = FALSE)
+
+g1
+
+
+g2 <- ggplot(data = birds90, aes(x = Year, y = Annual_mean_temperature)) +
+  geom_point() +
+  stat_smooth(method = "lm", se = FALSE)
+
+g2
+```
+
+## Exploratory models
+A few quick models to check the trends:
+```{r models, cache=TRUE}
+m0 <- lm(Wing_length_right.mm. ~ scale(Year) * Sex, data = birdsCc)
+
+summary(m0)
+
+m0_Tr <- lm(Wing_length.mm. ~ scale(Year) * Sex, data = birdsTf)
+
+summary(m0_Tr)
+
+m0_Tm <- lm(Wing_length_right.mm. ~ scale(Year) * Sex, data = birdsTm)
+
+summary(m0_Tm)
+```
+
+# References
