@@ -39,34 +39,22 @@ passer90 <- birds %>%
           filter(Year >= 1990, Age == "Adult", Order == "Passeriformes") %>%
           group_by(Binomial) %>%
           filter(n() >= 50)
+```
 
-birdsCc <- birds %>%
-          filter(Year >= 1990, Sex != "Unknown", Age == "Adult", Binomial == "Chiroxiphia caudata", G200_regio == "Atlantic Forests") %>%
-          group_by(Binomial) %>%
-            mutate(
-              scaled_body_mass = scale(Body_mass.g.)
-            ) 
+Checking the range of years per species in the *passer90* dataframe:
+```{r year_range, cache=TRUE}
+by_binomial <- group_by(passer90, Binomial)
+year_range <- summarise(passer90,
+                        min = min(Year),
+                        max = max(Year),
+                        range = max-min
+                        )
 
-birdsTf <- birds %>%
-          filter(Year >= 1990, Sex != "Unknown", Age == "Adult", Binomial == "Tachyphonus rufus", G200_regio == "Atlantic Forests") %>%
-          group_by(Binomial) %>%
-            mutate(
-              scaled_body_mass = scale(Body_mass.g.)
-            ) 
+g_year_range <- ggplot(data = year_range, aes(x = range)) + 
+                  geom_bar() +
+                  theme_linedraw()
 
-birdsTm <- birds %>%
-          filter(Year >= 1990, Sex != "Unknown", Age == "Adult", Binomial == "Trichothraupis melanops", G200_regio == "Atlantic Forests") %>%
-          group_by(Binomial) %>%
-            mutate(
-              scaled_body_mass = scale(Body_mass.g.)
-            )
-
-birdsHu <- birds %>%
-          filter(Year >= 1990, Sex != "Unknown", Age == "Adult", Binomial == "Haplospiza unicolor", G200_regio == "Atlantic Forests") %>%
-          group_by(Binomial) %>%
-            mutate(
-              scaled_body_mass = scale(Body_mass.g.)
-            )
+g_year_range
 ```
 
 
