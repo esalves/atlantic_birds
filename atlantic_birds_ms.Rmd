@@ -22,6 +22,8 @@ Climate change can cause rapid phenotypic change as a consequence of ecological 
 
 ```{r libraries, echo=FALSE,cache=TRUE}
 library(tidyverse)
+library(brms)
+library(lme4)
 ```
 
 ## Load data
@@ -31,10 +33,12 @@ birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv")
 ```
 
 ## New variables
-Subsetting the original dataframe into sets to explore. We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). Finally, we used records of individuals that were collected/recorded between 1970 and 2018, which yielded a total of 40,750 passerine entries in our dataset.
+Subsetting the original dataframe into sets to explore. We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). Finally, we used records of individuals that were collected/recorded between 1990 and 2018, which yielded a total of 40,183 passerine entries in our dataset. I will only keep records of species that have at least 50 entries in the dataset. This will reduce the dataset from 435 passerine species to 143 species.
 ```{r newdataframes,cache=TRUE}
-passer70 <- birds %>%
-          filter(Year >= 1970, Age == "Adult", Order == "Passeriformes") 
+passer90 <- birds %>%
+          filter(Year >= 1990, Age == "Adult", Order == "Passeriformes") %>%
+          group_by(Binomial) %>%
+          filter(n() >= 50)
 
 birdsCc <- birds %>%
           filter(Year >= 1990, Sex != "Unknown", Age == "Adult", Binomial == "Chiroxiphia caudata", G200_regio == "Atlantic Forests") %>%
@@ -69,6 +73,14 @@ birdsHu <- birds %>%
 ## Exploratory plots
 Plotting some relationships:
 ```{r plots, cache=TRUE}
+# g_wingl <- ggplot(data = passer90, aes(x = Year, y = Wing_length_right.mm., group = Binomial)) +
+#            geom_point(aes(alpha = 0.09)) +
+#            stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) +
+#            facet_wrap(~Family) + 
+#            theme_linedraw()
+
+# g_wingl
+
 g0 <- ggplot(data = birdsCc, aes(x = Year, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
             geom_point() +
             stat_smooth(method = "lm", se = FALSE)
@@ -118,12 +130,6 @@ g_lat_Tm <- ggplot(data = birdsTm, aes(x = Latitude_decimal_degrees*-1, y = Wing
 
 g_lat_Tm
 
-g0_passeriformes <- ggplot(data = birds90, aes(x = Year, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
-            geom_point() +
-            stat_smooth(method = "lm", se = FALSE) +
-            facet_wrap(~Family, scales = "free_y")
-
-g0_passeriformes
 
 g1 <- ggplot(data = birdsCc, aes(x = Year, y = Tarsus_length_right.mm., group = Sex, colour = Sex)) +
             geom_point() +
@@ -132,27 +138,40 @@ g1 <- ggplot(data = birdsCc, aes(x = Year, y = Tarsus_length_right.mm., group = 
 g1
 
 
-g2 <- ggplot(data = birds90, aes(x = Year, y = Annual_mean_temperature)) +
+g2 <- ggplot(data = passer90, aes(x = Year, y = Annual_mean_temperature)) +
   geom_point() +
   stat_smooth(method = "lm", se = FALSE)
 
 g2
+
+g3 <- ggplot(data = passer90, aes(x = Year, y = Annual_rainfall)) +
+  geom_point() +
+  stat_smooth(method = "lm", se = FALSE)
+
+g3
 ```
 
 ## Exploratory models
-A few quick models to check the trends:
+A few quick models to check the trends. It seems like we have overall evidence that there is a negative relationship between *Year* and *Wing length* for all species.
 ```{r models, cache=TRUE}
-m0 <- lm(Wing_length_right.mm. ~ scale(Year) * Sex, data = birdsCc)
+m0 <- lmer(Wing_length_right.mm. ~ 1 + scale(Year) + (1 + scale(Year) | Binomial),
+           data = passer90)
 
 summary(m0)
 
-m0_Tr <- lm(Wing_length.mm. ~ scale(Year) * Sex, data = birdsTf)
+#brm0 <- brm(Wing_length_right.mm. ~ 1 + scale(Year) + (1 + scale(Year) || Binomial),
+#            data = passer90,
+#            family = gaussian,
+#            prior = c(prior(normal(0, 1), class = Intercept),
+#                      prior(normal(0, 1), class = b),
+#                      prior(cauchy(0, 1), class = sd)),
+#            iter = 4000, 
+#            warmup = 1000, 
+#            chains = 4, 
+#            cores = 4)
 
-summary(m0_Tr)
-
-m0_Tm <- lm(Wing_length_right.mm. ~ scale(Year) * Sex, data = birdsTm)
-
-summary(m0_Tm)
+#summary(brm0)
+#brms::launch_shinystan(brm0)
 ```
 
 # References
