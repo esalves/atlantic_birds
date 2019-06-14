@@ -14,16 +14,17 @@ bibliography: atlantic_bird_bibliography.bib
 # Introductory paragraph
 Guidelines^[The paper should then start with an introductory paragraph (not abstract) of no more than 200 words, summarizing the background, rationale, main results (introduced by ‘Here we show’ or some equivalent phrase) and implications of the study. This paragraph should be fully referenced. Check other guidelines to **Nature Climate Change** here: https://www.nature.com/nclimate/about/content]
 
-Climate change can cause rapid phenotypic change as a consequence of ecological and evolutionary processes [@ozgul_dynamics_2009].
+Two of the main responses of organisms to climate change are phenological changes and geographical range shifts [@parmesan_globally_2003]. A third response of organisms to global warming is increasingly being observed, the shrinkage of bodies [@teplitsky_climate_2014; @sheridan_shrinking_2011; @gardner_declining_2011]. Body shrinkage due to climate change has been hypothesized to be a consequence of ecological or evolutionary processes [@ozgul_dynamics_2009]. For instance, reductions in body size have been attributed to genetic microevolutionary responses to warming; smaller individuals dissipate heat better than larger individuals due to the larger ratio between surface:volume of their bodies [e.g., Bergmann's rule, @teplitsky_climate_2014]. The ecological hypothesis posits that climate change influences trophic interactions, limiting an organism's juveniles access to resources [@teplitsky_bergmanns_2008; @rode_reduced_2010].
 
+Based on a large scale analysis of Neotropical passerines that inhabit the Brazilian Atlantic Forest, we show here that annual mean temperature has been increasing, while precipitation^[We need to choose what precipitation variable to use. It would be good to choose one that relates to the availability of food (insects or fruits).] has been decreasing over a period of **XX** years in the areas inhabited by these passerines.
 
 # Data manipulation, plots, models
 ## Load libraries
-
 ```{r libraries, echo=FALSE,cache=TRUE}
 library(tidyverse)
 library(brms)
 library(lme4)
+library(ggthemes) 
 ```
 
 ## Load data
@@ -33,7 +34,9 @@ birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv")
 ```
 
 ## New variables
-Subsetting the original dataframe into sets to explore. We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). Finally, we used records of individuals that were collected/recorded between 1990 and 2018, which yielded a total of 40,183 passerine entries in our dataset. I will only keep records of species that have at least 50 entries in the dataset. This will reduce the dataset from 435 passerine species to 143 species.
+Subsetting the original dataframe into sets to explore.
+
+We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). Finally, we used records of individuals that were collected/recorded between 1990 and 2018, which yielded a total of 40,183 passerine entries in our dataset. We will only keep records of species that have at least 50 entries in the dataset. This will reduce the dataset from 435 passerine species to 143 species.
 ```{r newdataframes,cache=TRUE}
 passer90 <- birds %>%
           filter(Year >= 1990, Age == "Adult", Order == "Passeriformes") %>%
@@ -43,20 +46,41 @@ passer90 <- birds %>%
 
 Checking the range of years per species in the *passer90* dataframe:
 ```{r year_range, cache=TRUE}
+passer90 <- passer90 %>%
+            group_by(Binomial) %>%
+            mutate(
+                  min = min(Year),
+                  max = max(Year),
+                  range = max-min
+                        )
+
 by_binomial <- group_by(passer90, Binomial)
-year_range <- summarise(passer90,
-                        min = min(Year),
-                        max = max(Year),
-                        range = max-min
+year_range <- summarise(by_binomial
+                  min = min(Year),
+                  max = max(Year),
+                  range = max-min
                         )
 
 g_year_range <- ggplot(data = year_range, aes(x = range)) + 
                   geom_bar() +
-                  theme_linedraw()
+                  theme_fivethirtyeight()
 
 g_year_range
+
+summary(year_range$range)
+
+g_year_min <- ggplot(data = year_range, aes(x = min)) + 
+                  geom_bar() +
+                  theme_fivethirtyeight()
+g_year_min
+
+g_year_max <- ggplot(data = year_range, aes(x = max)) + 
+                  geom_bar() +
+                  theme_fivethirtyeight()
+g_year_max
 ```
 
+For each species in the dataset, the range of years of data available ranges from 2 to 28. It seems reasonable to use only those species for which we have at least 10 years of data. I haven't looked into what constitutes a good longitudinal dataset, but less than 10 years just seems too little in order to establish a link between temperature and body size.
 
 ## Exploratory plots
 Plotting some relationships:
