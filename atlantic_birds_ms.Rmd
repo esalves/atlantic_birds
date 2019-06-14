@@ -41,21 +41,19 @@ We restricted our data collection to the order Passeriformes, as passerine birds
 passer90 <- birds %>%
           filter(Year >= 1990, Age == "Adult", Order == "Passeriformes") %>%
           group_by(Binomial) %>%
-          filter(n() >= 50)
-```
-
-Checking the range of years per species in the *passer90* dataframe:
-```{r year_range, cache=TRUE}
-passer90 <- passer90 %>%
-            group_by(Binomial) %>%
+          filter(n() >= 50) %>%
             mutate(
                   min = min(Year),
                   max = max(Year),
                   range = max-min
-                        )
+                        ) %>%
+            filter(range >= 10)
+```
 
+Checking the range of years per species in the *passer90* dataframe:
+```{r year_range, cache=TRUE}
 by_binomial <- group_by(passer90, Binomial)
-year_range <- summarise(by_binomial
+year_range <- summarise(by_binomial,
                   min = min(Year),
                   max = max(Year),
                   range = max-min
