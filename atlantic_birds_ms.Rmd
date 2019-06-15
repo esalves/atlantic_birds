@@ -22,9 +22,9 @@ Based on a large scale analysis of Neotropical passerines that inhabit the Brazi
 ## Load libraries
 ```{r libraries, echo=FALSE,cache=TRUE}
 library(tidyverse)
+library(ggthemes) 
 library(brms)
 library(lme4)
-library(ggthemes) 
 ```
 
 ## Load data
@@ -80,73 +80,17 @@ g_year_max
 
 For each species in the dataset, the range of years of data available ranges from 2 to 28. It seems reasonable to use only those species for which we have at least 10 years of data. I haven't looked into what constitutes a good longitudinal dataset, but less than 10 years just seems too little in order to establish a link between temperature and body size.
 
+After filtering out the species with less than 10 years of data, we ended up with a total of 134 passerine species.
+
 ## Exploratory plots
 Plotting some relationships:
 ```{r plots, cache=TRUE}
-# g_wingl <- ggplot(data = passer90, aes(x = Year, y = Wing_length_right.mm., group = Binomial)) +
-#            geom_point(aes(alpha = 0.09)) +
-#            stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) +
-#            facet_wrap(~Family) + 
-#            theme_linedraw()
-
-# g_wingl
-
-g0 <- ggplot(data = birdsCc, aes(x = Year, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
-            geom_point() +
-            stat_smooth(method = "lm", se = FALSE)
-
-g0
-
-g_lat <- ggplot(data = birdsCc, aes(x = Latitude_decimal_degrees*-1, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
-            geom_point() +
-            stat_smooth(method = "lm", se = FALSE)
-
-g_lat
-
-
-g0_Tr <- ggplot(data = birdsTf, aes(x = Year, y = Wing_length.mm., group = Sex, colour = Sex)) +
-            geom_point() +
-            stat_smooth(method = "lm", se = FALSE)
-
-g0_Tr
-
-g_lat_Tr <- ggplot(data = birdsTf, aes(x = Latitude_decimal_degrees*-1, y = Wing_length.mm., group = Sex, colour = Sex)) +
-            geom_point() +
-            stat_smooth(method = "lm", se = FALSE)
-
-g_lat_Tr
-
-g0_Hu <- ggplot(data = birdsHu, aes(x = Year, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
-            geom_point() +
-            stat_smooth(method = "lm", se = FALSE)
-
-g0_Hu
-
-g_lat_Hu <- ggplot(data = birdsHu, aes(x = Latitude_decimal_degrees*-1, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
-            geom_point() +
-            stat_smooth(method = "lm", se = FALSE)
-
-g_lat_Hu
-
-g0_Tm <- ggplot(data = birdsTm, aes(x = Year, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
-            geom_point() +
-            stat_smooth(method = "lm", se = FALSE)
-
-g0_Tm
-
-g_lat_Tm <- ggplot(data = birdsTm, aes(x = Latitude_decimal_degrees*-1, y = Wing_length_right.mm., group = Sex, colour = Sex)) +
-            geom_point() +
-            stat_smooth(method = "lm", se = FALSE)
-
-g_lat_Tm
-
-
-g1 <- ggplot(data = birdsCc, aes(x = Year, y = Tarsus_length_right.mm., group = Sex, colour = Sex)) +
-            geom_point() +
-            stat_smooth(method = "lm", se = FALSE)
-
-g1
-
+g_wingl <- ggplot(data = passer90, aes(x = Year, y = Wing_length_right.mm., group = Binomial)) +
+            geom_point(aes(alpha = 0.09)) +
+            stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) +
+            facet_wrap(~Family) + 
+            theme_fivethirtyeight()
+g_wingl
 
 g2 <- ggplot(data = passer90, aes(x = Year, y = Annual_mean_temperature)) +
   geom_point() +
@@ -164,23 +108,29 @@ g3
 ## Exploratory models
 A few quick models to check the trends. It seems like we have overall evidence that there is a negative relationship between *Year* and *Wing length* for all species.
 ```{r models, cache=TRUE}
-m0 <- lmer(Wing_length_right.mm. ~ 1 + scale(Year) + (1 + scale(Year) | Binomial),
-           data = passer90)
+m0 <- lmer(Wing_length_right.mm. ~ scale(Year) + (1 + scale(Year) | Binomial),
+           data = passer90,
+           REML = FALSE,
+           control = lmerControl(optimizer ="Nelder_Mead")
+           )
 
 summary(m0)
 
-#brm0 <- brm(Wing_length_right.mm. ~ 1 + scale(Year) + (1 + scale(Year) || Binomial),
-#            data = passer90,
-#            family = gaussian,
-#            prior = c(prior(normal(0, 1), class = Intercept),
-#                      prior(normal(0, 1), class = b),
-#                      prior(cauchy(0, 1), class = sd)),
-#            iter = 4000, 
-#            warmup = 1000, 
-#            chains = 4, 
-#            cores = 4)
+start_time <- Sys.time()
+brm0 <- brm(Wing_length_right.mm. ~ 1 + scale(Year) + (1 + scale(Year) || Binomial),
+            data = passer90,
+            family = gaussian,
+            prior = c(prior(normal(0, 1), class = Intercept),
+                      prior(normal(0, 1), class = b),
+                      prior(cauchy(0, 1), class = sd)),
+            iter = 3000, 
+            warmup = 1000, 
+            chains = 3, 
+            cores = 3)
 
-#summary(brm0)
+end_time <- Sys.time();end_time - start_time
+
+summary(brm0)
 #brms::launch_shinystan(brm0)
 ```
 
