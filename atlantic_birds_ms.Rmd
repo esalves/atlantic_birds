@@ -25,6 +25,9 @@ library(tidyverse)
 library(ggthemes) 
 library(brms)
 library(lme4)
+library(ape)
+library(geiger)
+library(MCMCglmm)
 ```
 
 ## Load data
@@ -39,7 +42,20 @@ Subsetting the original dataframe into sets to explore.
 We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). Finally, we used records of individuals that were collected/recorded between 1990 and 2018, which yielded a total of 40,183 passerine entries in our dataset. We will only keep records of species that have at least 50 entries in the dataset. This will reduce the dataset from 435 passerine species to 143 species.
 ```{r newdataframes,cache=TRUE}
 passer90 <- birds %>%
-          filter(Year >= 1990, Age == "Adult", Order == "Passeriformes") %>%
+          filter(Year >= 1990, Age == "Adult", Sex != "Unknown", Order == "Passeriformes") %>%
+          mutate(
+            ln_wing_length = log(Wing_length_right.mm.),
+            scaled_lat = scale(Latitude_decimal_degrees*-1),
+            scaled_yr = scale(Year),
+            Binomial = gsub(" ", "_", Binomial),
+            Binomial = gsub("Ceratopipra_rubrocapilla", "Pipra_rubrocapilla", Binomial),
+            Binomial = gsub("Myiothlypis_leucoblephara", "Basileuterus_leucoblepharus", Binomial),
+            Binomial = gsub("Myrmoderus_squamosus", "Myrmeciza_squamosa", Binomial),
+            Binomial = gsub("Pyriglena_pernambucensis", "Pyriglena_leuconota", Binomial),
+            Binomial = gsub("Rhopias_gularis", "Myrmotherula_gularis", Binomial),
+            Binomial = gsub("Tangara_sayaca", "Thraupis_sayaca", Binomial),
+            spp = Binomial
+          ) %>%
           group_by(Binomial) %>%
           filter(n() >= 50) %>%
             mutate(
@@ -50,6 +66,7 @@ passer90 <- birds %>%
             filter(range >= 10)
 ```
 
+
 Checking the range of years per species in the *passer90* dataframe:
 ```{r year_range, cache=TRUE}
 by_binomial <- group_by(passer90, Binomial)
@@ -58,6 +75,9 @@ year_range <- summarise(by_binomial,
                   max = max(Year),
                   range = max-min
                         )
+
+year_range <- as.data.frame(year_range)
+row.names(year_range) <- year_range$Binomial # having rows named with the species name is required for any PCM
 
 g_year_range <- ggplot(data = year_range, aes(x = range)) + 
                   geom_bar() +
@@ -85,10 +105,10 @@ After filtering out the species with less than 10 years of data, we ended up wit
 ## Exploratory plots
 Plotting some relationships:
 ```{r plots, cache=TRUE}
-g_wingl <- ggplot(data = passer90, aes(x = Year, y = Wing_length_right.mm., group = Binomial)) +
+g_wingl <- ggplot(data = passer90, aes(x = scaled_yr, y = scaled_wing_length, group = Binomial)) +
             geom_point(aes(alpha = 0.09)) +
             stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) +
-            facet_wrap(~Family) + 
+            facet_wrap(~Family, scales = "free_y") + 
             theme_fivethirtyeight()
 g_wingl
 
@@ -108,7 +128,7 @@ g3
 ## Exploratory models
 A few quick models to check the trends. It seems like we have overall evidence that there is a negative relationship between *Year* and *Wing length* for all species.
 ```{r models, cache=TRUE}
-m0 <- lmer(Wing_length_right.mm. ~ scale(Year) + (1 + scale(Year) | Binomial),
+m0 <- lmer(Wing_length_right.mm. ~ scaled_yr + Sex + scaled_lat + (1 + scaled_yr | Binomial),
            data = passer90,
            REML = FALSE,
            control = lmerControl(optimizer ="Nelder_Mead")
@@ -116,22 +136,100 @@ m0 <- lmer(Wing_length_right.mm. ~ scale(Year) + (1 + scale(Year) | Binomial),
 
 summary(m0)
 
+m1 <- lmer(Body_mass.g. ~ scaled_yr + Sex + scaled_lat + (1 + scaled_yr | Binomial),
+           data = passer90,
+           REML = FALSE,
+           control = lmerControl(optimizer ="Nelder_Mead")
+           )
+
+summary(m1)
+
+```
+
+Loading phylogeny to include in the multi-level model.
+For all analyses, we used species-level Passeriformes trees taken from a sample of 1,000 topologies based on the Hackett backbone from Jetz et al.'s [-@jetz2012global] [BirdTree.org](http://birdtree.org). We will later prune these 5,966-species trees to fit the species in each analyses for which we have succesfully collected complete data.
+```{r phylo, cache=TRUE}
+trees <- read.nexus("Hackett_trees.nex")
+
+namecheck_passer <- name.check(trees[[1]], year_range) # checking which species are in the phylogeny but not in our data frame
+
+# namecheck_subset <- namecheck_passer$tree_not_data[grep("Thraupis", namecheck_passer$tree_not_data)] # Code to check if the species is available in the phylogeny under a different (synonim) genus name.
+
+trees_passer <- lapply(trees, drop.tip, namecheck_passer$tree_not_data) # pruning these species from all the 1,000 trees
+
+class(trees_passer) <- "multiPhylo"
+
+nrow(year_range) # number of species for which we have complete data
+length(trees_passer[[1]]$tip.label) # number of tips in the phylogenic trees
+
+# The phylo object contains information on the relationship between species. Using this information, we can construct a covariance matrix of species.
+inv.phylo <- inverseA(trees_passer[[1]], nodes = "TIPS", scale = TRUE)
+A <- solve(inv.phylo$Ainv)
+rownames(A) <- rownames(inv.phylo$Ainv)
+
+```
+
+
+Here is a multi-level Bayesian model of the response variable *Wing length* including the phylogeny of the species in question:
+```{r model_phylo, cache=TRUE}
 start_time <- Sys.time()
-brm0 <- brm(Wing_length_right.mm. ~ 1 + scale(Year) + (1 + scale(Year) || Binomial),
+brm0 <- brm(Wing_length_right.mm. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
+            cov_ranef = list(Binomial = A),
             data = passer90,
             family = gaussian,
-            prior = c(prior(normal(0, 1), class = Intercept),
-                      prior(normal(0, 1), class = b),
-                      prior(cauchy(0, 1), class = sd)),
+            prior = c(prior(normal(71, 15), class = Intercept),
+                      prior(normal(0, 10), class = b),
+                      prior(cauchy(0, 1), class = sd),
+                      prior(cauchy(0, 1), class = sigma)),
             iter = 3000, 
             warmup = 1000, 
-            chains = 3, 
-            cores = 3)
+            chains = 2, 
+            cores = 2, 
+            control = list(max_treedepth = 12))
 
 end_time <- Sys.time();end_time - start_time
 
 summary(brm0)
+stanplot(brm0)
 #brms::launch_shinystan(brm0)
+
+plot(marginal_effects(brm0), points = TRUE)
+pp_check(brm0)
+
+hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sigma^2) = 0"
+(hyp <- hypothesis(brm0, hyp, class = NULL))
+
+```
+
+Here is a multi-level Bayesian model of the response variable *Body mass* including the phylogeny of the species in question. I want to try using the *get_prior()* function the next time I run this model^[https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/missing-data-and-other-opportunities.html].
+```{r model_phylo_mass, cache=TRUE}
+start_time <- Sys.time()
+brm1 <- brm(Body_mass.g. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
+            cov_ranef = list(Binomial = A),
+            data = passer90,
+            family = gaussian,
+            prior = c(prior(normal(71, 15), class = Intercept),
+                      prior(normal(0, 10), class = b),
+                      prior(cauchy(0, 1), class = sd),
+                      prior(cauchy(0, 1), class = sigma)),
+            iter = 2000, 
+            warmup = 1000, 
+            chains = 3, 
+            cores = 3, 
+            control = list(max_treedepth = 12))
+
+end_time <- Sys.time();end_time - start_time
+
+summary(brm1)
+stanplot(brm1)
+#brms::launch_shinystan(brm0)
+
+plot(marginal_effects(brm1), points = TRUE)
+pp_check(brm1)
+
+hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sigma^2) = 0"
+(hyp <- hypothesis(brm1, hyp, class = NULL))
+
 ```
 
 # References
