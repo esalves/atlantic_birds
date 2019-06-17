@@ -28,6 +28,7 @@ library(lme4)
 library(ape)
 library(geiger)
 library(MCMCglmm)
+library(mice)
 ```
 
 ## Load data
@@ -64,6 +65,15 @@ passer90 <- birds %>%
                   range = max-min
                         ) %>%
             filter(range >= 10)
+
+# keeping only variables that I will use in the models:
+passer90 <- passer90 %>%
+              select(spp, Binomial, Sex, Year, scaled_yr, Latitude_decimal_degrees, scaled_lat, Wing_length_right.mm.,ln_wing_length)
+
+passer90 <- as.data.frame(passer90)
+
+passer90$scaled_lat <- as.numeric(passer90$scaled_lat)
+passer90$scaled_yr <- as.numeric(passer90$scaled_yr)
 ```
 
 
@@ -169,13 +179,18 @@ rownames(A) <- rownames(inv.phylo$Ainv)
 
 ```
 
+Before running the multi-level Bayesian model, I will use multiple imputation to impute missing data with the package *mice*. The idea is to create 5 new datasets with fully imputed data.
+```{r mice_data, cache = TRUE}
+passer90_imp <- mice(passer90, m = 5, print = TRUE)
+```
+
 
 Here is a multi-level Bayesian model of the response variable *Wing length* including the phylogeny of the species in question:
 ```{r model_phylo, cache=TRUE}
 start_time <- Sys.time()
-brm0 <- brm(Wing_length_right.mm. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
+brm0 <- brm_multiple(Wing_length_right.mm. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
             cov_ranef = list(Binomial = A),
-            data = passer90,
+            data = passer90_imp,
             family = gaussian,
             prior = c(prior(normal(71, 15), class = Intercept),
                       prior(normal(0, 10), class = b),
@@ -196,7 +211,7 @@ stanplot(brm0)
 plot(marginal_effects(brm0), points = TRUE)
 pp_check(brm0)
 
-hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sigma^2) = 0"
+hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
 (hyp <- hypothesis(brm0, hyp, class = NULL))
 
 ```
