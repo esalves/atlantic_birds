@@ -308,85 +308,19 @@ div.tocify {
 <h1>Methods</h1>
 <div id="load-libraries" class="section level2">
 <h2>Load libraries</h2>
-<pre><code>## ── Attaching packages ──────────────────────────────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
-<pre><code>## ✔ ggplot2 3.2.0     ✔ purrr   0.3.2
-## ✔ tibble  2.1.3     ✔ dplyr   0.8.1
-## ✔ tidyr   0.8.3     ✔ stringr 1.4.0
-## ✔ readr   1.3.1     ✔ forcats 0.4.0</code></pre>
-<pre><code>## ── Conflicts ─────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
-## ✖ dplyr::filter() masks stats::filter()
-## ✖ dplyr::lag()    masks stats::lag()</code></pre>
-<pre><code>## Loading required package: Rcpp</code></pre>
-<pre><code>## Registered S3 method overwritten by 'xts':
-##   method     from
-##   as.zoo.xts zoo</code></pre>
-<pre><code>## Loading 'brms' package (version 2.9.0). Useful instructions
-## can be found by typing help('brms'). A more detailed introduction
-## to the package is available through vignette('brms_overview').</code></pre>
-<pre><code>## Loading required package: Matrix</code></pre>
-<pre><code>## 
-## Attaching package: 'Matrix'</code></pre>
-<pre><code>## The following object is masked from 'package:tidyr':
-## 
-##     expand</code></pre>
-<pre><code>## 
-## Attaching package: 'lme4'</code></pre>
-<pre><code>## The following object is masked from 'package:brms':
-## 
-##     ngrps</code></pre>
-<pre><code>## Registered S3 method overwritten by 'geiger':
-##   method            from
-##   unique.multiPhylo ape</code></pre>
-<pre><code>## 
-## Attaching package: 'geiger'</code></pre>
-<pre><code>## The following object is masked from 'package:brms':
-## 
-##     bf</code></pre>
-<pre><code>## Loading required package: coda</code></pre>
-<pre><code>## 
-## Attaching package: 'MCMCglmm'</code></pre>
-<pre><code>## The following object is masked from 'package:brms':
-## 
-##     me</code></pre>
-<pre><code>## Loading required package: lattice</code></pre>
-<pre><code>## 
-## Attaching package: 'mice'</code></pre>
-<pre><code>## The following object is masked from 'package:tidyr':
-## 
-##     complete</code></pre>
-<pre><code>## The following objects are masked from 'package:base':
-## 
-##     cbind, rbind</code></pre>
+<pre class="r"><code>library(tidyverse)
+library(ggthemes) 
+library(brms)
+library(lme4)
+library(ape)
+library(geiger)
+library(MCMCglmm)
+library(mice)</code></pre>
 </div>
 <div id="load-data" class="section level2">
 <h2>Load data</h2>
 <p>We used the Atlantic Bird Traits <span class="citation">(R. C. Rodrigues et al. 2019)</span> dataset as a source of information upon which to address our hypothesis.</p>
-<pre><code>## Parsed with column specification:
-## cols(
-##   .default = col_character(),
-##   Body_mass.g. = col_double(),
-##   Body_length.mm. = col_double(),
-##   Wing_length.mm. = col_double(),
-##   Wing_length_left.mm. = col_double(),
-##   Wing_length_right.mm. = col_double(),
-##   Wing_length_left_open.mm. = col_logical(),
-##   Wing_length_right_open.mm. = col_logical(),
-##   Wingspan.mm. = col_logical(),
-##   Tail_length.mm. = col_double(),
-##   Tail_length_left.mm. = col_logical(),
-##   Tail_length_right.mm. = col_logical(),
-##   Tarsus_length.mm. = col_double(),
-##   Tarsus_length_left.mm. = col_double(),
-##   Tarsus_length_right.mm. = col_double(),
-##   Tarsus_diam.mm. = col_double(),
-##   Bill_length.mm. = col_double(),
-##   Bill_length_nostril.mm. = col_double(),
-##   Bill_depth.mm. = col_double(),
-##   Bill_depth_base.mm. = col_double(),
-##   Bill_depth_nostril.mm. = col_logical()
-##   # ... with 20 more columns
-## )</code></pre>
-<pre><code>## See spec(...) for full column specifications.</code></pre>
+<pre class="r"><code>birds &lt;- read_csv(&quot;ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv&quot;)</code></pre>
 <pre><code>## Warning: 4708 parsing failures.
 ##  row                col           expected      actual                                             file
 ## 1612 Fat_deposition     a double           no          'ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv'

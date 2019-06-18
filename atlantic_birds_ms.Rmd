@@ -22,7 +22,7 @@ Based on a large scale analysis of Neotropical passerines that inhabit the Brazi
 
 # Methods
 ## Load libraries
-```{r libraries, echo=FALSE,cache=TRUE}
+```{r libraries, echo=TRUE,cache=TRUE, message=FALSE}
 library(tidyverse)
 library(ggthemes) 
 library(brms)
@@ -35,17 +35,17 @@ library(mice)
 
 ## Load data
 We used the Atlantic Bird Traits [@rodrigues_atlantic_2019] dataset as a source of information upon which to address our hypothesis.
-```{r data,echo=FALSE, cache=TRUE}
-birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv")
+```{r data,echo=TRUE, cache=TRUE, message=FALSE}
+birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv", guess_max = 70000)
 ```
 
 ## Data wrangling and new variables
 Subsetting the original dataframe into sets to explore.
 
-We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). We used records of individuals that were collected/recorded between 1990 and 2018, which yielded a total of 40,183 passerine entries in our dataset. We will only keep records of species that have at least 50 entries in the dataset. This will reduce the dataset from 435 passerine species to 143 species. The last wrangling step is to remove all individuals that were not sexed in the original dataset, leaving a total of 68 passerine birds for analyses.
+We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). We used records of individuals that were collected/recorded between 1990 and 2018, which yielded a total of 40,183 passerine entries in our dataset. We will only keep records of species that have at least 50 entries in the dataset. This will reduce the dataset from 435 passerine species to 143 species. The last wrangling step is to remove all individuals that were not sexed in the original dataset, leaving a total of 68 passerine birds for analyses. Using only records that were registed within the 20 km buffer polygon for the Atlantic Forest domain 
 ```{r newdataframes,cache=TRUE}
 passer90 <- birds %>%
-          filter(Year >= 1990, Age == "Adult", Sex != "Unknown", Order == "Passeriformes") %>%
+          filter(Year >= 1990, Age == "Adult", Sex != "Unknown", Order == "Passeriformes", AtlanticForests_20km_Buffer == "inside the 20 km polygon") %>%
           mutate(
             ln_wing_length = log(Wing_length_right.mm.),
             scaled_lat = scale(Latitude_decimal_degrees*-1),
@@ -76,10 +76,12 @@ passer90 <- as.data.frame(passer90)
 
 passer90$scaled_lat <- as.numeric(passer90$scaled_lat)
 passer90$scaled_yr <- as.numeric(passer90$scaled_yr)
+
+rm(birds)
 ```
 
 
-Checking the range of years per species in the *passer90* dataframe:
+Checking the range of years per species in the *passer90* dataframe. Creating a new data frame that contains one entry per species in order to prune the phylogeny latter.
 ```{r year_range, cache=TRUE}
 by_binomial <- group_by(passer90, Binomial)
 year_range <- summarise(by_binomial,
@@ -90,7 +92,10 @@ year_range <- summarise(by_binomial,
 
 year_range <- as.data.frame(year_range)
 row.names(year_range) <- year_range$Binomial # having rows named with the species name is required for any PCM
+```
 
+Plots of the range of years per species:
+```{r plots_year_range, cache=TRUE}
 g_year_range <- ggplot(data = year_range, aes(x = range)) + 
                   geom_bar() +
                   theme_fivethirtyeight()
@@ -109,6 +114,7 @@ g_year_max <- ggplot(data = year_range, aes(x = max)) +
                   theme_fivethirtyeight()
 g_year_max
 ```
+
 
 For each species in the dataset, the range of years of data available ranges from 2 to 28. It seems reasonable to use only those species for which we have at least 10 years of data. I haven't looked into what constitutes a good longitudinal dataset, but less than 10 years just seems too little in order to establish a link between temperature and body size.
 
