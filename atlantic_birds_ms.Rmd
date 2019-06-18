@@ -18,7 +18,9 @@ Two of the main responses of organisms to climate change are phenological change
 
 Based on a large scale analysis of Neotropical passerines that inhabit the Brazilian Atlantic Forest, we show here that annual mean temperature has been increasing, while precipitation^[We need to choose what precipitation variable to use. It would be good to choose one that relates to the availability of food (insects or fruits).] has been decreasing over a period of **XX** years in the areas inhabited by these passerines.
 
-# Data manipulation, plots, models
+> Paragraph to talk about the main finding of this study in relation to body size and climate change. For *Nature Climate Change* remember to combine results and some methods so that readers understand what you did.
+
+# Methods
 ## Load libraries
 ```{r libraries, echo=FALSE,cache=TRUE}
 library(tidyverse)
@@ -37,10 +39,10 @@ We used the Atlantic Bird Traits [@rodrigues_atlantic_2019] dataset as a source 
 birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv")
 ```
 
-## New variables
+## Data wrangling and new variables
 Subsetting the original dataframe into sets to explore.
 
-We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). Finally, we used records of individuals that were collected/recorded between 1990 and 2018, which yielded a total of 40,183 passerine entries in our dataset. We will only keep records of species that have at least 50 entries in the dataset. This will reduce the dataset from 435 passerine species to 143 species.
+We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). We used records of individuals that were collected/recorded between 1990 and 2018, which yielded a total of 40,183 passerine entries in our dataset. We will only keep records of species that have at least 50 entries in the dataset. This will reduce the dataset from 435 passerine species to 143 species. The last wrangling step is to remove all individuals that were not sexed in the original dataset, leaving a total of 68 passerine birds for analyses.
 ```{r newdataframes,cache=TRUE}
 passer90 <- birds %>%
           filter(Year >= 1990, Age == "Adult", Sex != "Unknown", Order == "Passeriformes") %>%
@@ -110,7 +112,7 @@ g_year_max
 
 For each species in the dataset, the range of years of data available ranges from 2 to 28. It seems reasonable to use only those species for which we have at least 10 years of data. I haven't looked into what constitutes a good longitudinal dataset, but less than 10 years just seems too little in order to establish a link between temperature and body size.
 
-After filtering out the species with less than 10 years of data, we ended up with a total of 134 passerine species.
+After filtering out the species with less than 10 years of data, we ended up with a total of 68 passerine species.
 
 ## Exploratory plots
 Plotting some relationships:
@@ -136,7 +138,7 @@ g3
 ```
 
 ## Exploratory models
-A few quick models to check the trends. It seems like we have overall evidence that there is a negative relationship between *Year* and *Wing length* for all species.
+A few quick models (using **lme4**) to check the trends. It seems like we have overall evidence that there is a negative relationship between *Year* and *Wing length* for all species.
 ```{r models, cache=TRUE}
 m0 <- lmer(Wing_length_right.mm. ~ scaled_yr + Sex + scaled_lat + (1 + scaled_yr | Binomial),
            data = passer90,
@@ -156,9 +158,12 @@ summary(m1)
 
 ```
 
+### Loading the phylogeny
 Loading phylogeny to include in the multi-level model.
 For all analyses, we used species-level Passeriformes trees taken from a sample of 1,000 topologies based on the Hackett backbone from Jetz et al.'s [-@jetz2012global] [BirdTree.org](http://birdtree.org). We will later prune these 5,966-species trees to fit the species in each analyses for which we have succesfully collected complete data.
-```{r phylo, cache=TRUE}
+
+The chunk to load the phylogeny will only be evaluated in the local version of the code, to save time and space when in version control.
+```{r phylo, cache=TRUE, eval= FALSE}
 trees <- read.nexus("Hackett_trees.nex")
 
 namecheck_passer <- name.check(trees[[1]], year_range) # checking which species are in the phylogeny but not in our data frame
@@ -179,24 +184,117 @@ rownames(A) <- rownames(inv.phylo$Ainv)
 
 ```
 
+### Multiple imputation
 Before running the multi-level Bayesian model, I will use multiple imputation to impute missing data with the package *mice*. The idea is to create 5 new datasets with fully imputed data.
 ```{r mice_data, cache = TRUE}
-passer90_imp <- mice(passer90, m = 5, print = TRUE)
+require(lattice)
+require(pan)
+require(multilevel)
+
+# Exploring the missing data pattern:
+md.pattern(passer90, rotate.names = TRUE)
+
+histogram(~ as.numeric(as.factor(Binomial)) | is.na(Wing_length_right.mm.), data=passer90)
+# We do see that the histogram for the missing wing length (TRUE) is further to the right than the histogram for observed wing length (FALSE). This would indicate a right-tailed MAR missingness.
+
+histogram(~ as.numeric(as.factor(Binomial)) | is.na(Latitude_decimal_degrees), data=passer90)
+# We do see that the histogram for the missing Latitude (TRUE) is centered on the histogram for observed Latitude (FALSE). This would indicate a non-skewed MAR missingness.
+
+# Have a look at the intraclass correlation (ICC) for the incomplete variables: Wing length & Latitude:
+ICC1(aov(Wing_length_right.mm. ~ Binomial, data = passer90))
+
+ICC1(aov(Latitude_decimal_degrees ~ Binomial, data = passer90))
+
+# Impute the passer90 dataset with mice using imputation method norm
+ini <- mice(passer90, maxit = 0)
+meth <- ini$meth
+meth
+
+meth[c(6, 7, 8, 9)] <- "norm"
+meth
+
+pred <- ini$pred
+pred
+
+start_time <- Sys.time()
+passer90_imp <- mice(passer90, meth = meth, pred = pred, print = FALSE)
+end_time <- Sys.time();end_time - start_time
+
+# Compare the means of the variables in the first imputed dataset and in the incomplete dataset:
+summary(complete(passer90_imp))
+
+summary(passer90)
+
+# Compare the ICC’s of the variables in the first imputed dataset with those in the incomplete dataset:
+data.frame(vars = names(passer90[c(8, 6)]), 
+           observed = c(ICC1(aov(Wing_length_right.mm. ~ Binomial, passer90)), 
+                        ICC1(aov(Latitude_decimal_degrees ~ Binomial, passer90)) 
+                        ), 
+           norm     = c(ICC1(aov(Wing_length_right.mm. ~ Binomial, complete(passer90_imp))), 
+                        ICC1(aov(Latitude_decimal_degrees ~ Binomial, complete(passer90_imp))) 
+                        ))
+
+# Now impute the passer90 dataset again with mice using imputation method norm for the same variables as before, but now include Binomial as a predictor for all variables:
+pred <- ini$pred
+pred[, "Binomial"] <- 1
+pred
+
+start_time <- Sys.time()
+passer90_imp1 <- mice(passer90, meth = meth, pred = pred, print = FALSE)
+end_time <- Sys.time();end_time - start_time
+
+# Compare the ICC’s of the variables in the first imputed dataset with those in the incomplete dataset and the 2nd imputed set:
+data.frame(vars = names(passer90[c(8, 6)]), 
+           observed = c(ICC1(aov(Wing_length_right.mm. ~ Binomial, passer90)), 
+                        ICC1(aov(Latitude_decimal_degrees ~ Binomial, passer90)) 
+                        ), 
+           norm     = c(ICC1(aov(Wing_length_right.mm. ~ Binomial, complete(passer90_imp))), 
+                        ICC1(aov(Latitude_decimal_degrees ~ Binomial, complete(passer90_imp))) 
+                        ), 
+           normBinomial     = c(ICC1(aov(Wing_length_right.mm. ~ Binomial, complete(passer90_imp1))), 
+                        ICC1(aov(Latitude_decimal_degrees ~ Binomial, complete(passer90_imp1))) 
+                        )
+           )
+
+plot(passer90_imp1, c("Wing_length_right.mm.", "Latitude_decimal_degrees"))
+
+# Add 10 more iterations:
+passer90_imp2 <- mice.mids(passer90_imp1, maxit = 10)
+
+plot(passer90_imp2, c("Wing_length_right.mm.", "Latitude_decimal_degrees"))
+
+# Add 20 more iterations:
+passer90_imp3 <- mice.mids(passer90_imp2, maxit = 20, print = FALSE)
+
+plot(passer90_imp3, c("Wing_length_right.mm.", "Latitude_decimal_degrees"))
+
+# Plot the densities of the observed and imputed data (use passer90_imp3) with the function densityplot().
+densityplot(passer90_imp3)
+
+# Impute the passer90 data once more where you use predictive mean matching and include all variables as predictors. Name the object passer90_imp4.
+passer90_imp4 <- mice(passer90)
+
+densityplot(passer90_imp4, ~Wing_length_right.mm.)
+plot(passer90_imp4)
+
+passer90_imp4a <- mice.mids(passer90_imp4, maxit = 20, print = FALSE)
+plot(passer90_imp4a)
+densityplot(passer90_imp4a, ~Wing_length_right.mm.)
 ```
 
-
-Here is a multi-level Bayesian model of the response variable *Wing length* including the phylogeny of the species in question:
-```{r model_phylo, cache=TRUE}
+### Multilevel models with imputed data and phylogeny
+Here is a multi-level Bayesian model of the response variable *Wing length* including the phylogeny of the species in question. This model is running over the imputed dataset passer90_imp4a:
+```{r model_phylo, cache=TRUE, eval = FALSE}
 start_time <- Sys.time()
 brm0 <- brm_multiple(Wing_length_right.mm. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
             cov_ranef = list(Binomial = A),
-            data = passer90_imp,
+            data = passer90_imp4a,
             family = gaussian,
             prior = c(prior(normal(71, 15), class = Intercept),
                       prior(normal(0, 10), class = b),
                       prior(cauchy(0, 1), class = sd),
                       prior(cauchy(0, 1), class = sigma)),
-            iter = 4000, 
+            iter = 2000, 
             warmup = 1000, 
             chains = 3, 
             cores = 3, 
@@ -208,7 +306,9 @@ summary(brm0)
 stanplot(brm0)
 #brms::launch_shinystan(brm0)
 
-plot(marginal_effects(brm0), points = TRUE)
+save(brm0, file = "brm0.rda")
+
+plot(marginal_effects(brm0))
 pp_check(brm0)
 
 hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
@@ -216,8 +316,8 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 
 ```
 
-Here is a multi-level Bayesian model of the response variable *Body mass* including the phylogeny of the species in question. I want to try using the *get_prior()* function the next time I run this model^[https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/missing-data-and-other-opportunities.html].
-```{r model_phylo_mass, cache=TRUE}
+Here is a multi-level Bayesian model of the response variable *Body mass* including the phylogeny of the species in question. I want to try using the *get_prior()* function the next time I run this model^[https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/missing-data-and-other-opportunities.html]. Right now, I won't evaluate this chunk, to save time. I will run the code locally and just past the results from a local **brms** run.
+```{r model_phylo_mass, cache=TRUE, eval= FALSE}
 start_time <- Sys.time()
 brm1 <- brm(Body_mass.g. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
             cov_ranef = list(Binomial = A),
