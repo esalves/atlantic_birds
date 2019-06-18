@@ -70,7 +70,7 @@ passer90 <- birds %>%
 
 # keeping only variables that I will use in the models:
 passer90 <- passer90 %>%
-              select(spp, Binomial, Sex, Year, scaled_yr, Latitude_decimal_degrees, scaled_lat, Wing_length_right.mm.,ln_wing_length)
+              dplyr::select(spp, Binomial, Sex, Year, scaled_yr, Latitude_decimal_degrees, scaled_lat, Wing_length_right.mm.,ln_wing_length)
 
 passer90 <- as.data.frame(passer90)
 
@@ -81,7 +81,7 @@ rm(birds)
 ```
 
 
-Checking the range of years per species in the *passer90* dataframe. Creating a new data frame that contains one entry per species in order to prune the phylogeny latter.
+Checking the range of years per species in the *passer90* dataframe. Creating a new data frame that contains one entry per species in order to prune the phylogeny later.
 ```{r year_range, cache=TRUE}
 by_binomial <- group_by(passer90, Binomial)
 year_range <- summarise(by_binomial,
@@ -171,24 +171,34 @@ For all analyses, we used species-level Passeriformes trees taken from a sample 
 The chunk to load the phylogeny will only be evaluated in the local version of the code, to save time and space when in version control.
 ```{r phylo, cache=TRUE, eval= FALSE}
 trees <- read.nexus("Hackett_trees.nex")
+```
 
+Chunk to process and save a sample of 50 trees:
+```{r tree_sample, cache=TRUE}
 namecheck_passer <- name.check(trees[[1]], year_range) # checking which species are in the phylogeny but not in our data frame
 
 # namecheck_subset <- namecheck_passer$tree_not_data[grep("Thraupis", namecheck_passer$tree_not_data)] # Code to check if the species is available in the phylogeny under a different (synonim) genus name.
 
-trees_passer <- lapply(trees, drop.tip, namecheck_passer$tree_not_data) # pruning these species from all the 1,000 trees
+tree_samp <- sample(trees, size = 50) # Sampling 50 trees from the 1000 file. This is enough for the phylogenetic uncertainty.
+
+trees_passer <- lapply(tree_samp, drop.tip, namecheck_passer$tree_not_data) # pruning these species from all the 50 trees
 
 class(trees_passer) <- "multiPhylo"
 
 nrow(year_range) # number of species for which we have complete data
 length(trees_passer[[1]]$tip.label) # number of tips in the phylogenic trees
 
+save(trees_passer, file = "trees_passer.rda")
+
+
+rm(list = c("trees", "year_range", "by_binomial", "tree_samp", "namecheck_passer")) # remove objects that aren't needed anymore
+
 # The phylo object contains information on the relationship between species. Using this information, we can construct a covariance matrix of species.
 inv.phylo <- inverseA(trees_passer[[1]], nodes = "TIPS", scale = TRUE)
 A <- solve(inv.phylo$Ainv)
 rownames(A) <- rownames(inv.phylo$Ainv)
-
 ```
+
 
 ### Multiple imputation
 Before running the multi-level Bayesian model, I will use multiple imputation to impute missing data with the package *mice*. The idea is to create 5 new datasets with fully imputed data.
@@ -308,19 +318,26 @@ brm0 <- brm(Wing_length_right.mm. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scal
 
 end_time <- Sys.time();end_time - start_time
 
+save(brm0, file = "brm0.rda")
+```
+
+Summary and model convergence checks:
+```{r model_summary, cache=TRUE}
+load("brm0.rda")
+
 summary(brm0)
 stanplot(brm0)
 #brms::launch_shinystan(brm0)
 
-save(brm0, file = "brm0.rda")
+
 
 plot(marginal_effects(brm0))
 pp_check(brm0)
 
 hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
 (hyp <- hypothesis(brm0, hyp, class = NULL))
-
 ```
+
 
 Here is a multi-level Bayesian model of the response variable *Body mass* including the phylogeny of the species in question. I want to try using the *get_prior()* function the next time I run this model^[https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/missing-data-and-other-opportunities.html]. Right now, I won't evaluate this chunk, to save time. I will run the code locally and just past the results from a local **brms** run.
 ```{r model_phylo_mass, cache=TRUE, eval= FALSE}
