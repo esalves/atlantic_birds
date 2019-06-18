@@ -116,7 +116,7 @@ After filtering out the species with less than 10 years of data, we ended up wit
 
 ## Exploratory plots
 Plotting some relationships:
-```{r plots, cache=TRUE}
+```{r plots, cache=TRUE, eval = FALSE}
 g_wingl <- ggplot(data = passer90, aes(x = scaled_yr, y = scaled_wing_length, group = Binomial)) +
             geom_point(aes(alpha = 0.09)) +
             stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) +
@@ -139,7 +139,7 @@ g3
 
 ## Exploratory models
 A few quick models (using **lme4**) to check the trends. It seems like we have overall evidence that there is a negative relationship between *Year* and *Wing length* for all species.
-```{r models, cache=TRUE}
+```{r models, cache=TRUE, eval = FALSE}
 m0 <- lmer(Wing_length_right.mm. ~ scaled_yr + Sex + scaled_lat + (1 + scaled_yr | Binomial),
            data = passer90,
            REML = FALSE,
@@ -286,9 +286,9 @@ densityplot(passer90_imp4a, ~Wing_length_right.mm.)
 Here is a multi-level Bayesian model of the response variable *Wing length* including the phylogeny of the species in question. This model is running over the imputed dataset passer90_imp4a:
 ```{r model_phylo, cache=TRUE, eval = FALSE}
 start_time <- Sys.time()
-brm0 <- brm_multiple(Wing_length_right.mm. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
+brm0 <- brm(Wing_length_right.mm. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
             cov_ranef = list(Binomial = A),
-            data = passer90_imp4a,
+            data = passer90,
             family = gaussian,
             prior = c(prior(normal(71, 15), class = Intercept),
                       prior(normal(0, 10), class = b),
