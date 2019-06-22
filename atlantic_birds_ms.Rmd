@@ -441,4 +441,83 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 
 ```
 
+# Arthropod abundance over time analysis
+I wanted to look for a dataset that contained information on the abundance of arthropods in Brazil (more specifically, if available, in the Atlantic Forest) over time. The idea being that we could use this information as part of the argument that what we are observing for the birds is in fact being caused by a decline in the abundance of their food source over time. Thus, we have a signature of a phenotypic plasticity process at hand, and not a micro-evolutionary response.
+
+I found the PREDICTS project [@hudson2017database], which has collated a huge amount of biodiversity data per locality, with more than 3.2 million records. I downloaded the main database (**/Volumes/Macintosh HD/Users/eduardosantos/Downloads/database.csv**) and then proceeded to wrangle the data to obtain records for Arachnida and Insecta for whole Brazil:
+```{r load_predicts_main, cache=TRUE, eval=FALSE}
+dat <- read_csv("/Volumes/Macintosh HD/Users/eduardosantos/Downloads/database.csv", guess_max = 70000)
+```
+
+Subsetting PREDICTS dataset to Brazil and Insecta + Arachnida classes only:
+```{r subset_predicts, cache=TRUE, eval=FALSE}
+# Playing with data from WHOLE Brazil to see what is going on:
+dat_test <- dat %>%
+        filter(Phylum == "Arthropoda", Diversity_metric_type == "Abundance", UN_subregion == "South America", Class %in% c("Insecta", "Arachnida")) %>%
+        mutate(
+          scaled_yr = as.numeric(scale(Sample_midpoint)),
+          log_abundance = log(Effort_corrected_measurement),
+          Measurement = as.integer(Measurement),
+          Class = as.factor(Class)
+) # I logged the abundance divided by sampling effort in order to normalize the data
+
+rm("dat")
+save(dat_test, file = "dat_test.rds")
+```
+
+Loading the subset Brazil data that I had already saved as a .rds file
+```{r load_predicts_brasil, cache=TRUE}
+load("dat_test.rds")
+
+dat_test <- dat_test %>%
+      mutate(
+        Class = as.factor(Class),
+        log_sampling = log(Sampling_effort) # logging sampling effort to use as offset in Poisson model
+        )
+
+```
+
+Plotting the relationship between year and abundance of arthropods in Brazil.
+```{r plot_arthro_abund, cache=TRUE}
+g_test <-  ggplot(data = dat_test, aes(x = Sample_midpoint, y = Measurement)) +
+                  geom_point() +
+                  stat_smooth(method = "lm", se = FALSE) +
+                  facet_wrap(~Class, scales = "free")
+
+g_test
+```
+
+Negative binomial model with offset to investigate the relationship between the predictor **year** and the response (count) abundance of arthropods in Brazil.
+```{r brm_arthro_abund, cache=TRUE}
+start_time <- Sys.time()
+brm1 <- 
+  brm(data = dat_test, family = negbinomial,
+      Measurement ~ 1 + offset(log_sampling) + scaled_yr,
+      prior = c(prior(normal(0, 10), class = Intercept),
+                prior(normal(0, 1), class = b),
+                prior(gamma(0.01, 0.01), class = shape) # the brms default
+                ), 
+      cores = 2,
+      chains = 2,
+      iter = 1000) 
+end_time <- Sys.time();end_time - start_time
+
+save(brm1, file = "brm_arthro_abund.rda")
+```
+
+Loading arthropod abundance model to check summary and convergence.
+```{r arthro_model_summary, cache=TRUE}
+load("brm_arthro_abund.rda")
+
+summary(brm1)
+plot(brm1)
+
+fixef(brm1)[1:2, ] %>%
+  exp()
+
+plot(marginal_effects(brm1))
+pp_check(brm1)
+```
+
+
 # References
