@@ -3,6 +3,7 @@ title: "Shrinking body size in Atlantic Forest birds as a response to climate ch
 author: 
 - Eduardo S.A. Santos
 - João C.T. Menezes
+- Gustavo Burin
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
@@ -22,15 +23,17 @@ Based on a large scale analysis of Neotropical passerines that inhabit the Brazi
 
 # Methods
 ## Load libraries
+Here are all the libraries that we used for data wrangling, plotting and model building
 ```{r libraries, echo=TRUE,cache=TRUE, message=FALSE}
-library(tidyverse)
-library(ggthemes) 
-library(brms)
-library(lme4)
-library(ape)
-library(geiger)
-library(MCMCglmm)
-library(mice)
+library("tidyverse")
+library("ggthemes") 
+library("brms")
+library("lme4")
+library("ape")
+library("geiger")
+library("MCMCglmm")
+library("mice")
+library("tidybayes")
 ```
 
 ## Load data
@@ -76,6 +79,8 @@ passer90 <- as.data.frame(passer90)
 
 passer90$scaled_lat <- as.numeric(passer90$scaled_lat)
 passer90$scaled_yr <- as.numeric(passer90$scaled_yr)
+
+save(passer90, file = "passer90.rda")
 
 rm(birds)
 ```
@@ -174,7 +179,7 @@ trees <- read.nexus("Hackett_trees.nex")
 ```
 
 Chunk to process and save a sample of 50 trees:
-```{r tree_sample, cache=TRUE}
+```{r tree_sample, cache=TRUE, eval=FALSE}
 namecheck_passer <- name.check(trees[[1]], year_range) # checking which species are in the phylogeny but not in our data frame
 
 # namecheck_subset <- namecheck_passer$tree_not_data[grep("Thraupis", namecheck_passer$tree_not_data)] # Code to check if the species is available in the phylogeny under a different (synonim) genus name.
@@ -192,17 +197,22 @@ save(trees_passer, file = "trees_passer.rda")
 
 
 rm(list = c("trees", "year_range", "by_binomial", "tree_samp", "namecheck_passer")) # remove objects that aren't needed anymore
+```
 
+Load multiphylo file with 50 sampled trees:
+```{r load_multiphylo, cache=TRUE}
 # The phylo object contains information on the relationship between species. Using this information, we can construct a covariance matrix of species.
+load("trees_passer.rda")
 inv.phylo <- inverseA(trees_passer[[1]], nodes = "TIPS", scale = TRUE)
 A <- solve(inv.phylo$Ainv)
 rownames(A) <- rownames(inv.phylo$Ainv)
+
 ```
 
 
 ### Multiple imputation
 Before running the multi-level Bayesian model, I will use multiple imputation to impute missing data with the package *mice*. The idea is to create 5 new datasets with fully imputed data.
-```{r mice_data, cache = TRUE}
+```{r mice_data, cache = TRUE, eval=FALSE}
 require(lattice)
 require(pan)
 require(multilevel)
@@ -233,7 +243,7 @@ pred <- ini$pred
 pred
 
 start_time <- Sys.time()
-passer90_imp <- mice(passer90, meth = meth, pred = pred, print = FALSE)
+#passer90_imp <- mice(passer90, meth = meth, pred = pred, print = FALSE)
 end_time <- Sys.time();end_time - start_time
 
 # Compare the means of the variables in the first imputed dataset and in the incomplete dataset:
@@ -256,7 +266,7 @@ pred[, "Binomial"] <- 1
 pred
 
 start_time <- Sys.time()
-passer90_imp1 <- mice(passer90, meth = meth, pred = pred, print = FALSE)
+#passer90_imp1 <- mice(passer90, meth = meth, pred = pred, print = FALSE)
 end_time <- Sys.time();end_time - start_time
 
 # Compare the ICC’s of the variables in the first imputed dataset with those in the incomplete dataset and the 2nd imputed set:
@@ -272,23 +282,23 @@ data.frame(vars = names(passer90[c(8, 6)]),
                         )
            )
 
-plot(passer90_imp1, c("Wing_length_right.mm.", "Latitude_decimal_degrees"))
+plot(passer90_imp1, "Wing_length_right.mm.")
 
 # Add 10 more iterations:
-passer90_imp2 <- mice.mids(passer90_imp1, maxit = 10)
+#passer90_imp2 <- mice.mids(passer90_imp1, maxit = 10)
 
-plot(passer90_imp2, c("Wing_length_right.mm.", "Latitude_decimal_degrees"))
+plot(passer90_imp2, "Wing_length_right.mm.")
 
 # Add 20 more iterations:
-passer90_imp3 <- mice.mids(passer90_imp2, maxit = 20, print = FALSE)
+#passer90_imp3 <- mice.mids(passer90_imp2, maxit = 20, print = FALSE)
 
-plot(passer90_imp3, c("Wing_length_right.mm.", "Latitude_decimal_degrees"))
+plot(passer90_imp3, "Wing_length_right.mm.")
 
 # Plot the densities of the observed and imputed data (use passer90_imp3) with the function densityplot().
 densityplot(passer90_imp3)
 
 # Impute the passer90 data once more where you use predictive mean matching and include all variables as predictors. Name the object passer90_imp4.
-passer90_imp4 <- mice(passer90)
+passer90_imp4 <- mice(passer90, print = FALSE)
 
 densityplot(passer90_imp4, ~Wing_length_right.mm.)
 plot(passer90_imp4)
@@ -296,10 +306,34 @@ plot(passer90_imp4)
 passer90_imp4a <- mice.mids(passer90_imp4, maxit = 20, print = FALSE)
 plot(passer90_imp4a)
 densityplot(passer90_imp4a, ~Wing_length_right.mm.)
+
+save(passer90_imp4a, file = "passer90_imp4a.rda")
 ```
 
 ### Multilevel models with imputed data and phylogeny
-Here is a multi-level Bayesian model of the response variable *Wing length* including the phylogeny of the species in question. This model is running over the imputed dataset passer90_imp4a:
+Here is a multi-level Bayesian model of the response variable *Wing length* including the phylogeny of the species in question. If I run with the original data set, even though we have over 14k entries, there are only 4.6k complete entries that **brm** will use to estimate parameters. This model is running over the imputed dataset passer90_imp4a:
+```{r model_phylo_imp, cache=TRUE, eval = FALSE}
+load("passer90_imp4a.rda")
+
+start_time <- Sys.time()
+brm <- brm_multiple(Wing_length_right.mm. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
+            cov_ranef = list(Binomial = A),
+            data = passer90_imp4a,
+            family = gaussian,
+            prior = c(prior(normal(71, 15), class = Intercept),
+                      prior(normal(0, 10), class = b),
+                      prior(cauchy(0, 1), class = sd),
+                      prior(cauchy(0, 1), class = sigma)),
+            chains = 2, 
+            cores = 6, 
+            control = list(max_treedepth = 12))
+
+end_time <- Sys.time();end_time - start_time
+
+save(brm, file = "brm.rda")
+```
+
+I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data.
 ```{r model_phylo, cache=TRUE, eval = FALSE}
 start_time <- Sys.time()
 brm0 <- brm(Wing_length_right.mm. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
@@ -310,10 +344,10 @@ brm0 <- brm(Wing_length_right.mm. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scal
                       prior(normal(0, 10), class = b),
                       prior(cauchy(0, 1), class = sd),
                       prior(cauchy(0, 1), class = sigma)),
-            iter = 2000, 
+            iter = 1500, 
             warmup = 1000, 
-            chains = 3, 
-            cores = 3, 
+            chains = 4, 
+            cores = 4, 
             control = list(max_treedepth = 12))
 
 end_time <- Sys.time();end_time - start_time
@@ -326,17 +360,54 @@ Summary and model convergence checks:
 load("brm0.rda")
 
 summary(brm0)
+
 stanplot(brm0)
 #brms::launch_shinystan(brm0)
-
-
-
+plot(brm0)
 plot(marginal_effects(brm0))
 pp_check(brm0)
 
 hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
 (hyp <- hypothesis(brm0, hyp, class = NULL))
 ```
+
+### Multi-level model with phylogenetic uncertainty
+I asked Ari to run the multilevel model of **Wing length** on the server so that we could run the model over a sample of 50 tree topologies, in order to incorporate phylogenetic uncertainty. The code to run that model is in the file *atlantic_parallel.R*, which is in the manuscript's folder (*/Volumes/Macintosh HD/Users/eduardosantos/Google Drive/Manuscripts/MyPapers/CurrentlyWorking/2019_atlantic_birds/edu_joao/atlantic_parallel.R*). We saved the results of this run in the file **brm0.rda**. Below, I will load this file from the **edu_joao** folder in order to check its summary and diagnostics.
+
+```{r model_summary_multi_phylo, cache=TRUE}
+load("~/Google Drive/Manuscripts/MyPapers/CurrentlyWorking/2019_atlantic_birds/edu_joao/brm0.rda")
+
+brm_multi_phylo <- combine_models(mlist = brm0)
+summary(brm_multi_phylo)
+
+
+stanplot(brm_multi_phylo)
+#brms::launch_shinystan(brm0)
+plot(brm_multi_phylo)
+plot(marginal_effects(brm_multi_phylo))
+pp_check(brm_multi_phylo)
+
+hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
+(hyp <- hypothesis(brm_multi_phylo, hyp, class = NULL))
+
+post <- posterior_samples(brm_multi_phylo)
+
+beta_yr_ef <- 
+  post %>% 
+  transmute(beta_yr_ef = b_scaled_yr)
+
+require("tidybayes")
+
+beta_yr_ef %>%
+  ggplot(aes(x = beta_yr_ef)) +
+  geom_density(size = 0, fill = "royalblue") +
+  stat_pointintervalh(aes(y = 0), 
+                      point_interval = mode_hdi, .width = .89) +
+  scale_y_continuous(NULL, breaks = NULL) +
+  labs(x = "Year effect (centred/scaled)") +
+  theme_classic()
+```
+
 
 
 Here is a multi-level Bayesian model of the response variable *Body mass* including the phylogeny of the species in question. I want to try using the *get_prior()* function the next time I run this model^[https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/missing-data-and-other-opportunities.html]. Right now, I won't evaluate this chunk, to save time. I will run the code locally and just past the results from a local **brms** run.
