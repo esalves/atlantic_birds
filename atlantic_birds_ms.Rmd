@@ -154,13 +154,18 @@ g3
 ```{r maps_birds, cache=TRUE}
 library("ggmap")
 
-map <- get_map(location = 'Brazil', zoom = 4)
+bbox <- make_bbox(passer90$Longitude_decimal_degrees, passer90$Latitude_decimal_degrees, f = 0.01)
+map <- get_map(bbox)
+
+passer90$period <- ifelse(passer90$Year <= 2004, '1990-2004', '2005-2018')
 
 points <- ggmap(map) + 
-            geom_point(aes(x = Longitude_decimal_degrees, y = Latitude_decimal_degrees, colour = "red"), data = passer90, alpha = .5) +
+            geom_point(aes(x = Longitude_decimal_degrees, y = Latitude_decimal_degrees, colour = Wing_length_right.mm.), data = remove_missing(passer90, vars = "Wing_length_right.mm."), alpha = .5) +
+            scale_color_viridis_c(option = "plasma")+
             labs(title = "Localities of passerine records",
                  x = "Longitude (decimal degrees)",
-                 y = "Latitude (decimal degrees)")
+                 y = "Latitude (decimal degrees)") +
+            facet_wrap(~period)
 
 points
 ```
