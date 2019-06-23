@@ -38,7 +38,7 @@ library("tidybayes")
 
 ## Load data
 We used the Atlantic Bird Traits [@rodrigues_atlantic_2019] dataset as a source of information upon which to address our hypothesis.
-```{r data,echo=TRUE, cache=TRUE, message=FALSE}
+```{r data,echo=TRUE, cache=TRUE, message=FALSE, eval=FALSE}
 birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv", guess_max = 70000)
 ```
 
@@ -46,7 +46,7 @@ birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv", guess_max = 
 Subsetting the original dataframe into sets to explore.
 
 We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). We used records of individuals that were collected/recorded between 1990 and 2018, which yielded a total of 40,183 passerine entries in our dataset. We will only keep records of species that have at least 50 entries in the dataset. This will reduce the dataset from 435 passerine species to 143 species. The last wrangling step is to remove all individuals that were not sexed in the original dataset, leaving a total of 68 passerine birds for analyses. Using only records that were registed within the 20 km buffer polygon for the Atlantic Forest domain 
-```{r newdataframes,cache=TRUE}
+```{r newdataframes,cache=TRUE, eval=FALSE}
 passer90 <- birds %>%
           filter(Year >= 1990, Age == "Adult", Sex != "Unknown", Order == "Passeriformes", AtlanticForests_20km_Buffer == "inside the 20 km polygon") %>%
           mutate(
@@ -73,7 +73,7 @@ passer90 <- birds %>%
 
 # keeping only variables that I will use in the models:
 passer90 <- passer90 %>%
-              dplyr::select(spp, Binomial, Sex, Year, scaled_yr, Latitude_decimal_degrees, scaled_lat, Wing_length_right.mm.,ln_wing_length)
+              dplyr::select(spp, Binomial, Sex, Year, scaled_yr, Latitude_decimal_degrees, scaled_lat, Longitude_decimal_degrees, Wing_length_right.mm.,ln_wing_length)
 
 passer90 <- as.data.frame(passer90)
 
@@ -88,6 +88,8 @@ rm(birds)
 
 Checking the range of years per species in the *passer90* dataframe. Creating a new data frame that contains one entry per species in order to prune the phylogeny later.
 ```{r year_range, cache=TRUE}
+load("passer90.rda")
+
 by_binomial <- group_by(passer90, Binomial)
 year_range <- summarise(by_binomial,
                   min = min(Year),
@@ -147,6 +149,22 @@ g3 <- ggplot(data = passer90, aes(x = Year, y = Annual_rainfall)) +
 
 g3
 ```
+
+## Plotting map of species locations:
+```{r maps_birds, cache=TRUE}
+library("ggmap")
+
+map <- get_map(location = 'Brazil', zoom = 4)
+
+points <- ggmap(map) + 
+            geom_point(aes(x = Longitude_decimal_degrees, y = Latitude_decimal_degrees, colour = "red"), data = passer90, alpha = .5) +
+            labs(title = "Localities of passerine records",
+                 x = "Longitude (decimal degrees)",
+                 y = "Latitude (decimal degrees)")
+
+points
+```
+
 
 ## Exploratory models
 A few quick models (using **lme4**) to check the trends. It seems like we have overall evidence that there is a negative relationship between *Year* and *Wing length* for all species.
