@@ -464,6 +464,38 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 
 ```
 
+# Elton traits to check bird diet
+I am going to have a look at Elton Traits [@wilman2014eltontraits] in order to check what is the functional diet category of the birds in our dataset.
+
+Import Elton traits dataset:
+```{r import_elton_traits, cache=TRUE, eval=FALSE}
+elton <- read_tsv("BirdFuncDat.txt")
+```
+
+Filtering Elton Traits to the species in the wing length dataset:
+```{r filtering_elton, cache=TRUE}
+elton <- elton %>%
+  mutate(Scientific = gsub(" ", "_", Scientific)
+         ) %>%
+  semi_join(passer90, by = c("Scientific" = "Binomial")
+            ) # Keeping only the Elton traits entries that match the species in the passer90 tibble
+```
+
+Of the passerines in the **wing length** dataset, here is a breakdown of their dominant diet categories, according to the data from Elton traits:
+```{r summary_diets, cache=TRUE}
+table(elton[,20])
+
+(table(elton[,20])/68)*100
+```
+The tables above present the counts and percetange of species, respectively, per diet category.
+
+Only `r length(elton$Scientific[elton[,10] == 0])` species are listed in Elton Traits as having 0% of their diet consisting of invertebrates. The species that do not have any invertebrates in their diet are:
+```{r spp_no_inv_diet, cache=TRUE, results='asis'}
+cat(paste('-', elton$Scientific[which(elton$`Diet-Inv` == 0)]), sep = '\n') 
+```
+
+All other species in the **wing length** dataset have at least some invertebrate prey as part of their diet.
+
 # Arthropod abundance over time analysis
 I wanted to look for a dataset that contained information on the abundance of arthropods in Brazil (more specifically, if available, in the Atlantic Forest) over time. The idea being that we could use this information as part of the argument that what we are observing for the birds is in fact being caused by a decline in the abundance of their food source over time. Thus, we have a signature of a phenotypic plasticity process at hand, and not a micro-evolutionary response.
 
@@ -542,5 +574,6 @@ plot(marginal_effects(brm1))
 pp_check(brm1)
 ```
 
+> One idea I had today (Jun/24) was to use the predicted abundance of arthropods per year as a predictor in the wing length model to investigate whether bird body size is tracking temperature per se or food availability.
 
 # References
