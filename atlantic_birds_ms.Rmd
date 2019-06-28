@@ -52,6 +52,8 @@ We restricted our data collection to the order Passeriformes, as passerine birds
 passer90 <- birds %>%
           filter(Year >= 1990, Age == "Adult", Sex != "Unknown", Order == "Passeriformes", AtlanticForests_20km_Buffer == "inside the 20 km polygon") %>%
           mutate(
+            conc.wing.length = coalesce(Wing_length_right.mm., Wing_length_left.mm., Wing_length.mm.), # combining all wing lengths to minimize number of NAs in dataset
+            ln_conc_wing_length = log(conc.wing.length),
             ln_wing_length = log(Wing_length_right.mm.),
             scaled_lat = scale(Latitude_decimal_degrees*-1),
             scaled_yr = scale(Year),
@@ -75,7 +77,7 @@ passer90 <- birds %>%
 
 # keeping only variables that I will use in the models:
 passer90 <- passer90 %>%
-              dplyr::select(spp, Binomial, Sex, Year, scaled_yr, Latitude_decimal_degrees, scaled_lat, Longitude_decimal_degrees, Wing_length_right.mm.,ln_wing_length)
+              dplyr::select(spp, Binomial, Sex, Year, scaled_yr, Latitude_decimal_degrees, scaled_lat, Longitude_decimal_degrees, Wing_length_right.mm.,ln_wing_length,conc.wing.length,ln_conc_wing_length)
 
 passer90 <- as.data.frame(passer90)
 
@@ -132,10 +134,9 @@ After filtering out the species with less than 10 years of data, we ended up wit
 ## Exploratory plots
 Plotting some relationships:
 ```{r plots, cache=TRUE, eval = FALSE}
-g_wingl <- ggplot(data = passer90, aes(x = scaled_yr, y = scaled_wing_length, group = Binomial)) +
+g_wingl <- ggplot(data = passer90, aes(x = scaled_yr, y = conc.wing.length, group = Binomial)) +
             geom_point(aes(alpha = 0.09)) +
-            stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) +
-            facet_wrap(~Family, scales = "free_y") + 
+            stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) + 
             theme_fivethirtyeight()
 g_wingl
 
@@ -157,12 +158,12 @@ g3
 library("ggmap")
 
 bbox <- make_bbox(passer90$Longitude_decimal_degrees, passer90$Latitude_decimal_degrees, f = 0.01)
-map <- get_map(bbox)
+map <- get_map(bbox, source = 'osm', color = 'bw')
 
 passer90$period <- ifelse(passer90$Year <= 2004, '1990-2004', '2005-2018')
 
 points <- ggmap(map) + 
-            geom_point(aes(x = Longitude_decimal_degrees, y = Latitude_decimal_degrees, colour = Wing_length_right.mm.), data = remove_missing(passer90, vars = "Wing_length_right.mm."), alpha = .5) +
+            geom_point(aes(x = Longitude_decimal_degrees, y = Latitude_decimal_degrees, colour = conc.wing.length), data = remove_missing(passer90, vars = "conc.wing.length"), alpha = .5) +
             scale_color_viridis_c(option = "plasma")+
             labs(title = "Localities of passerine records",
                  x = "Longitude (decimal degrees)",
@@ -183,6 +184,15 @@ m0 <- lmer(Wing_length_right.mm. ~ scaled_yr + Sex + scaled_lat + (1 + scaled_yr
            )
 
 summary(m0)
+
+m0.1 <- lmer(ln_conc_wing_length ~ scaled_yr + Sex + scaled_lat + (1 + scaled_yr | Binomial),
+           data = passer90,
+           REML = FALSE,
+           control = lmerControl(optimizer ="Nelder_Mead")
+           )
+
+summary(m0.1)
+
 
 m1 <- lmer(Body_mass.g. ~ scaled_yr + Sex + scaled_lat + (1 + scaled_yr | Binomial),
            data = passer90,
@@ -361,7 +371,7 @@ save(brm, file = "brm.rda")
 I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data.
 ```{r model_phylo, cache=TRUE, eval = FALSE}
 start_time <- Sys.time()
-brm0 <- brm(Wing_length_right.mm. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
+brm0 <- brm(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
             cov_ranef = list(Binomial = A),
             data = passer90,
             family = gaussian,
