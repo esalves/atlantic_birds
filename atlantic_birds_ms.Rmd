@@ -480,7 +480,7 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 I am going to have a look at Elton Traits [@wilman2014eltontraits] in order to check what is the functional diet category of the birds in our dataset. Elton traits' metadata can be accessed through this  <a href="http://www.esapubs.org/archive/ecol/E095/178/metadata.php" target="_blank">link</a>.
 
 Import Elton traits dataset:
-```{r import_elton_traits, cache=TRUE, eval=FALSE}
+```{r import_elton_traits, cache=TRUE, eval=TRUE}
 elton <- read_tsv("BirdFuncDat.txt")
 ```
 
