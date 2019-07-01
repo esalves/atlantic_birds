@@ -160,10 +160,14 @@ library("ggmap")
 bbox <- make_bbox(passer90$Longitude_decimal_degrees, passer90$Latitude_decimal_degrees, f = 0.01)
 map <- get_map(bbox, source = 'osm', color = 'bw')
 
-passer90$period <- ifelse(passer90$Year <= 2004, '1990-2004', '2005-2018')
+# I want to plot only the 1st and 3rd quartile of Years in the map:
+passer.quart.years <- passer90 %>%
+  filter(Year <= 2006 | Year >=2013)
+
+passer.quart.years$period <- ifelse(passer.quart.years$Year <= 2006, '1990-2006', '2013-2018')
 
 points <- ggmap(map) + 
-            geom_point(aes(x = Longitude_decimal_degrees, y = Latitude_decimal_degrees, colour = conc.wing.length), data = remove_missing(passer90, vars = "conc.wing.length"), alpha = .5) +
+            geom_point(aes(x = Longitude_decimal_degrees, y = Latitude_decimal_degrees, colour = conc.wing.length), data = remove_missing(passer.quart.years, vars = "conc.wing.length"), alpha = .5) +
             scale_color_viridis_c(option = "plasma")+
             labs(title = "Localities of passerine records",
                  x = "Longitude (decimal degrees)",
@@ -171,7 +175,32 @@ points <- ggmap(map) +
             facet_wrap(~period)
 
 points
+
+# Using the quartile year dataset to plot spp mean wing lengths in the first quartile of the data and the 3rd quartile:
+wing.by.spp <- passer.quart.years %>%
+  group_by(spp, period) %>%
+  summarise(mean.wing = mean(conc.wing.length, na.rm = TRUE)) %>%
+  mutate(time = ifelse(period == '1990-2006', 1, 2),
+         size.trend = (mean.wing - lag(mean.wing)),
+         size.trend1 = lead(size.trend),
+         size.trend2 = coalesce(size.trend,size.trend1))
+
+# remove Antilophia (only present in 1st quartile):
+wing.by.spp <- wing.by.spp[-1,]
+
+# Creating color scheme for the slopes of the plot:
+trend.wing.length <- ggplot(data = wing.by.spp, aes(x=period,y=mean.wing, group = spp, colour = size.trend2 > 0)) +
+  geom_line() +
+  scale_color_manual(name = "Trend in body size over time",
+                     values = c("#CC6666","#9999CC"),
+                     labels = c("Decrease", "Increase", "")) +
+  labs(y = "Wing length (mm)",
+       x = "Sampling period")
+
+trend.wing.length
 ```
+
+I plotted the average wing length for each species in the dataset for the 1^st^ quartile (1990-2006), and the 3^rd^ quartile (2013-2018). Each species is plotted as a trend line estimated as the difference between the average wing length in each period. Species that suffered a reduction in body size are in red and species that increase in body size between the quartiles are in blue. The number of species that decreased in body size is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend < 0]))` and the number of species in which body size increased is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend > 0]))`.
 
 
 ## Exploratory models
