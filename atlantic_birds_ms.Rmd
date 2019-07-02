@@ -44,7 +44,7 @@ We used the Atlantic Bird Traits [@rodrigues_atlantic_2019] dataset as a source 
 birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv", guess_max = 70000)
 ```
 
-Import Elton traits dataset:
+Import Elton traits [@wilman2014eltontraits] dataset.
 ```{r import_elton_traits, cache=TRUE, eval=TRUE}
 elton <- read_tsv("BirdFuncDat.txt")
 ```
@@ -97,7 +97,7 @@ rm(birds)
 ```
 
 Checking the range of years per species in the *passer90* dataframe. Creating a new data frame that contains one entry per species in order to prune the phylogeny later.
-```{r year_range, cache=FALSE}
+```{r year_range, cache=TRUE}
 load("passer90.rda")
 
 by_binomial <- group_by(passer90, Binomial)
@@ -111,7 +111,7 @@ year_range <- as.data.frame(year_range)
 row.names(year_range) <- year_range$Binomial # having rows named with the species name is required for any PCM
 ```
 
-Plots of the range of years per species:
+Plots of the range of years per species^[These plots are just for exploratory purposes. I can hide them later when writing the manuscript].
 ```{r plots_year_range, cache=TRUE}
 g_year_range <- ggplot(data = year_range, aes(x = range)) + 
                   geom_bar() +
@@ -140,9 +140,9 @@ After filtering out the species with less than 10 years of data, we ended up wit
 Plotting some relationships:
 ```{r plots, cache=TRUE, eval = TRUE}
 g_wingl <- ggplot(data = passer90, aes(x = scaled_yr, y = conc.wing.length, group = Binomial)) +
-            geom_point(aes(alpha = 0.09)) +
-            stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) + 
-            theme_fivethirtyeight() +
+  geom_point(aes(alpha = 0.09)) +
+  stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) +
+  theme_fivethirtyeight() +
   theme(axis.title = element_text()) +
   ylab("Wing length (mm)") +
   xlab("Year (centred/scaled)")
@@ -161,7 +161,7 @@ g_temp
 ```
 
 ## Plotting map of species locations:
-```{r maps_birds, cache=TRUE}
+```{r maps_birds, cache=TRUE, message = FALSE}
 library("ggmap")
 
 bbox <- make_bbox(passer90$Longitude_decimal_degrees, passer90$Latitude_decimal_degrees, f = 0.01)
@@ -199,6 +199,7 @@ wing.by.spp <- passer.quart.years %>%
          size.trend.bill2 = coalesce(size.trend.bill,size.trend.bill1))
 
 # Inserting diet to make facets in the plots:
+elton$Scientific = gsub(" ", "_", elton$Scientific)
 wing.by.spp$Diet <- elton$`Diet-5Cat`[match(wing.by.spp$spp, elton$Scientific)]
 
 # remove Antilophia (only present in 1st quartile):
