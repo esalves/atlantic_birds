@@ -44,13 +44,18 @@ We used the Atlantic Bird Traits [@rodrigues_atlantic_2019] dataset as a source 
 birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv", guess_max = 70000)
 ```
 
+Import Elton traits dataset:
+```{r import_elton_traits, cache=TRUE, eval=TRUE}
+elton <- read_tsv("BirdFuncDat.txt")
+```
+
 ## Data wrangling and new variables
 Subsetting the original dataframe into sets to explore.
 
 We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). We used records of individuals that were collected/recorded between 1990 and 2018, which yielded a total of 40,183 passerine entries. We only kept records of species that have at least 50 entries in the dataset. The sample size per species inclusion criteria reduced the dataset from 435 passerine species to 143 species. The last wrangling step was to remove all individuals that were not sexed in the original dataset, leaving a total of 68 passerine bird species for analyses. Using only records that were registed within the 20 km buffer polygon for the Atlantic Forest domain.
 
 We chose as our metric of body size the variable wing length (mm). We decided to use wing length over other available variables from the original dataset because wing length was the the body size estimate with the least amount of missing data for the 68 passerine species. In the original dataset, wing length was provided as either the right or left wing, or generically, without mentions as to which wing was measured. We safely assumed that birds are bilaterally symmetric in order to coalesce all wing length values into a single variable, thus eliminating more missing values from the dataset used for analysis.
-```{r newdataframes,cache=FALSE, eval=TRUE}
+```{r newdataframes,cache=TRUE, eval=TRUE}
 passer90 <- birds %>%
           filter(Year >= 1990, Age == "Adult", Sex != "Unknown", Order == "Passeriformes", AtlanticForests_20km_Buffer == "inside the 20 km polygon") %>%
           mutate(
@@ -66,20 +71,20 @@ passer90 <- birds %>%
             Binomial = gsub("Pyriglena_pernambucensis", "Pyriglena_leuconota", Binomial),
             Binomial = gsub("Rhopias_gularis", "Myrmotherula_gularis", Binomial),
             Binomial = gsub("Tangara_sayaca", "Thraupis_sayaca", Binomial),
-            spp = Binomial
+            spp = Binomial # Creating variable for phylo matrix in model later
           ) %>%
           group_by(Binomial) %>%
-          filter(n() >= 50) %>%
+          filter(n() >= 50) %>% # keeping only spp that have at least 50 records
             mutate(
                   min = min(Year),
                   max = max(Year),
                   range = max-min
                         ) %>%
-            filter(range >= 10)
+            filter(range >= 10) # keeping only spp that range at least 10 yrs
 
 # keeping only variables that I will use in the models:
 passer90 <- passer90 %>%
-              dplyr::select(spp, Binomial, Sex, Year, scaled_yr, Annual_mean_temperature, Latitude_decimal_degrees, scaled_lat, Longitude_decimal_degrees, Wing_length_right.mm.,ln_wing_length,conc.wing.length,ln_conc_wing_length)
+              dplyr::select(spp, Binomial, Sex, Year, scaled_yr, Annual_mean_temperature, Latitude_decimal_degrees, scaled_lat, Longitude_decimal_degrees, Wing_length_right.mm.,ln_wing_length,conc.wing.length,ln_conc_wing_length,Bill_width.mm.)
 
 passer90 <- as.data.frame(passer90)
 
@@ -181,11 +186,20 @@ points
 # Using the quartile year dataset to plot spp mean wing lengths in the first quartile of the data and the 3rd quartile:
 wing.by.spp <- passer.quart.years %>%
   group_by(spp, period) %>%
-  summarise(mean.wing = mean(conc.wing.length, na.rm = TRUE)) %>%
+  summarise(mean.wing = mean(conc.wing.length, na.rm = TRUE),
+            sd.wing = sd(conc.wing.length, na.rm = TRUE),
+            sample.n.wing = n(),
+            mean.bill.width = mean(Bill_width.mm., na.rm = TRUE)) %>%
   mutate(time = ifelse(period == '1990-2006', 1, 2),
          size.trend = (mean.wing - lag(mean.wing)),
          size.trend1 = lead(size.trend),
-         size.trend2 = coalesce(size.trend,size.trend1))
+         size.trend2 = coalesce(size.trend,size.trend1),
+         size.trend.bill = (mean.bill.width - lag(mean.bill.width)),
+         size.trend.bill1 = lead(size.trend.bill),
+         size.trend.bill2 = coalesce(size.trend.bill,size.trend.bill1))
+
+# Inserting diet to make facets in the plots:
+wing.by.spp$Diet <- elton$`Diet-5Cat`[match(wing.by.spp$spp, elton$Scientific)]
 
 # remove Antilophia (only present in 1st quartile):
 wing.by.spp <- wing.by.spp[-1,]
@@ -197,12 +211,26 @@ trend.wing.length <- ggplot(data = wing.by.spp, aes(x=period,y=mean.wing, group 
                      values = c("#CC6666","#9999CC"),
                      labels = c("Decrease", "Increase", "")) +
   labs(y = "Wing length (mm)",
-       x = "Sampling period")
+       x = "Sampling period") +
+  facet_wrap(~Diet)
 
 trend.wing.length
+
+trend.bill.width <- ggplot(data = wing.by.spp, aes(x=period,y=mean.bill.width, group = spp, colour = size.trend.bill2 > 0)) +
+  geom_line() +
+  scale_color_manual(name = "Trend in bill width over time",
+                     values = c("#CC6666","#9999CC"),
+                     labels = c("Decrease", "Increase", "")) +
+  labs(y = "Bill width (mm)",
+       x = "Sampling period") +
+  facet_wrap(~Diet)
+
+trend.bill.width
 ```
 
 I plotted the average wing length for each species in the dataset for the 1^st^ quartile (1990-2006), and the 3^rd^ quartile (2013-2018). Each species is plotted as a trend line estimated as the difference between the average wing length in each period. Species that suffered a reduction in body size are in red and species that increase in body size between the quartiles are in blue. The number of species that decreased in body size is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend < 0]))` and the number of species in which body size increased is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend > 0]))`.
+
+I then investigated the trend in bill width during the same period as for wing length (described above). Species that suffered a reduction in bill width are in red and species that increase in bill width between the quartiles are in blue. The number of species that decreased in bill width is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend.bill < 0]))` and the number of species in which bill width increased is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend.bill > 0]))`.
 
 
 ## Exploratory models
@@ -487,11 +515,6 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 
 # Elton traits to check bird diet
 I am going to have a look at Elton Traits [@wilman2014eltontraits] in order to check what is the functional diet category of the birds in our dataset. Elton traits' metadata can be accessed through this  <a href="http://www.esapubs.org/archive/ecol/E095/178/metadata.php" target="_blank">link</a>.
-
-Import Elton traits dataset:
-```{r import_elton_traits, cache=TRUE, eval=TRUE}
-elton <- read_tsv("BirdFuncDat.txt")
-```
 
 Filtering Elton Traits to the species in the wing length dataset:
 ```{r filtering_elton, cache=TRUE}
