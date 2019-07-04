@@ -575,7 +575,7 @@ rm("dat")
 save(dat_test, file = "dat_test.rds")
 ```
 
-Loading the subset Brazil data that I had already saved as a .rds file
+Loading the subset of South America data that I had already saved as a .rds file
 ```{r load_predicts_brasil, cache=TRUE}
 load("dat_test.rds")
 
@@ -668,6 +668,47 @@ fixef(brm_no_ants)[1:2, ] %>%
 
 plot(marginal_effects(brm_no_ants))
 pp_check(brm_no_ants)
+```
+
+Another idea that Glauco gave me was to use only invertebrate abundances from forest biomes and avoid the grasslands and savannas. So here is the analysis using a subset excluding open biomes. I will also keep the ants out of this analysis.
+```{r abundance_dat_no_ants_no_grassland, cache=TRUE}
+dat_no_grassland <- dat_no_ants %>%
+        filter(Biome %in% c("Mangroves", "Mediterranean Forests, Woodlands & Scrub","Temperate Broadleaf & Mixed Forests","Tropical & Subtropical Dry Broadleaf Forests","Tropical & Subtropical Moist Broadleaf Forests")
+               )
+
+save(dat_no_grassland, file = "dat_no_grassland.rds")
+```
+
+Model with no ant abundance and excluding grasslands/open biomes:
+```{r brm_arthro_abund_no_ants_no_grass, cache=TRUE}
+start_time <- Sys.time()
+brm_no_ants_no_grass <- 
+  brm(data = dat_no_grassland, family = negbinomial,
+      Measurement ~ 1 + offset(log_sampling) + scaled_yr,
+      prior = c(prior(normal(0, 10), class = Intercept),
+                prior(normal(0, 1), class = b),
+                prior(gamma(0.01, 0.01), class = shape) # the brms default
+                ), 
+      cores = 2,
+      chains = 2,
+      iter = 1000) 
+end_time <- Sys.time();end_time - start_time
+
+save(brm_no_ants_no_grass, file = "brm_no_ants_no_grass.rda")
+```
+
+Loading arthropod abundance model (without ants and no grasslands) to check summary and convergence.
+```{r arthro_model_no_ants_no_grass_summary, cache=TRUE}
+load("brm_no_ants_no_grass.rda")
+
+summary(brm_no_ants_no_grass)
+plot(brm_no_ants_no_grass)
+
+fixef(brm_no_ants_no_grass)[1:2, ] %>%
+  exp()
+
+plot(marginal_effects(brm_no_ants_no_grass))
+pp_check(brm_no_ants_no_grass)
 ```
 
 
