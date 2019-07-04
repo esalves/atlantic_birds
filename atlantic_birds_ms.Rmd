@@ -149,6 +149,16 @@ g_wingl <- ggplot(data = passer90, aes(x = scaled_yr, y = conc.wing.length, grou
 
 g_wingl
 
+pl <- ggplot(passer90, aes(x=Year,y=conc.wing.length))
+pl2 <- pl + geom_hex()
+print(pl2 + 
+        scale_fill_gradient(high = "red", low = "blue")  +
+        theme_fivethirtyeight() +
+        theme(axis.title = element_text()) +
+        ylab("Wing length (mm)") +
+        xlab("Year")
+)
+
 g_temp <- ggplot(data = passer90, aes(x = Year, y = Annual_mean_temperature)) +
   geom_point(aes(alpha = 0.09)) +
   stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) +
@@ -618,6 +628,48 @@ fixef(brm1)[1:2, ] %>%
 plot(marginal_effects(brm1))
 pp_check(brm1)
 ```
+
+Glauco has rightfully suggested that I removed ants from the abundance dataset to see how sensitive it is to these arthropods. Birds are not known to predate ants, thus it makes sense to run the analyses without ants. Negative binomial model with offset to investigate the relationship between the predictor **year** and the response (count) abundance of arthropods in Brazil.
+```{r abundance_dat_no_ants, cache=TRUE}
+dat_no_ants <- dat_test %>%
+        filter(Family != "Formicidae"
+               )
+
+save(dat_no_ants, file = "dat_no_ants.rds")
+```
+
+Model with no ant abundance:
+```{r brm_arthro_abund_no_ants, cache=TRUE}
+start_time <- Sys.time()
+brm_no_ants <- 
+  brm(data = dat_no_ants, family = negbinomial,
+      Measurement ~ 1 + offset(log_sampling) + scaled_yr,
+      prior = c(prior(normal(0, 10), class = Intercept),
+                prior(normal(0, 1), class = b),
+                prior(gamma(0.01, 0.01), class = shape) # the brms default
+                ), 
+      cores = 2,
+      chains = 2,
+      iter = 1000) 
+end_time <- Sys.time();end_time - start_time
+
+save(brm_no_ants, file = "brm_arthro_abund_no_ants.rda")
+```
+
+Loading arthropod abundance model (without ants) to check summary and convergence.
+```{r arthro_model_no_ants_summary, cache=TRUE}
+load("brm_arthro_abund_no_ants.rda")
+
+summary(brm_no_ants)
+plot(brm_no_ants)
+
+fixef(brm_no_ants)[1:2, ] %>%
+  exp()
+
+plot(marginal_effects(brm_no_ants))
+pp_check(brm_no_ants)
+```
+
 
 > One idea I had today (Jun/24) was to use the predicted abundance of arthropods per year as a predictor in the wing length model to investigate whether bird body size is tracking temperature per se or food availability.
 
