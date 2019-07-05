@@ -465,12 +465,7 @@ save(brm.imputed, file = "brm_imputed.rda")
 ```
 
 ## brm model of wing length
-I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data. Glauco made some comments that I have to check^[Glauco's comments on July 04 2019:
-### Uni ou biparental???
-### What is the physiological response of birds to an increase in air temperature? Should they react by reducing body size in order to dissipate heat better.
-### Estimate the heritability of wing length. Look up the average generation time for passerine birds. Estimate what is the selection differential on wing length over the period of the data.
-
-### I thought later about migratory status of the birds. Should I include it in the analysis?]
+I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data. Glauco made some comments that I have to check^[Glauco's comments on July 04 2019: 1. Uni ou biparental??? 2. What is the physiological response of birds to an increase in air temperature? Should they react by reducing body size in order to dissipate heat better. 3. Estimate the heritability of wing length. Look up the average generation time for passerine birds. Estimate what is the selection differential on wing length over the period of the data. 4. I thought later about migratory status of the birds. Should I include it in the analysis?]
 ```{r model_phylo, cache=TRUE, eval = FALSE}
 start_time <- Sys.time()
 brm0 <- brm(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
@@ -510,7 +505,7 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 
 ## brm model of bill width
 I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data.
-```{r model_phylo_gape, cache=FALSE, eval = TRUE}
+```{r model_phylo_gape, cache=TRUE, eval = TRUE}
 start_time <- Sys.time()
 brm0.gape <- brm(Bill_width.mm. ~ 1 + scaled_yr + scaled_yr:Diet + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
             cov_ranef = list(Binomial = A),
