@@ -26,7 +26,7 @@ Based on a large scale analysis of Neotropical passerines that inhabit the Brazi
 # Methods
 ## Load libraries
 Here are all the libraries that we used for data wrangling, plotting and model building.
-```{r libraries, echo=TRUE,cache=TRUE, message=FALSE}
+```{r libraries, echo=TRUE,cache=FALSE, message=FALSE}
 library("tidyverse")
 library("ggthemes") 
 library("brms")
@@ -87,6 +87,10 @@ passer90 <- passer90 %>%
               dplyr::select(spp, Binomial, Sex, Year, scaled_yr, Annual_mean_temperature, Latitude_decimal_degrees, scaled_lat, Longitude_decimal_degrees, Wing_length_right.mm.,ln_wing_length,conc.wing.length,ln_conc_wing_length,Bill_width.mm.)
 
 passer90 <- as.data.frame(passer90)
+
+# Inserting diet into passer90 dataframe:
+elton$Scientific = gsub(" ", "_", elton$Scientific)
+passer90$Diet <- elton$`Diet-5Cat`[match(passer90$spp, elton$Scientific)]
 
 passer90$scaled_lat <- as.numeric(passer90$scaled_lat)
 passer90$scaled_yr <- as.numeric(passer90$scaled_yr)
@@ -170,7 +174,36 @@ g_temp <- ggplot(data = passer90, aes(x = Year, y = Annual_mean_temperature)) +
 g_temp
 ```
 
-## Plotting map of species locations:
+# Elton traits to check bird diet
+I am going to have a look at Elton Traits [@wilman2014eltontraits] in order to check what is the functional diet category of the birds in our dataset. Elton traits' metadata can be accessed through this  <a href="http://www.esapubs.org/archive/ecol/E095/178/metadata.php" target="_blank">link</a>.
+
+Filtering Elton Traits to the species in the wing length dataset:
+```{r filtering_elton, cache=TRUE}
+elton <- elton %>%
+  mutate(Scientific = gsub(" ", "_", Scientific)
+         ) %>%
+  semi_join(passer90, by = c("Scientific" = "Binomial")
+            ) # Keeping only the Elton traits entries that match the species in the passer90 tibble
+```
+
+Of the passerines in the **wing length** dataset, here is a breakdown of their dominant diet categories, according to the data from Elton traits:
+```{r summary_diets, cache=TRUE}
+table(elton[,20])
+
+(table(elton[,20])/68)*100
+```
+The tables above present the counts and percetange of species, respectively, per diet category.
+
+Only `r length(elton$Scientific[elton[,10] == 0])` species are listed in Elton Traits as having 0% of their diet consisting of invertebrates. The species that do not have any invertebrates in their diet are:
+```{r spp_no_inv_diet, cache=TRUE, results='asis'}
+cat(paste('-', elton$Scientific[which(elton$`Diet-Inv` == 0)]), sep = '\n') 
+```
+
+All other species in the **wing length** dataset have at least some invertebrate prey as part of their diet.
+
+
+# Plots
+## Plotting map of sample locations
 ```{r maps_birds, cache=TRUE, message = FALSE}
 library("ggmap")
 
@@ -192,7 +225,12 @@ points <- ggmap(map) +
             facet_wrap(~period)
 
 points
+```
 
+## Plotting wing length and gape width trends
+
+Plotting the trends in wing length and gape width for the birds in the dataset. I managed to estimate averages for the 1^st^ and the 3^rd^ quartiles.
+```{r body_size_gape_trend_plots, cache=TRUE}
 # Using the quartile year dataset to plot spp mean wing lengths in the first quartile of the data and the 3rd quartile:
 wing.by.spp <- passer.quart.years %>%
   group_by(spp, period) %>%
@@ -239,24 +277,34 @@ trend.bill.width <- ggplot(data = wing.by.spp, aes(x=period,y=mean.bill.width, g
 trend.bill.width
 ```
 
+
 I plotted the average wing length for each species in the dataset for the 1^st^ quartile (1990-2006), and the 3^rd^ quartile (2013-2018). Each species is plotted as a trend line estimated as the difference between the average wing length in each period. Species that suffered a reduction in body size are in red and species that increase in body size between the quartiles are in blue. The number of species that decreased in body size is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend < 0]))` and the number of species in which body size increased is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend > 0]))`.
 
 I then investigated the trend in bill width during the same period as for wing length (described above). Species that suffered a reduction in bill width are in red and species that increase in bill width between the quartiles are in blue. The number of species that decreased in bill width is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend.bill < 0]))` and the number of species in which bill width increased is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend.bill > 0]))`.
 
 
-## Exploratory models
+# Models
+## lmer (quick) models
 A few quick models (using **lme4**) to check the trends. It seems like we have overall evidence that there is a negative relationship between *Year* and *Wing length* for all species.
 ```{r models, cache=TRUE, eval = FALSE}
-m0 <- lmer(Wing_length_right.mm. ~ scaled_yr + Sex + scaled_lat + (1 + scaled_yr | Binomial),
+m0 <- lmer(Wing_length_right.mm. ~ scaled_yr + Sex + scaled_lat + scaled_yr*Diet + (1 + scaled_yr | Binomial),
            data = passer90,
            REML = FALSE,
            control = lmerControl(optimizer ="Nelder_Mead")
            )
 
 summary(m0)
+
+m1 <- lmer(Bill_width.mm. ~ scaled_yr + scaled_lat + scaled_yr*Diet + (1 + scaled_yr | Binomial),
+           data = passer90,
+           REML = FALSE,
+           control = lmerControl(optimizer ="Nelder_Mead")
+           )
+
+summary(m1)
 ```
 
-### Loading the phylogeny
+## Loading the phylogeny
 Loading phylogeny to include in the multi-level model.
 For all analyses, we used species-level Passeriformes trees taken from a sample of 1,000 topologies based on the Hackett backbone from Jetz et al.'s [-@jetz2012global] [BirdTree.org](http://birdtree.org). We will later prune these 5,966-species trees to fit the species in each analyses for which we have succesfully collected complete data.
 
@@ -297,7 +345,7 @@ rownames(A) <- rownames(inv.phylo$Ainv)
 ```
 
 
-### Multiple imputation
+## Multiple imputation wing length
 Before running the multi-level Bayesian model, I will use multiple imputation to impute missing data with the package *mice*. The idea is to create 5 new datasets with fully imputed data.
 ```{r mice_data, cache = TRUE, eval=FALSE}
 require(lattice)
@@ -416,7 +464,13 @@ end_time <- Sys.time();end_time - start_time
 save(brm.imputed, file = "brm_imputed.rda")
 ```
 
-I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data.
+## brm model of wing length
+I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data. Glauco made some comments that I have to check^[Glauco's comments on July 04 2019:
+### Uni ou biparental???
+### What is the physiological response of birds to an increase in air temperature? Should they react by reducing body size in order to dissipate heat better.
+### Estimate the heritability of wing length. Look up the average generation time for passerine birds. Estimate what is the selection differential on wing length over the period of the data.
+
+### I thought later about migratory status of the birds. Should I include it in the analysis?]
 ```{r model_phylo, cache=TRUE, eval = FALSE}
 start_time <- Sys.time()
 brm0 <- brm(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
@@ -454,7 +508,47 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 (hyp <- hypothesis(brm0, hyp, class = NULL))
 ```
 
-### Multi-level model with phylogenetic uncertainty
+## brm model of bill width
+I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data.
+```{r model_phylo_gape, cache=FALSE, eval = TRUE}
+start_time <- Sys.time()
+brm0.gape <- brm(Bill_width.mm. ~ 1 + scaled_yr + scaled_yr:Diet + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
+            cov_ranef = list(Binomial = A),
+            data = passer90,
+            family = gaussian,
+            prior = c(prior(normal(71, 15), class = Intercept),
+                      prior(normal(0, 10), class = b),
+                      prior(cauchy(0, 1), class = sd),
+                      prior(cauchy(0, 1), class = sigma)),
+            iter = 1500, 
+            warmup = 1000, 
+            chains = 4, 
+            cores = 2, 
+            control = list(max_treedepth = 12))
+
+end_time <- Sys.time();end_time - start_time
+
+save(brm0.gape, file = "brm0.gape.model.rda")
+```
+
+Summary and model convergence checks:
+```{r model_summary_gape, cache=TRUE}
+load("brm0.gape.model.rda")
+
+summary(brm0.gape)
+
+stanplot(brm0.gape)
+#brms::launch_shinystan(brm0)
+plot(brm0.gape)
+plot(marginal_effects(brm0.gape))
+pp_check(brm0.gape)
+
+hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
+(hyp <- hypothesis(brm0.gape, hyp, class = NULL))
+```
+
+
+## Multi-level model with phylogenetic uncertainty
 I asked Ari to run the multilevel model of **Wing length** on the server so that we could run the model over a sample of 50 tree topologies, in order to incorporate phylogenetic uncertainty. The code to run that model is in the file *atlantic_parallel.R*, which is in the manuscript's folder (*/Volumes/Macintosh HD/Users/eduardosantos/Google Drive/Manuscripts/MyPapers/CurrentlyWorking/2019_atlantic_birds/edu_joao/atlantic_parallel.R*). We saved the results of this run in the file **brm0.rda**. Below, I will load this file from the **edu_joao** folder in order to check its summary and diagnostics.
 
 ```{r model_summary_multi_phylo, cache=TRUE}
@@ -491,8 +585,6 @@ beta_yr_ef %>%
   theme_classic()
 ```
 
-
-
 Here is a multi-level Bayesian model of the response variable *Body mass* including the phylogeny of the species in question. I want to try using the *get_prior()* function the next time I run this model^[https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/missing-data-and-other-opportunities.html]. Right now, I won't evaluate this chunk, to save time. I will run the code locally and just past the results from a local **brms** run.
 ```{r model_phylo_mass, cache=TRUE, eval= FALSE}
 start_time <- Sys.time()
@@ -524,32 +616,6 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 
 ```
 
-# Elton traits to check bird diet
-I am going to have a look at Elton Traits [@wilman2014eltontraits] in order to check what is the functional diet category of the birds in our dataset. Elton traits' metadata can be accessed through this  <a href="http://www.esapubs.org/archive/ecol/E095/178/metadata.php" target="_blank">link</a>.
-
-Filtering Elton Traits to the species in the wing length dataset:
-```{r filtering_elton, cache=TRUE}
-elton <- elton %>%
-  mutate(Scientific = gsub(" ", "_", Scientific)
-         ) %>%
-  semi_join(passer90, by = c("Scientific" = "Binomial")
-            ) # Keeping only the Elton traits entries that match the species in the passer90 tibble
-```
-
-Of the passerines in the **wing length** dataset, here is a breakdown of their dominant diet categories, according to the data from Elton traits:
-```{r summary_diets, cache=TRUE}
-table(elton[,20])
-
-(table(elton[,20])/68)*100
-```
-The tables above present the counts and percetange of species, respectively, per diet category.
-
-Only `r length(elton$Scientific[elton[,10] == 0])` species are listed in Elton Traits as having 0% of their diet consisting of invertebrates. The species that do not have any invertebrates in their diet are:
-```{r spp_no_inv_diet, cache=TRUE, results='asis'}
-cat(paste('-', elton$Scientific[which(elton$`Diet-Inv` == 0)]), sep = '\n') 
-```
-
-All other species in the **wing length** dataset have at least some invertebrate prey as part of their diet.
 
 # Arthropod abundance over time analysis
 I wanted to look for a dataset that contained information on the abundance of arthropods in Brazil (more specifically, if available, in the Atlantic Forest) over time. The idea being that we could use this information as part of the argument that what we are observing for the birds is in fact being caused by a decline in the abundance of their food source over time. Thus, we have a signature of a phenotypic plasticity process at hand, and not a micro-evolutionary response.
@@ -597,6 +663,7 @@ g_test <-  ggplot(data = dat_test, aes(x = Sample_midpoint, y = Measurement)) +
 g_test
 ```
 
+## Arthropod abundance brm model
 Negative binomial model with offset to investigate the relationship between the predictor **year** and the response (count) abundance of arthropods in Brazil.
 ```{r brm_arthro_abund, cache=TRUE}
 start_time <- Sys.time()
@@ -679,6 +746,7 @@ dat_no_grassland <- dat_no_ants %>%
 save(dat_no_grassland, file = "dat_no_grassland.rds")
 ```
 
+## Arthropod abundance model without ants and excluding open biomes
 Model with no ant abundance and excluding grasslands/open biomes:
 ```{r brm_arthro_abund_no_ants_no_grass, cache=TRUE}
 start_time <- Sys.time()
