@@ -36,6 +36,9 @@ library("geiger")
 library("MCMCglmm")
 library("mice")
 library("tidybayes")
+library("reshape2")
+library("data.table")
+library('metafor')
 ```
 
 ## Load data
@@ -229,7 +232,7 @@ points
 
 ## Plotting wing length and gape width trends
 
-Plotting the trends in wing length and gape width for the birds in the dataset. I managed to estimate averages for the 1^st^ and the 3^rd^ quartiles.
+Plotting the trends in wing length and gape width for the birds in the dataset. I managed to estimate averages for the 1^st^ and the 3^rd^ quartiles. These plots are for visualization only. I will analyse the data as continuous variation.
 ```{r body_size_gape_trend_plots, cache=TRUE}
 # Using the quartile year dataset to plot spp mean wing lengths in the first quartile of the data and the 3rd quartile:
 wing.by.spp <- passer.quart.years %>%
@@ -237,14 +240,19 @@ wing.by.spp <- passer.quart.years %>%
   summarise(mean.wing = mean(conc.wing.length, na.rm = TRUE),
             sd.wing = sd(conc.wing.length, na.rm = TRUE),
             sample.n.wing = n(),
-            mean.bill.width = mean(Bill_width.mm., na.rm = TRUE)) %>%
+            mean.bill.width = mean(Bill_width.mm., na.rm = TRUE),
+            sd.bill = sd(Bill_width.mm., na.rm = TRUE)
+            ) %>%
   mutate(time = ifelse(period == '1990-2006', 1, 2),
          size.trend = (mean.wing - lag(mean.wing)),
          size.trend1 = lead(size.trend),
          size.trend2 = coalesce(size.trend,size.trend1),
+         wing.trend = ifelse(size.trend2 > 0, "Increase", "Decrease"),
          size.trend.bill = (mean.bill.width - lag(mean.bill.width)),
          size.trend.bill1 = lead(size.trend.bill),
-         size.trend.bill2 = coalesce(size.trend.bill,size.trend.bill1))
+         size.trend.bill2 = coalesce(size.trend.bill,size.trend.bill1),
+         bill.trend = ifelse(size.trend.bill2 > 0, "Increase", "Decrease")
+         )
 
 # Inserting diet to make facets in the plots:
 elton$Scientific = gsub(" ", "_", elton$Scientific)
@@ -281,6 +289,124 @@ trend.bill.width
 I plotted the average wing length for each species in the dataset for the 1^st^ quartile (1990-2006), and the 3^rd^ quartile (2013-2018). Each species is plotted as a trend line estimated as the difference between the average wing length in each period. Species that suffered a reduction in body size are in red and species that increase in body size between the quartiles are in blue. The number of species that decreased in body size is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend < 0]))` and the number of species in which body size increased is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend > 0]))`.
 
 I then investigated the trend in bill width during the same period as for wing length (described above). Species that suffered a reduction in bill width are in red and species that increase in bill width between the quartiles are in blue. The number of species that decreased in bill width is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend.bill < 0]))` and the number of species in which bill width increased is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend.bill > 0]))`.
+
+# Trend in variation of body size and gape width
+
+Trend in variation of body size across species.
+```{r trend_variation_wing, cache=TRUE}
+### Is there a mean / sd relationship between species in wing length and bill width?
+## Wing:
+ggplot(wing.by.spp, aes(x=log(mean.wing), y = log(sd.wing))) + 
+  geom_point() +
+  facet_wrap(~period) +
+  stat_smooth(method = "lm", se = FALSE)
+
+## Bill:
+ggplot(wing.by.spp, aes(x=log(mean.bill.width), y = log(sd.bill))) + 
+  geom_point() +
+  facet_wrap(~period) +
+  stat_smooth(method = "lm", se = FALSE)
+
+
+### The log of the coefficient of variance ratio (lnCVR) and its sampling variance (s2lnCVR; Table 2), which assumes there is a linear relationship between the mean and variance on the natural scale (note Taylor’s Law predicts a power relationship on the natural scale). 
+
+# First transform long tibble to wide:
+dat.lnCVR <- dcast(setDT(wing.by.spp),
+                   spp + Diet + wing.trend + bill.trend ~ period, 
+                   value.var = c("mean.wing", 'sd.wing', 'mean.bill.width', 'sd.bill','sample.n.wing')
+           )
+
+#lnCVR. Here I will treat as the 'E' in the formula data from the 3rd quartile, and as 'C' data from the 1st quartile. Positive effect sizes mean that birds from the 3rd quartile have more variable body size:
+dat.lnCVR$lnCVR.wing <- log((dat.lnCVR$`sd.wing_2013-2018`/dat.lnCVR$`mean.wing_2013-2018`)/(dat.lnCVR$`sd.wing_1990-2006`/dat.lnCVR$`mean.wing_1990-2006`)) + (1/(2*(dat.lnCVR$`sample.n.wing_2013-2018`-1))) - (1/(2*(dat.lnCVR$`sample.n.wing_1990-2006`-1)))
+
+# To estimate s2.lnCVR I need a correlation across bird species of the log (ln) mean and log sd:
+cor.wing.1990.2006 <- cor(log(wing.by.spp$mean.wing[wing.by.spp$period == "1990-2006"]), log(wing.by.spp$sd.wing[wing.by.spp$period == "1990-2006"]), use = "complete.obs")
+
+cor.wing.2013.2018 <- cor(log(wing.by.spp$mean.wing[wing.by.spp$period == "2013-2018"]), log(wing.by.spp$sd.wing[wing.by.spp$period == "2013-2018"]), use = "complete.obs")
+
+s2.lnCVR <- function(mean.c, sd.c, n.c, cor.c, mean.e, sd.e, n.e, cor.e){
+  a.c = (sd.c^2)/((n.c)*mean.c^2)
+  b.c = 1/(2*(n.c-1))
+  c.c = 2*cor.c*(sqrt(a.c*b.c))
+  
+  a.e = (sd.e^2)/((n.e)*mean.e^2)
+  b.e = 1/(2*(n.e-1))
+  c.e = 2*cor.e*(sqrt(a.e*b.e))
+  
+  return(a.c + b.c - c.c + a.e + b.e - c.e)
+}
+
+dat.lnCVR$s2.lnCVR.wing <- s2.lnCVR(dat.lnCVR$`mean.wing_1990-2006`,dat.lnCVR$`sd.wing_1990-2006`,dat.lnCVR$`sample.n.wing_1990-2006`,cor.wing.1990.2006,dat.lnCVR$`mean.wing_2013-2018`,dat.lnCVR$`sd.wing_2013-2018`,dat.lnCVR$`sample.n.wing_2013-2018`,cor.wing.2013.2018)
+
+dat.lnCVR$lci.wing <- dat.lnCVR$lnCVR.wing - 1.96*dat.lnCVR$s2.lnCVR.wing
+dat.lnCVR$uci.wing <- dat.lnCVR$lnCVR.wing + 1.96*dat.lnCVR$s2.lnCVR.wing
+
+# Plot forest plot of effect sizes and 95% CIs:
+p <- ggplot(data=dat.lnCVR,
+           aes(x = spp,y = lnCVR.wing, ymin = lci.wing, ymax = uci.wing)
+           ) +
+  geom_pointrange()+
+  geom_hline(yintercept =0, linetype=2)+
+  xlab('Species') + 
+  ylab("lnCVR (95% Confidence Interval)")+
+  geom_errorbar(aes(ymin=lci.wing, ymax=uci.wing),width=0.5,cex=1)+ 
+  theme(plot.title=element_text(size=16,face="bold"),
+        axis.ticks.y=element_blank(),
+        axis.text.x=element_text(face="bold"),
+        axis.title=element_text(size=12,face="bold"),
+        strip.text.y = element_text(hjust=0,vjust = 1,angle=180,face="bold"))+
+  coord_flip()
+
+p
+
+# Running quick meta-analysis of lnCVR of wing length:
+metareg <- rma(yi = lnCVR.wing, vi = s2.lnCVR.wing, method = "REML", data = dat.lnCVR)
+summary(metareg)
+
+# The results of this quick meta-analysis suggest that despite the overall decline in body size, the more recently sampled birds present more variability in body size than the birds that were sampled between 1990 and 2006. This is indicated by the positive lnCVR mean meta-analytic effect size.
+```
+
+Trend in variation in bill width across bird species.
+```{r trend_variation_bill, cache=TRUE}
+### Here is the same analysis for bill width:
+#lnCVR. Here I will treat as the 'E' in the formula data from the 3rd quartile, and as 'C' data from the 1st quartile. Positive effect sizes mean that birds from the 3rd quartile have more variable bill width:
+dat.lnCVR$lnCVR.bill <- log((dat.lnCVR$`sd.bill_2013-2018` /dat.lnCVR$`mean.bill.width_2013-2018`)/(dat.lnCVR$`sd.bill_1990-2006` /dat.lnCVR$`mean.bill.width_1990-2006`)) + (1/(2*(dat.lnCVR$`sample.n.wing_2013-2018`-1))) - (1/(2*(dat.lnCVR$`sample.n.wing_1990-2006`-1)))
+
+# To estimate s2.lnCVR I need a correlation across bird species of the log (ln) mean and log sd:
+cor.bill.1990.2006 <- cor(log(wing.by.spp$mean.bill.width[wing.by.spp$period == "1990-2006"]), log(wing.by.spp$sd.bill[wing.by.spp$period == "1990-2006"]), use = "complete.obs")
+
+cor.bill.2013.2018 <- cor(log(wing.by.spp$mean.bill.width[wing.by.spp$period == "2013-2018"]), log(wing.by.spp$sd.bill[wing.by.spp$period == "2013-2018"]), use = "complete.obs")
+
+dat.lnCVR$s2.lnCVR.bill <- s2.lnCVR(dat.lnCVR$`mean.bill.width_1990-2006`,dat.lnCVR$`sd.bill_1990-2006`,dat.lnCVR$`sample.n.wing_1990-2006`,cor.bill.1990.2006,dat.lnCVR$`mean.bill.width_2013-2018`,dat.lnCVR$`sd.bill_2013-2018`,dat.lnCVR$`sample.n.wing_2013-2018`,cor.bill.2013.2018)
+
+dat.lnCVR$lci.bill <- dat.lnCVR$lnCVR.bill - 1.96*dat.lnCVR$s2.lnCVR.bill
+dat.lnCVR$uci.bill <- dat.lnCVR$lnCVR.bill + 1.96*dat.lnCVR$s2.lnCVR.bill
+
+# Plot forest plot of effect sizes and 95% CIs:
+p1 <- ggplot(data=dat.lnCVR,
+           aes(x = spp,y = lnCVR.bill, ymin = lci.bill, ymax = uci.bill)
+) +
+  geom_pointrange()+
+  geom_hline(yintercept =0, linetype=2)+
+  xlab('Species') + 
+  ylab("lnCVR (95% Confidence Interval)")+
+  geom_errorbar(aes(ymin=lci.bill, ymax=uci.bill),width=0.5,cex=1)+ 
+  theme(plot.title=element_text(size=16,face="bold"),
+        axis.ticks.y=element_blank(),
+        axis.text.x=element_text(face="bold"),
+        axis.title=element_text(size=12,face="bold"),
+        strip.text.y = element_text(hjust=0,vjust = 1,angle=180,face="bold")) +
+  facet_wrap(~bill.trend) +
+  coord_flip()
+
+p1
+
+# Running quick meta-analysis of lnCVR of bill width:
+metareg1 <- rma(yi = lnCVR.bill, vi = s2.lnCVR.bill, method = "REML", data = dat.lnCVR)
+summary(metareg1)
+
+# The results of this quick meta-analysis suggest that despite the overall increase in bill width, the variability in bill width is similar in birds that were sampled in the first and the third quartile of the sampling period. This is indicated by the lnCVR mean meta-analytic effect size close to 0. Thus, there is no detectable trend in the variation of bill width across species.
+```
 
 
 # Models
@@ -505,21 +631,27 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 
 ## brm model of bill width
 I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data.
-```{r model_phylo_gape, cache=TRUE, eval = TRUE}
+```{r model_phylo_gape, cache=TRUE, eval=FALSE}
+# Defining the priors to use in the gape model:
+prior.gape <- get_prior(Bill_width.mm. ~ 1 + scaled_yr + gp(Longitude_decimal_degrees, Latitude_decimal_degrees, scale = TRUE, gr = TRUE),
+                 data = passer90,
+                 family = gaussian
+                 )
+# The model crashes when the prior inv_gamma has shape = 0, thus I changed the shape to 0.1:
+prior.gape$prior[5] <- "inv_gamma(0.30912, 0.1)"
+
 start_time <- Sys.time()
-brm0.gape <- brm(Bill_width.mm. ~ 1 + scaled_yr + scaled_yr:Diet + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
-            cov_ranef = list(Binomial = A),
+brm0.gape <- brm(Bill_width.mm. ~ 1 + scaled_yr + gp(Longitude_decimal_degrees, Latitude_decimal_degrees, scale=TRUE, gr = TRUE),
             data = passer90,
             family = gaussian,
-            prior = c(prior(normal(71, 15), class = Intercept),
-                      prior(normal(0, 10), class = b),
-                      prior(cauchy(0, 1), class = sd),
-                      prior(cauchy(0, 1), class = sigma)),
+            prior = prior.gape,
+            inits = "0",
             iter = 1500, 
             warmup = 1000, 
-            chains = 4, 
+            chains = 2, 
             cores = 2, 
-            control = list(max_treedepth = 12))
+            control = list(max_treedepth = 12)
+            )
 
 end_time <- Sys.time();end_time - start_time
 
@@ -527,19 +659,19 @@ save(brm0.gape, file = "brm0.gape.model.rda")
 ```
 
 Summary and model convergence checks:
-```{r model_summary_gape, cache=TRUE}
+```{r model_summary_gape, cache=FALSE}
 load("brm0.gape.model.rda")
 
 summary(brm0.gape)
 
-stanplot(brm0.gape)
+#stanplot(brm0.gape)
 #brms::launch_shinystan(brm0)
-plot(brm0.gape)
-plot(marginal_effects(brm0.gape))
-pp_check(brm0.gape)
+#plot(brm0.gape)
+#plot(marginal_effects(brm0.gape))
+#pp_check(brm0.gape, nug = 1e-05)
 
 hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
-(hyp <- hypothesis(brm0.gape, hyp, class = NULL))
+#(hyp <- hypothesis(brm0.gape, hyp, class = NULL))
 ```
 
 
