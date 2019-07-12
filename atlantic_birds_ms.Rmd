@@ -631,28 +631,22 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 
 ## brm model of bill width
 I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data.
-```{r model_phylo_gape, cache=TRUE, eval=FALSE}
+```{r model_phylo_gape, cache=TRUE, eval=TRUE}
 # Defining the priors to use in the gape model:
-prior.gape <- get_prior(Bill_width.mm. ~ 1 + scaled_yr + gp(Longitude_decimal_degrees, Latitude_decimal_degrees, scale = TRUE, gr = TRUE),
-                 data = passer90,
-                 family = gaussian
-                 )
-# The model crashes when the prior inv_gamma has shape = 0, thus I changed the shape to 0.1:
-prior.gape$prior[5] <- "inv_gamma(0.30912, 0.1)"
-
 start_time <- Sys.time()
-brm0.gape <- brm(Bill_width.mm. ~ 1 + scaled_yr + gp(Longitude_decimal_degrees, Latitude_decimal_degrees, scale=TRUE, gr = TRUE),
+brm0.gape <- brm(Bill_width.mm. ~ 1 + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
+            cov_ranef = list(Binomial = A),
             data = passer90,
             family = gaussian,
-            prior = prior.gape,
-            inits = "0",
+            prior = c(prior(normal(9, 2.5), class = Intercept),
+                      prior(normal(0, 10), class = b),
+                      prior(cauchy(0, 1), class = sd),
+                      prior(cauchy(0, 1), class = sigma)),
             iter = 1500, 
             warmup = 1000, 
             chains = 2, 
-            cores = 2, 
-            control = list(max_treedepth = 12)
+            cores = 2
             )
-
 end_time <- Sys.time();end_time - start_time
 
 save(brm0.gape, file = "brm0.gape.model.rda")
@@ -667,11 +661,11 @@ summary(brm0.gape)
 #stanplot(brm0.gape)
 #brms::launch_shinystan(brm0)
 #plot(brm0.gape)
-#plot(marginal_effects(brm0.gape))
-#pp_check(brm0.gape, nug = 1e-05)
+plot(marginal_effects(brm0.gape))
+#pp_check(brm0.gape)
 
 hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
-#(hyp <- hypothesis(brm0.gape, hyp, class = NULL))
+(hyp <- hypothesis(brm0.gape, hyp, class = NULL))
 ```
 
 
@@ -876,6 +870,8 @@ save(dat_no_grassland, file = "dat_no_grassland.rds")
 ## Arthropod abundance model without ants and excluding open biomes
 Model with no ant abundance and excluding grasslands/open biomes:
 ```{r brm_arthro_abund_no_ants_no_grass, cache=TRUE}
+load("dat_no_grassland.rds")
+
 start_time <- Sys.time()
 brm_no_ants_no_grass <- 
   brm(data = dat_no_grassland, family = negbinomial,
