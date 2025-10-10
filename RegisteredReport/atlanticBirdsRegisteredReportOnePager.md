@@ -2,9 +2,9 @@
 
 **2. Authors and affiliations.** Eduardo S.A. Santos<sup>1*</sup>, João C.T. Menezes<sup>2</sup>, and Gustavo Burin<sup>3</sup>. <sup>1</sup>Centre for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, AB, T6G 2E9, Canada. <sup>2</sup>Organismic and Evolutionary Biology Graduate Program, University of Massachusetts Amherst, Amherst, MA, 01003, USA. <sup>3</sup>Department of Biological and Environmental Sciences, University of Gothenburg, Sweden. <sup>*</sup>Corresponding author: esantos2@ualberta.ca
 
-**3.	Field and keywords.** State the general field of research and any specific keywords that identify the sub-field and the research topic.
+**3. Field and keywords.** General fields of research: evolutionary biology, and global change biology. Sub-field/research topics: Comparative phylogenetic analysis, morphological adaptation, and climate change.
 
-**4.	Research question(s) and/or theory.** Briefly summarise the research question(s) that will be addressed, and where relevant, the theoretical basis of the proposal. For a Programmatic RR, anticipate which questions will produce which Stage 2 outputs.
+**4. Research question(s) and/or theory.** Briefly summarise the research question(s) that will be addressed, and where relevant, the theoretical basis of the proposal. For a Programmatic RR, anticipate which questions will produce which Stage 2 outputs.
 
 **5.	Hypotheses (where applicable).** Where relevant, state any predictions of the study. These can be stated in less precise terms than is required for a full Stage 1 submission, for instance, by referring to specific concepts rather than variables or measurements. If a full Stage 1 submission is invited, this will be updated and refined.
 
