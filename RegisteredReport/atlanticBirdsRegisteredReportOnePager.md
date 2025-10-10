@@ -1,6 +1,6 @@
 **1. Provisional title.** The consequences of climate change in Atlantic Forest birds and mammals.
 
-**2. Authors and affiliations.** Eduardo S.A. Santos^1^, João C.T. Menezes^2^, and Gustavo Burin^3^. ^1^ Centre for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, AB, T6G 2E9, Canada. ^2^Organismic and Evolutionary Biology Graduate Program, University of Massachusetts Amherst, Amherst, MA, 01003, USA. ^3^Department of Biological and Environmental Sciences, University of Gothenburg, Sweden
+**2. Authors and affiliations.** Eduardo S.A. Santos<sup>1*</sup>, João C.T. Menezes<sup>2</sup>, and Gustavo Burin<sup>3</sup>. <sup>1</sup>Centre for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, AB, T6G 2E9, Canada. <sup>2</sup>Organismic and Evolutionary Biology Graduate Program, University of Massachusetts Amherst, Amherst, MA, 01003, USA. <sup>3</sup>Department of Biological and Environmental Sciences, University of Gothenburg, Sweden. <sup>*</sup>Corresponding author: esantos2@ualberta.ca
 
 **3.	Field and keywords.** State the general field of research and any specific keywords that identify the sub-field and the research topic.
 
