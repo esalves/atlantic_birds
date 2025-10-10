@@ -1,6 +1,6 @@
-**1.	Provisional title.** Choose a title for the submission. If a full Stage 1 submission is invited, this can be updated.
+**1. Provisional title.** The consequences of climate change in Atlantic Forest birds and mammals.
 
-**2.	Authors and affiliations.** List all submitting authors and affiliations. If a full Stage 1 submission is invited, this can be changed. For submissions involving a large group of authors, and where listing them all would use too much of the space allocation, it is acceptable to list only the corresponding author and their affiliation, and link to a google doc or other accessible file containing the full list of contributors.
+**2. Authors and affiliations.** Eduardo S.A. Santos^1^, João C.T. Menezes^2^, and Gustavo Burin^3^. ^1^ Centre for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, AB, T6G 2E9, Canada. ^2^Organismic and Evolutionary Biology Graduate Program, University of Massachusetts Amherst, Amherst, MA, 01003, USA. ^3^Department of Biological and Environmental Sciences, University of Gothenburg, Sweden
 
 **3.	Field and keywords.** State the general field of research and any specific keywords that identify the sub-field and the research topic.
 
