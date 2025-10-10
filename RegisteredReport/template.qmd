@@ -1,83 +1,42 @@
 ---
-title: "Ecological Modelling Preregistration Template" #focussed, descriptive title with relevant key terms reflecting what will be done in study
+title: "The consequences of climate change in Atlantic Forest birds and mammals" #focussed, descriptive title with relevant key terms reflecting what will be done in study
 format:
   ecoconsmodprereg-pdf: default
   ecoconsmodprereg-html: default
   ecoconsmodprereg-docx: default
 authors: # Replace with authors in your study 
-  - name: Elliot Gould
-    email: elliot.gould@unimelb.edu.au
-    url: https://github.com/egouldo
-    orcid: 0000-0002-6585-538X
+  - name: Eduardo S.A. Santos
+    email: esantos2@ualberta.ca
+    url: https://www.cossee.org/index.html
+    orcid: 0000-0002-0434-3655
     roles: [conceptualization, maintainer, funding, investigation, methodology, project administration, resources, software, validation, vizualisation, editing, writing]
     attributes: corresponding
     affiliations:
       - ref: 1
     affil-id: 1
-    id: EG
-  - name: Christopher S. Jones
+    id: ESAS
+  - name: João C.T. Menezes
     roles: [contributor, data curation, analysis, funding, methodology, project administration, resources, editing]
-    orcid: 0000-0003-2833-0194
+    orcid: 0000-0003-4156-2934
     affiliations:
-      - ref: 1
       - ref: 2
-    affil-id: 
-      - 1
-      - 2
-    id: CJ
-  - name: Jian D.L. Yen
+    affil-id: 2
+    id: JCTM
+  - name: Gustavo Burin
     roles: [contributor, data curation, analysis, investigation, methodology, project administration, resources, software, validation, visualisation, editing]
-    orcid: 0000-0001-7964-923X
+    orcid: 0000-0001-7851-0666
     affiliations:
-      - ref: 2
-    affil-id: 2
-  - name: Hannah S. Fraser
-    orcid: 0000-0003-2443-4463
-    roles: [contributor, conceptualization, methodology, investigation, supervision, editing]
-    affiliations:
-      - ref: 1
-    affil-id: 1
-  - name: Henry Wootton
-    roles: [contributor, software, visualisation, methodology]
-    orcid: 0000-0001-6506-0248
-    affiliations:
-      - ref: 2
-    affil-id: 2
-  - name: Megan K. Good
-    orcid: 0000-0002-6908-1633
-    roles: [contributor, methodology, editing]
-    affiliations:
-      - ref: 1
-    affil-id: 1
-  - name: David H. Duncan
-    orcid: 0000-0003-4411-8214
-    roles: [contributor, methodology]
-    affiliations:
-      - ref: 1
-    affil-id: 1
-  - name: Cindy E. Hauser
-    orcid: 0000-0002-5187-6585
-    roles: [contributor, methodology, investigation, editing]
-    affiliations:
-      - ref: 2
-    affil-id: 2
-  - name: Bonnie C. Wintle
-    roles: [contributor, conceptualization, methodology, supervision, writing, editing]
-    orcid: 0000-0001-9400-8086
-    affiliations:
-      - ref: 1
-    affil-id: 1
-  - name: Libby Rumpff
-    roles: [contributor, conceptualization, methodology, supervision, writing, editing]
-    orcid: 0000-0001-9400-8086
-    affiliations:
-      - ref: 1
-    affil-id: 1
+      - ref: 3
+    affil-id: 3
+    id: GB
+  
 affiliations:
   - id: 1
-    name: "School of Agriculture, Food and Ecosystem Sciences, University of Melbourne"
+    name: "Centre for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, AB, T6G 2E9, Canada"
   - id: 2
-    name: "Arthur Rylah Institute for Environmental Research, Department of Energy, Environment and Climate Action"
+    name: "Organismic and Evolutionary Biology Graduate Program, University of Massachusetts Amherst, Amherst, MA, 01003, USA"
+  - id: 3
+    name: "Department of Biological and Environmental Sciences, University of Gothenburg, Sweden"
 date: last-modified
 bibliography: references.bib
 license: CC BY-NC-SA
