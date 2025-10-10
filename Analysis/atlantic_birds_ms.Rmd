@@ -25,7 +25,9 @@ Based on a large scale analysis of Neotropical passerines that inhabit the Brazi
 
 # Methods
 ## Load libraries
-Here are all the libraries that we used for data wrangling, plotting and model building.
+# This chunk loads all the necessary R packages for the analysis.
+# These packages are used for data manipulation (tidyverse, data.table, reshape2),
+# plotting (ggthemes), and statistical modeling (brms, lme4, ape, geiger, MCMCglmm, mice, tidybayes, metafor).
 ```{r libraries, echo=TRUE,cache=FALSE, message=FALSE}
 library("tidyverse")
 library("ggthemes") 
@@ -42,22 +44,25 @@ library('metafor')
 ```
 
 ## Load data
-We used the Atlantic Bird Traits [@rodrigues_atlantic_2019] dataset as a source of information upon which to address our hypothesis.
+# This chunk loads the primary dataset for the analysis.
+# The `birds` dataframe is created by reading the `ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv` file.
+# This dataset contains morphological measurements and other data for Atlantic Forest birds.
 ```{r data,echo=TRUE, cache=TRUE, message=FALSE, eval=TRUE}
 birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv", guess_max = 70000)
 ```
 
-Import Elton traits [@wilman2014eltontraits] dataset.
+# This chunk loads the Elton Traits dataset, which provides functional trait data for birds, including diet information.
+# The `elton` dataframe is created by reading the `BirdFuncDat.txt` file.
 ```{r import_elton_traits, cache=TRUE, eval=TRUE}
 elton <- read_tsv("BirdFuncDat.txt")
 ```
 
 ## Data wrangling and new variables
-Subsetting the original dataframe into sets to explore.
-
-We restricted our data collection to the order Passeriformes, as passerine birds represent over 82% of the entries in the Atlantic Bird Traits dataset (60,066 entries of a total of 72,483). We restricted our data to individuals that were recorded as adults during the original data collection (n = 43,149). We used records of individuals that were collected/recorded between 1990 and 2018, which yielded a total of 40,183 passerine entries. We only kept records of species that have at least 50 entries in the dataset. The sample size per species inclusion criteria reduced the dataset from 435 passerine species to 143 species. The last wrangling step was to remove all individuals that were not sexed in the original dataset, leaving a total of 68 passerine bird species for analyses. Using only records that were registed within the 20 km buffer polygon for the Atlantic Forest domain.
-
-We chose as our metric of body size the variable wing length (mm). We decided to use wing length over other available variables from the original dataset because wing length was the the body size estimate with the least amount of missing data for the 68 passerine species. In the original dataset, wing length was provided as either the right or left wing, or generically, without mentions as to which wing was measured. We safely assumed that birds are bilaterally symmetric in order to coalesce all wing length values into a single variable, thus eliminating more missing values from the dataset used for analysis.
+# This chunk performs the main data wrangling and cleaning operations.
+# It filters the `birds` dataset to include only adult passerine birds recorded after 1990 within the Atlantic Forest.
+# New variables are created, including a consolidated wing length, scaled year and latitude, and cleaned species names.
+# The data is then filtered to include only species with at least 50 records and a temporal range of at least 10 years.
+# Finally, it selects the relevant columns, adds diet information from the Elton Traits dataset, and saves the cleaned data to `passer90.rda`.
 ```{r newdataframes,cache=TRUE, eval=TRUE}
 passer90 <- birds %>%
           filter(Year >= 1990, Age == "Adult", Sex != "Unknown", Order == "Passeriformes", AtlanticForests_20km_Buffer == "inside the 20 km polygon") %>%
@@ -324,18 +329,7 @@ cor.wing.1990.2006 <- cor(log(wing.by.spp$mean.wing[wing.by.spp$period == "1990-
 
 cor.wing.2013.2018 <- cor(log(wing.by.spp$mean.wing[wing.by.spp$period == "2013-2018"]), log(wing.by.spp$sd.wing[wing.by.spp$period == "2013-2018"]), use = "complete.obs")
 
-s2.lnCVR <- function(mean.c, sd.c, n.c, cor.c, mean.e, sd.e, n.e, cor.e){
-  a.c = (sd.c^2)/((n.c)*mean.c^2)
-  b.c = 1/(2*(n.c-1))
-  c.c = 2*cor.c*(sqrt(a.c*b.c))
-  
-  a.e = (sd.e^2)/((n.e)*mean.e^2)
-  b.e = 1/(2*(n.e-1))
-  c.e = 2*cor.e*(sqrt(a.e*b.e))
-  
-  return(a.c + b.c - c.c + a.e + b.e - c.e)
-}
-
+source("functions.R")
 dat.lnCVR$s2.lnCVR.wing <- s2.lnCVR(dat.lnCVR$`mean.wing_1990-2006`,dat.lnCVR$`sd.wing_1990-2006`,dat.lnCVR$`sample.n.wing_1990-2006`,cor.wing.1990.2006,dat.lnCVR$`mean.wing_2013-2018`,dat.lnCVR$`sd.wing_2013-2018`,dat.lnCVR$`sample.n.wing_2013-2018`,cor.wing.2013.2018)
 
 dat.lnCVR$lci.wing <- dat.lnCVR$lnCVR.wing - 1.96*dat.lnCVR$s2.lnCVR.wing
@@ -411,7 +405,12 @@ summary(metareg1)
 
 # Models
 ## lmer (quick) models
-A few quick models (using **lme4**) to check the trends. It seems like we have overall evidence that there is a negative relationship between *Year* and *Wing length* for all species.
+# This chunk fits two linear mixed-effects models (`lmer`) as a preliminary check of the trends.
+# These models are not the final models used in the analysis but provide a quick assessment of the relationships
+# between wing length, bill width, and other predictors.
+# `m0` models wing length as a function of year, sex, latitude, and diet.
+# `m1` models bill width as a function of year, latitude, and diet.
+# The `eval = FALSE` option prevents this chunk from being executed when the document is knitted.
 ```{r models, cache=TRUE, eval = FALSE}
 m0 <- lmer(Wing_length_right.mm. ~ scaled_yr + Sex + scaled_lat + scaled_yr*Diet + (1 + scaled_yr | Binomial),
            data = passer90,
@@ -431,10 +430,10 @@ summary(m1)
 ```
 
 ## Loading the phylogeny
-Loading phylogeny to include in the multi-level model.
-For all analyses, we used species-level Passeriformes trees taken from a sample of 1,000 topologies based on the Hackett backbone from Jetz et al.'s [-@jetz2012global] [BirdTree.org](http://birdtree.org). We will later prune these 5,966-species trees to fit the species in each analyses for which we have succesfully collected complete data.
-
-The chunk to load the phylogeny will only be evaluated in the local version of the code, to save time and space when in version control.
+# This chunk loads the phylogenetic trees from a NEXUS file.
+# These trees represent the evolutionary relationships among the bird species and are used to account for phylogenetic non-independence in the models.
+# The `eval = FALSE` option prevents this chunk from being executed when the document is knitted, as it is time-consuming.
+# The full set of trees is large, so a smaller sample will be processed in the next chunk.
 ```{r phylo, cache=TRUE, eval= FALSE}
 trees <- read.nexus("Hackett_trees.nex")
 ```
@@ -739,11 +738,16 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 
 
 # Arthropod abundance over time analysis
-I wanted to look for a dataset that contained information on the abundance of arthropods in Brazil (more specifically, if available, in the Atlantic Forest) over time. The idea being that we could use this information as part of the argument that what we are observing for the birds is in fact being caused by a decline in the abundance of their food source over time. Thus, we have a signature of a phenotypic plasticity process at hand, and not a micro-evolutionary response.
+# This section of the analysis investigates the temporal trend in arthropod abundance, which is a potential driver of the observed changes in bird body size.
+# The data for this analysis comes from the PREDICTS project, a large database of biodiversity records.
 
-I found the PREDICTS project [@hudson2017database], which has collated a huge amount of biodiversity data per locality, with more than 3.2 million records. I downloaded the main database (**/Volumes/Macintosh HD/Users/eduardosantos/Downloads/database.csv**) and then proceeded to wrangle the data to obtain records for Arachnida and Insecta for whole Brazil:
+# This chunk is intended to load the full PREDICTS dataset.
+# The original file path has been removed as it was a local path.
+# To run this chunk, you will need to download the PREDICTS database and provide the correct path to the CSV file.
+# The `eval = FALSE` option prevents this chunk from running automatically.
 ```{r load_predicts_main, cache=TRUE, eval=FALSE}
-dat <- read_csv("/Volumes/Macintosh HD/Users/eduardosantos/Downloads/database.csv", guess_max = 70000)
+# Please download the PREDICTS database and replace the file path below
+dat <- read_csv("path/to/your/predicts/database.csv", guess_max = 70000)
 ```
 
 Subsetting PREDICTS dataset to Brazil and Insecta + Arachnida classes only:
