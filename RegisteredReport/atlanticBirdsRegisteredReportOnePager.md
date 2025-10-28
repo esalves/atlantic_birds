@@ -17,26 +17,38 @@
 **9.	Key references.** These must be numbered and include DOI URLS. To save space, the reference list can be presented succinctly in a single body of text using the following style: 1. Surname et al. (Year), https://doi.org/DOI. 2. Surname et al. (Year), https://doi.org/DOI. etc.
 
 **10.   BMC Biology RR template.**
+
 Stage 1: Initial manuscript submission and review
 Initial submissions should include the stage 1 manuscript (requirements detailed below) and a brief cover letter. Authors are welcome to first submit presubmission enquiries for advice on the likely suitability of a study as a Registered Report.
 
 Cover letter
+
 Please include a brief scientific case for consideration and an estimated timeline for completing the study if the initial submission is accepted in principle.
 
 Introduction
+
 This section should include a review of the relevant literature that motivates the research question and a full description of the experimental aims and hypotheses. Please note that following IPA, the Introduction section cannot be altered.
 
 Methods
+
 The methods section should include:
 
 Full description of proposed sample characteristics, including criteria for data inclusion and exclusion (e.g. outlier extraction). Procedures for objectively defining exclusion criteria due to technical errors or for any other reasons must be specified, including details of how and under what conditions data would be replaced.
+
 A description of experimental procedures in sufficient detail to allow another researcher to repeat the methodology exactly, without requiring further information. These procedures must be adhered to exactly in the subsequent experiments or any Stage 2 manuscript can be rejected. 
+
 Proposed analysis pipeline, including all preprocessing steps, and a precise description of all planned analyses, including appropriate correction for multiple comparisons. Any covariates or regressors must be stated. Where analysis decisions are contingent on the outcome of prior analyses, these contingencies must be specified and adhered to. Only pre-planned analyses can be reported in the main Results section of Stage 2 submissions. However, unplanned exploratory analyses will be admissible in a separate section of the Results (see below).
+
 Studies involving Neyman-Pearson inference must include a statistical power analysis. Estimated effect sizes should be justified with reference to the existing literature. Since publication bias overinflates published estimates of effect size, power analysis must be based on the lowest available or meaningful estimate of the effect size. For frequentist analysis plans, the a priori power must be 0.9 or higher for all proposed hypothesis tests. In the case of highly uncertain effect sizes, a variable sample size and interim data analysis is permissible but with inspection points stated in advance, appropriate Type I error correction for ‘peeking’ employed, and a final stopping rule for data collection outlined.
+
 Methods involving Bayesian hypothesis testing are encouraged. For studies involving analyses with Bayes factors, the predictions of the theory must be specified so that a Bayes factor can be calculated. Authors should indicate what distribution will be used to represent the predictions of the theory and how its parameters will be specified. For example, will you use a uniform up to some specified maximum, or a normal/half-normal to represent a likely effect size, or a JZS/Cauchy with a specified scaling constant? For inference by Bayes factors, authors must be able to guarantee data collection until the Bayes factor is at least 6 times in favour of the experimental hypothesis over the null hypothesis (or vice versa). Authors with resource limitations are permitted to specify a maximum feasible sample size at which data collection must cease regardless of the Bayes factor; however to be eligible for advance acceptance this number must be sufficiently large that inconclusive results at this sample size would nevertheless be an important message for the field. 
+
 Full descriptions must be provided of any outcome-neutral criteria that must be met for successful testing of the stated hypotheses. Such quality checks might include the absence of floor or ceiling effects in data distributions, positive controls, or other quality checks that are orthogonal to the experimental hypotheses.
+
 Timeline for completion of the study and proposed resubmission date if Stage 1 review is successful. Extensions to this deadline can be negotiated with the action editor.
+
 Any description of prospective methods or analysis plans should be written in future tense
+
 Pilot Data
 
 Optional. Can be included to establish proof of concept, effect size
