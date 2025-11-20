@@ -65,13 +65,27 @@ jupyter: python3
 
 ## Introduction
 
-Two of the main responses of organisms to climate change are phenological changes and geographical range shifts [@parmesan_globally_2003]. Yet, a third response of organisms to global warming is increasingly being observed, the shrinkage of bodies [@teplitsky_climate_2014; @sheridan_shrinking_2011; @gardner_declining_2011]. Body shrinkage due to climate change has been hypothesized to be a consequence of ecological or evolutionary processes [@ozgul_dynamics_2009]. The ecological hypothesis posits that climate change influences trophic interactions, thus leading to a reduction in body size. Here we show that Atlantic Forest passerine birds decreased in body size over the last 28 years. The body size shrinkage is associated with both an increase in temperatures over the period as well as a large reduction in the abundance of invertebrates that serve as food resource to passerine birds. Our findings thus highlight the rapid and widespread consequences of climatic change on the availability of prey items, consequently influencing the phenotype of avian predators.
+A well known ecogeographical pattern describes the relationship between temperature variation and body size. This association is known as Bergmann's rule .
 
-Changes in temperature can result in temperature-dependent or -independent mechanisms that influece body size [reviewed in @gardner_declining_2011]. Among temperature-independent mechanisms, decreases in food availability caused by habitat loss or fragmentation may lead to the reduction of body size [@schmidt_concomitant_2005]. Thus, limiting juveniles access to resources could lead to smaller adult body size [@teplitsky_bergmanns_2008; @rode_reduced_2010]. Reductions in body size have been attributed to genetic microevolutionary responses to warming; smaller individuals dissipate heat better than larger individuals due to the larger ratio between surface:volume of their bodies [e.g., Bergmann's rule, @teplitsky_climate_2014].^[I think that this paragraph is not necessary. Talk only about the ecological consequences.]
+Two of the main responses of organisms to climate change are phenological changes and geographical range shifts [@parmesan_globally_2003]. Yet, a third response of organisms to global warming is increasingly being observed, the shrinkage of bodies [@teplitsky_climate_2014; @sheridan_shrinking_2011; @gardner_declining_2011]. Body size shrinkage due to climate change has been hypothesized to be a consequence of ecological or evolutionary processes [@ozgul_dynamics_2009]. The ecological hypothesis posits that climate change influences trophic interactions, thus leading to a reduction in body size.
 
-Based on a large scale analysis of Neotropical passerines that inhabit the Brazilian Atlantic Forest, we show here that annual mean temperature has been increasing, while precipitation^[We need to choose what precipitation variable to use. It would be good to choose one that relates to the availability of food (insects or fruits).] has been decreasing over a period of **XX** years in the areas inhabited by these passerines.
+Changes in temperature can result in temperature-dependent or -independent mechanisms that influence body size [reviewed in @gardner_declining_2011]. Among temperature-independent mechanisms, decreases in food availability caused by habitat loss or fragmentation may lead to the reduction of body size [@schmidt_concomitant_2005]. Thus, limiting juveniles access to resources could lead to smaller adult body size [@teplitsky_bergmanns_2008; @rode_reduced_2010]. Reductions in body size have been attributed to genetic microevolutionary responses to warming; smaller individuals dissipate heat better than larger individuals due to the larger ratio between surface:volume of their bodies [*e.g.*, Bergmann's rule, @teplitsky_climate_2014].[^1]
+
+[^1]: I think that this paragraph is not necessary. Talk only about the ecological consequences.
+
+### Research Question
+
+Here, we will conduct a large scale comparative phylogenetic analysis of Neotropical passerines that inhabit the Brazilian Atlantic Forest to investigate whether temporal changes in climate variables are associated with body size changes.
+
+### Hypothesis & Predictions
 
 ## Data & Methods {#sec-data-methods}
+
+### Data Collection
+
+### Target Sample Sizes
+
+### Data Analysis Plan
 
 ## Conclusion
 
