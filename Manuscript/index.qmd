@@ -65,69 +65,11 @@ jupyter: python3
 
 ## Introduction
 
-```{python}
-import matplotlib.pyplot as plt
-import numpy as np
-eruptions = [1492, 1585, 1646, 1677, 1712, 1949, 1971, 2021]
-```
+Two of the main responses of organisms to climate change are phenological changes and geographical range shifts [@parmesan_globally_2003]. Yet, a third response of organisms to global warming is increasingly being observed, the shrinkage of bodies [@teplitsky_climate_2014; @sheridan_shrinking_2011; @gardner_declining_2011]. Body shrinkage due to climate change has been hypothesized to be a consequence of ecological or evolutionary processes [@ozgul_dynamics_2009]. The ecological hypothesis posits that climate change influences trophic interactions, thus leading to a reduction in body size. Here we show that Atlantic Forest passerine birds decreased in body size over the last 28 years. The body size shrinkage is associated with both an increase in temperatures over the period as well as a large reduction in the abundance of invertebrates that serve as food resource to passerine birds. Our findings thus highlight the rapid and widespread consequences of climatic change on the availability of prey items, consequently influencing the phenotype of avian predators.
 
-```{python}
-#| label: fig-timeline
-#| fig-cap: Timeline of recent earthquakes on La Palma
-#| fig-alt: An event plot of the years of the last 8 eruptions on La Palma.
+Changes in temperature can result in temperature-dependent or -independent mechanisms that influece body size [reviewed in @gardner_declining_2011]. Among temperature-independent mechanisms, decreases in food availability caused by habitat loss or fragmentation may lead to the reduction of body size [@schmidt_concomitant_2005]. Thus, limiting juveniles access to resources could lead to smaller adult body size [@teplitsky_bergmanns_2008; @rode_reduced_2010]. Reductions in body size have been attributed to genetic microevolutionary responses to warming; smaller individuals dissipate heat better than larger individuals due to the larger ratio between surface:volume of their bodies [e.g., Bergmann's rule, @teplitsky_climate_2014].^[I think that this paragraph is not necessary. Talk only about the ecological consequences.]
 
-plt.figure(figsize=(6, 1))
-plt.eventplot(eruptions, lineoffsets=0, linelengths=0.1, color='black')
-plt.gca().axes.get_yaxis().set_visible(False)
-plt.ylabel('')
-plt.show()
-```
-
-```{python}
-#| output: false
-
-avg_years_between_eruptions = np.mean(np.diff(eruptions[:-1]))
-avg_years_between_eruptions
-```
-
-Based on data up to and including 1971, eruptions on La Palma happen every `{python} f"{avg_years_between_eruptions:.1f}"` years on average.
-
-Studies of the magma systems feeding the volcano, such as @marrero2019, have proposed that there are two main magma reservoirs feeding the Cumbre Vieja volcano; one in the mantle (30-40km depth) which charges and in turn feeds a shallower crustal reservoir (10-20km depth).
-
-Eight eruptions have been recorded since the late 1400s (@fig-timeline).
-
-Data and methods are discussed in @sec-data-methods.
-
-Let $x$ denote the number of eruptions in a year. Then, $x$ can be modeled by a Poisson distribution
-
-$$
-p(x) = \frac{e^{-\lambda} \lambda^{x}}{x !}
-$$ {#eq-poisson}
-
-where $\lambda$ is the rate of eruptions per year. Using @eq-poisson, the probability of an eruption in the next $t$ years can be calculated.
-
-| Name                | Year |
-|---------------------|------|
-| Current             | 2021 |
-| Teneguía            | 1971 |
-| Nambroque           | 1949 |
-| El Charco           | 1712 |
-| Volcán San Antonio  | 1677 |
-| Volcán San Martin   | 1646 |
-| Tajuya near El Paso | 1585 |
-| Montaña Quemada     | 1492 |
-
-: Recent historic eruptions on La Palma {#tbl-history}
-
-@tbl-history summarises the eruptions recorded since the colonization of the islands by Europeans in the late 1400s.
-
-![Map of La Palma](images/la-palma-map.png){#fig-map}
-
-La Palma is one of the west most islands in the Volcanic Archipelago of the Canary Islands (@fig-map).
-
-{{< embed notebooks/data-screening.qmd#fig-spatial-plot >}}
-
-@fig-spatial-plot shows the location of recent Earthquakes on La Palma.
+Based on a large scale analysis of Neotropical passerines that inhabit the Brazilian Atlantic Forest, we show here that annual mean temperature has been increasing, while precipitation^[We need to choose what precipitation variable to use. It would be good to choose one that relates to the availability of food (insects or fruits).] has been decreasing over a period of **XX** years in the areas inhabited by these passerines.
 
 ## Data & Methods {#sec-data-methods}
 
