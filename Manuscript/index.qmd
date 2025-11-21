@@ -65,7 +65,7 @@ jupyter: python3
 
 ## Introduction
 
-A well known ecogeographical pattern describes the relationship between temperature variation and body size. This association is known as Bergmann's rule .
+A well known ecogeographical pattern describes the relationship between environmental temperature variation and body size. This association, known as Bergmann's rule [@bergmann1847], states that animals in warmer climates tend to be smaller in size. The logic underlying this rule is that the increase in body surface area to volume ratio should facilitate more efficient thermoregulation [@mayr1956].
 
 Two of the main responses of organisms to climate change are phenological changes and geographical range shifts [@parmesan_globally_2003]. Yet, a third response of organisms to global warming is increasingly being observed, the shrinkage of bodies [@teplitsky_climate_2014; @sheridan_shrinking_2011; @gardner_declining_2011]. Body size shrinkage due to climate change has been hypothesized to be a consequence of ecological or evolutionary processes [@ozgul_dynamics_2009]. The ecological hypothesis posits that climate change influences trophic interactions, thus leading to a reduction in body size.
 
