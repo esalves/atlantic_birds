@@ -153,7 +153,7 @@ Plotting some relationships:
 ```{r plots, cache=TRUE, eval = TRUE}
 g_wingl <- ggplot(data = passer90, aes(x = scaled_yr, y = conc.wing.length, group = Binomial)) +
   geom_point(aes(alpha = 0.09)) +
-  stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) +
+  stat_smooth(method = "lm", se = FALSE, colour = "grey50", linewidth = 0.5, alpha = 0.1) + # FIX: size= is deprecated for lines in ggplot2 >= 3.4; use linewidth=
   theme_fivethirtyeight() +
   theme(axis.title = element_text()) +
   ylab("Wing length (mm)") +
@@ -173,7 +173,7 @@ print(pl2 +
 
 g_temp <- ggplot(data = passer90, aes(x = Year, y = Annual_mean_temperature)) +
   geom_point(aes(alpha = 0.09)) +
-  stat_smooth(method = "lm", se = FALSE, colour = "grey50", size = 0.5, alpha = 0.1) +
+  stat_smooth(method = "lm", se = FALSE, colour = "grey50", linewidth = 0.5, alpha = 0.1) + # FIX: size= is deprecated for lines in ggplot2 >= 3.4; use linewidth=
   theme_fivethirtyeight() +
   theme(axis.title = element_text()) +
   ylab("Annual mean temperature") +
@@ -332,8 +332,13 @@ cor.wing.2013.2018 <- cor(log(wing.by.spp$mean.wing[wing.by.spp$period == "2013-
 source("functions.R")
 dat.lnCVR$s2.lnCVR.wing <- s2.lnCVR(dat.lnCVR$`mean.wing_1990-2006`,dat.lnCVR$`sd.wing_1990-2006`,dat.lnCVR$`sample.n.wing_1990-2006`,cor.wing.1990.2006,dat.lnCVR$`mean.wing_2013-2018`,dat.lnCVR$`sd.wing_2013-2018`,dat.lnCVR$`sample.n.wing_2013-2018`,cor.wing.2013.2018)
 
-dat.lnCVR$lci.wing <- dat.lnCVR$lnCVR.wing - 1.96*dat.lnCVR$s2.lnCVR.wing
-dat.lnCVR$uci.wing <- dat.lnCVR$lnCVR.wing + 1.96*dat.lnCVR$s2.lnCVR.wing
+# FIX: 95% CI limits use the standard error (sqrt of the sampling variance),
+# not the variance itself. The previous code multiplied 1.96 by s2.lnCVR
+# (a variance), which mis-scaled the per-species intervals in the forest plot.
+# The meta-analytic estimate from rma() below is unaffected because rma() is
+# correctly passed the sampling variances via vi.
+dat.lnCVR$lci.wing <- dat.lnCVR$lnCVR.wing - 1.96*sqrt(dat.lnCVR$s2.lnCVR.wing)
+dat.lnCVR$uci.wing <- dat.lnCVR$lnCVR.wing + 1.96*sqrt(dat.lnCVR$s2.lnCVR.wing)
 
 # Plot forest plot of effect sizes and 95% CIs:
 p <- ggplot(data=dat.lnCVR,
@@ -373,8 +378,9 @@ cor.bill.2013.2018 <- cor(log(wing.by.spp$mean.bill.width[wing.by.spp$period == 
 
 dat.lnCVR$s2.lnCVR.bill <- s2.lnCVR(dat.lnCVR$`mean.bill.width_1990-2006`,dat.lnCVR$`sd.bill_1990-2006`,dat.lnCVR$`sample.n.wing_1990-2006`,cor.bill.1990.2006,dat.lnCVR$`mean.bill.width_2013-2018`,dat.lnCVR$`sd.bill_2013-2018`,dat.lnCVR$`sample.n.wing_2013-2018`,cor.bill.2013.2018)
 
-dat.lnCVR$lci.bill <- dat.lnCVR$lnCVR.bill - 1.96*dat.lnCVR$s2.lnCVR.bill
-dat.lnCVR$uci.bill <- dat.lnCVR$lnCVR.bill + 1.96*dat.lnCVR$s2.lnCVR.bill
+# FIX: use the standard error (sqrt of the sampling variance) for the CI, as above.
+dat.lnCVR$lci.bill <- dat.lnCVR$lnCVR.bill - 1.96*sqrt(dat.lnCVR$s2.lnCVR.bill)
+dat.lnCVR$uci.bill <- dat.lnCVR$lnCVR.bill + 1.96*sqrt(dat.lnCVR$s2.lnCVR.bill)
 
 # Plot forest plot of effect sizes and 95% CIs:
 p1 <- ggplot(data=dat.lnCVR,
@@ -444,6 +450,7 @@ namecheck_passer <- name.check(trees[[1]], year_range) # checking which species 
 
 # namecheck_subset <- namecheck_passer$tree_not_data[grep("Thraupis", namecheck_passer$tree_not_data)] # Code to check if the species is available in the phylogeny under a different (synonim) genus name.
 
+set.seed(20240101) # FIX: set a seed so the sampled trees (and downstream results) are reproducible
 tree_samp <- sample(trees, size = 50) # Sampling 50 trees from the 1000 file. This is enough for the phylogenetic uncertainty.
 
 trees_passer <- lapply(tree_samp, drop.tip, namecheck_passer$tree_not_data) # pruning these species from all the 50 trees
@@ -494,6 +501,10 @@ ini <- mice(passer90, maxit = 0)
 meth <- ini$meth
 meth
 
+# NOTE: hardcoded column indices c(12,13) are fragile and break if the column
+# order of passer90 changes. Prefer name-based indexing, e.g.:
+#   meth[c("conc.wing.length", "ln_conc_wing_length")] <- "norm"
+# Verify the intended variables before running.
 meth[c(12,13)] <- "norm"
 meth
 
@@ -554,7 +565,7 @@ plot(passer90_imp3, "conc.wing.length")
 densityplot(passer90_imp3)
 
 # Impute the passer90 data once more where you use predictive mean matching and include all variables as predictors. Name the object passer90_imp4.
-passer90_imp4 <- mice(passer90, print = FALSE)
+passer90_imp4 <- mice(passer90, print = FALSE, seed = 20240101) # FIX: set seed for reproducible imputations
 
 densityplot(passer90_imp4, ~conc.wing.length)
 plot(passer90_imp4)
@@ -572,8 +583,8 @@ Here is a multi-level Bayesian model of the response variable *Wing length* incl
 load("passer90_imp4a.rda")
 
 start_time <- Sys.time()
-brm.imputed <- brm_multiple(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
-            cov_ranef = list(Binomial = A),
+brm.imputed <- brm_multiple(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(Binomial, cov = A)),
+            data2 = list(A = A), # FIX: cov_ranef is deprecated/removed in current brms; pass the phylo covariance matrix via data2 and gr(..., cov = A) in the formula
             data = passer90_imp4a,
             family = gaussian,
             prior = c(prior(normal(71, 15), class = Intercept),
@@ -593,8 +604,8 @@ save(brm.imputed, file = "brm_imputed.rda")
 I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data. Glauco made some comments that I have to check^[Glauco's comments on July 04 2019: 1. Uni ou biparental??? 2. What is the physiological response of birds to an increase in air temperature? Should they react by reducing body size in order to dissipate heat better. 3. Estimate the heritability of wing length. Look up the average generation time for passerine birds. Estimate what is the selection differential on wing length over the period of the data. 4. I thought later about migratory status of the birds. Should I include it in the analysis?]
 ```{r model_phylo, cache=TRUE, eval = FALSE}
 start_time <- Sys.time()
-brm0 <- brm(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
-            cov_ranef = list(Binomial = A),
+brm0 <- brm(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(Binomial, cov = A)),
+            data2 = list(A = A), # FIX: cov_ranef is deprecated/removed in current brms; pass the phylo covariance matrix via data2 and gr(..., cov = A) in the formula
             data = passer90,
             family = gaussian,
             prior = c(prior(normal(71, 15), class = Intercept),
@@ -618,10 +629,10 @@ load("brm0.rda")
 
 summary(brm0)
 
-stanplot(brm0)
+mcmc_plot(brm0)
 #brms::launch_shinystan(brm0)
 plot(brm0)
-plot(marginal_effects(brm0))
+plot(conditional_effects(brm0))
 pp_check(brm0)
 
 hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
@@ -633,8 +644,8 @@ I will keep this full model here for a while. I will run the model from the chun
 ```{r model_phylo_gape, cache=TRUE, eval=TRUE}
 # Defining the priors to use in the gape model:
 start_time <- Sys.time()
-brm0.gape <- brm(Bill_width.mm. ~ 1 + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
-            cov_ranef = list(Binomial = A),
+brm0.gape <- brm(Bill_width.mm. ~ 1 + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(Binomial, cov = A)),
+            data2 = list(A = A), # FIX: cov_ranef is deprecated/removed in current brms; pass the phylo covariance matrix via data2 and gr(..., cov = A) in the formula
             data = passer90,
             family = gaussian,
             prior = c(prior(normal(9, 2.5), class = Intercept),
@@ -657,10 +668,10 @@ load("brm0.gape.model.rda")
 
 summary(brm0.gape)
 
-#stanplot(brm0.gape)
+#mcmc_plot(brm0.gape)
 #brms::launch_shinystan(brm0)
 #plot(brm0.gape)
-plot(marginal_effects(brm0.gape))
+plot(conditional_effects(brm0.gape))
 #pp_check(brm0.gape)
 
 hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
@@ -669,25 +680,28 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 
 
 ## Multi-level model with phylogenetic uncertainty
-I asked Ari to run the multilevel model of **Wing length** on the server so that we could run the model over a sample of 50 tree topologies, in order to incorporate phylogenetic uncertainty. The code to run that model is in the file *atlantic_parallel.R*, which is in the manuscript's folder (*/Volumes/Macintosh HD/Users/eduardosantos/Google Drive/Manuscripts/MyPapers/CurrentlyWorking/2019_atlantic_birds/edu_joao/atlantic_parallel.R*). We saved the results of this run in the file **brm0.rda**. Below, I will load this file from the **edu_joao** folder in order to check its summary and diagnostics.
+I asked Ari to run the multilevel model of **Wing length** on the server so that we could run the model over a sample of 50 tree topologies, in order to incorporate phylogenetic uncertainty. The code to run that model is in the file *atlantic_parallel.R* (included in the repository). We saved the results of this run as a list of 50 per-tree fits in **brm0_multiphylo.rda**. Below, I load this file to check its summary and diagnostics.
 
 ```{r model_summary_multi_phylo, cache=TRUE}
-load("~/Google Drive/Manuscripts/MyPapers/CurrentlyWorking/2019_atlantic_birds/edu_joao/brm0.rda")
+# FIX: removed hardcoded absolute path. This file is the list of 50 per-tree
+# model fits produced by atlantic_parallel.R on the server. Save it in the repo
+# under a name that does NOT clash with the single-tree brm0.rda above.
+load("brm0_multiphylo.rda")
 
 brm_multi_phylo <- combine_models(mlist = brm0)
 summary(brm_multi_phylo)
 
 
-stanplot(brm_multi_phylo)
+mcmc_plot(brm_multi_phylo)
 #brms::launch_shinystan(brm0)
 plot(brm_multi_phylo)
-plot(marginal_effects(brm_multi_phylo))
+plot(conditional_effects(brm_multi_phylo))
 pp_check(brm_multi_phylo)
 
 hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
 (hyp <- hypothesis(brm_multi_phylo, hyp, class = NULL))
 
-post <- posterior_samples(brm_multi_phylo)
+post <- as_draws_df(brm_multi_phylo) # FIX: posterior_samples() is deprecated; use as_draws_df()
 
 beta_yr_ef <- 
   post %>% 
@@ -697,8 +711,8 @@ require("tidybayes")
 
 beta_yr_ef %>%
   ggplot(aes(x = beta_yr_ef)) +
-  geom_density(size = 0, fill = "royalblue") +
-  stat_pointintervalh(aes(y = 0), 
+  geom_density(linewidth = 0, fill = "royalblue") + # FIX: size= -> linewidth= for ggplot2 >= 3.4
+  stat_pointinterval(aes(y = 0), # FIX: stat_pointintervalh() is deprecated; stat_pointinterval() handles horizontal intervals
                       point_interval = mode_hdi, .width = .89) +
   scale_y_continuous(NULL, breaks = NULL) +
   labs(x = "Year effect (centred/scaled)") +
@@ -708,8 +722,8 @@ beta_yr_ef %>%
 Here is a multi-level Bayesian model of the response variable *Body mass* including the phylogeny of the species in question. I want to try using the *get_prior()* function the next time I run this model^[https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/missing-data-and-other-opportunities.html]. Right now, I won't evaluate this chunk, to save time. I will run the code locally and just past the results from a local **brms** run.
 ```{r model_phylo_mass, cache=TRUE, eval= FALSE}
 start_time <- Sys.time()
-brm1 <- brm(Body_mass.g. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | Binomial),
-            cov_ranef = list(Binomial = A),
+brm1 <- brm(Body_mass.g. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(Binomial, cov = A)),
+            data2 = list(A = A), # FIX: cov_ranef is deprecated/removed in current brms; pass the phylo covariance matrix via data2 and gr(..., cov = A) in the formula
             data = passer90,
             family = gaussian,
             prior = c(prior(normal(71, 15), class = Intercept),
@@ -725,10 +739,10 @@ brm1 <- brm(Body_mass.g. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || 
 end_time <- Sys.time();end_time - start_time
 
 summary(brm1)
-stanplot(brm1)
+mcmc_plot(brm1)
 #brms::launch_shinystan(brm0)
 
-plot(marginal_effects(brm1), points = TRUE)
+plot(conditional_effects(brm1), points = TRUE)
 pp_check(brm1)
 
 hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sigma^2) = 0"
@@ -817,7 +831,7 @@ plot(brm1)
 fixef(brm1)[1:2, ] %>%
   exp()
 
-plot(marginal_effects(brm1))
+plot(conditional_effects(brm1))
 pp_check(brm1)
 ```
 
@@ -858,7 +872,7 @@ plot(brm_no_ants)
 fixef(brm_no_ants)[1:2, ] %>%
   exp()
 
-plot(marginal_effects(brm_no_ants))
+plot(conditional_effects(brm_no_ants))
 pp_check(brm_no_ants)
 ```
 
@@ -902,7 +916,7 @@ plot(brm_no_ants_no_grass)
 fixef(brm_no_ants_no_grass)[1:2, ] %>%
   exp()
 
-plot(marginal_effects(brm_no_ants_no_grass))
+plot(conditional_effects(brm_no_ants_no_grass))
 pp_check(brm_no_ants_no_grass)
 ```
 

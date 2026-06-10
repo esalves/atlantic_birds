@@ -1,17 +1,15 @@
 project:
   type: manuscript
+  render:
+    - index.qmd            # render only the manuscript; ignore leftover template notebooks
 
 execute:
   freeze: auto
 
+# No code is executed in the manuscript itself: figures are produced separately
+# by make_figures.py (Figs 1-3) and from the R analysis (Fig 4). Formats below
+# are suitable for an initial Nature Climate Change submission (Word + HTML).
 format:
   html:
     toc: true
-    comments:
-      hypothesis: true
   docx: default
-  jats: default
-  agu-pdf: default
-
-
-

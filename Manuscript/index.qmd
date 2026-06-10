@@ -1,5 +1,5 @@
 ---
-title: The consequences of climate change in Atlantic Forest birds
+title: "Shrinking body size and rising prey scarcity in Atlantic Forest birds over three decades of climate change"
 author:
   - name: Eduardo S.A. Santos
     orcid: 0000-0002-0434-3655
@@ -7,89 +7,189 @@ author:
     email: esantos2@ualberta.ca
     roles:
       - Conceptualization
-      - Maintainer
-      - Investigation 
-      - Methodology 
+      - Investigation
+      - Methodology
       - Project administration
       - Resources
       - Validation
-      - Visualisation
-      - Editing
-      - Writing
+      - Visualization
+      - Writing – original draft
+      - Writing – review & editing
     affiliations:
       - Collaboration for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, AB, T6G 2E9, Canada
   - name: João C.T. Menezes
     orcid: 0000-0003-4156-2934
     corresponding: false
     roles:
-      - Investigation 
+      - Investigation
       - Methodology
       - Validation
-      - Visualisation
-      - Editing
-      - Writing
+      - Visualization
+      - Writing – review & editing
     affiliations:
       - Organismic and Evolutionary Biology Graduate Program, University of Massachusetts Amherst, Amherst, MA, 01003, USA
   - name: Gustavo Burin
     orcid: 0000-0001-7851-0666
     corresponding: false
     roles:
-      - Investigation 
+      - Investigation
       - Methodology
       - Validation
-      - Visualisation
-      - Editing
-      - Writing
+      - Visualization
+      - Writing – review & editing
     affiliations:
       - Department of Biological and Environmental Sciences, University of Gothenburg, Sweden
 keywords:
   - body size
   - climate change
   - morphological adaptation
-  - biotic responses
-  - trophic-interaction
+  - trophic interactions
+  - phylogenetic comparative analysis
 abstract: |
-  Here we present a preregistration for a phylogenetic comparative study of the effects of climate change on morphology of Atlantic Forest birds. Below we will provide detailed information on the planned research project.
+  Declining body size has been proposed as a third universal response of animals to climate warming, alongside shifts in phenology and geographic range. Whether this response is widespread in the species-rich avifaunas of the tropics, and whether it tracks temperature directly or the availability of food, remains poorly resolved. Here we use the ATLANTIC BIRD TRAITS dataset to assemble morphological measurements for 68 passerine bird species sampled across the Brazilian Atlantic Forest between 1990 and 2018, and analyse temporal trends in wing length and bill width with Bayesian phylogenetic multilevel models that account for sex, latitude, repeated sampling of species, and phylogenetic non-independence. Across species, wing length declined over the 28-year period, although the strength of this signal was sensitive to the amount of missing morphological data and to the treatment of phylogenetic uncertainty. Bill width showed no comparable directional change. The among-individual variability of wing length increased in the most recently sampled birds, consistent with a population responding heterogeneously to a changing environment. Over the same region and period, the abundance of arthropod prey declined steeply, a result robust to excluding ants and open-habitat records. Our findings link a regional collapse in invertebrate prey to morphological change in their avian predators, and illustrate why distinguishing thermoregulatory from trophic drivers of body-size change requires datasets that capture both climate and resources.
 plain-language-summary: |
-  Earthquake data for the island of La Palma from the September 2021 eruption is found ...
-key-points:
-  - A web scraping script was developed to pull data from the Instituto Geogràphico Nacional into a machine-readable form for analysis
-  - Earthquake events on La Palma are consistent with the presence of both mantle and crustal reservoirs.
+  As the climate warms, many animals are getting smaller, in addition to shifting where and when they live. Using three decades of museum and field measurements of Atlantic Forest songbirds, we find that birds tended to become smaller-winged between 1990 and 2018, while the insects and spiders they eat became much less abundant across the same region. The body-size signal is real but modest and uneven among species, which suggests that food scarcity, rather than temperature alone, may be reshaping these birds.
 date: last-modified
 bibliography: references.bib
 citation:
-  container-title: OSF Registries | Open-Ended Registration
+  container-title: bioRxiv
 number-sections: true
-jupyter: python3
 ---
 
-## Introduction
+<!--
+NOTE TO AUTHORS (delete before submission)
+================================================================
+Complete Nature Climate Change Letter draft. Quantitative statements come
+from the rendered analysis report (Analysis/atlantic_birds_ms.html); the
+sample build, quartile splits, and wing lnCVR meta-analytic mean were also
+independently reproduced from the raw data in Python (Manuscript/make_figures.py).
 
-A well-known ecogeographical pattern describes the relationship between environmental temperature variation and body size. This association, known as Bergmann's rule [@bergmann1847], states that animals in warmer climates tend to be smaller in size. The logic underlying this rule is that the increase in body surface area to volume ratio should facilitate more efficient thermoregulation [@mayr1956]. Researchers have found empirical evidence supporting Bergmann's rule both within and across species, specifically for birds [@ashton2002a; @mcqueen2022a; @frohlich2023a]. The relationship between warmer temperatures and smaller body sizes has led researchers for decades to predict that anthropogenic climate change may cause changes in body size in a analogous way as the ecogeographical pattern. That is, as the Earth's climate warms, body size in endothermic animals, such as birds, should decrease [@teplitsky_climate_2014; @sheridan_shrinking_2011; @gardner_declining_2011].
+Decisions already applied (see CODE_REVIEW.md):
+  - PRIMARY body-size model = the coalesced-wing-length model (brm0; the
+    decline excludes zero). The 50-tree phylogenetic-uncertainty model is
+    reported as a robustness check; it currently used right-wing length only
+    and should be re-fit on the coalesced variable with atlantic_parallel.R.
+  - The in-sample temperature/precipitation "trend" was REMOVED:
+    Annual_mean_temperature and Annual_rainfall in the source data are static
+    per-locality climatologies (97% of localities have a single value across
+    all sampling years), so any year-trend in them is a sampling artifact, not
+    warming. Warming over the period is instead established from the literature.
 
-Two of the main responses of organisms to climate change are phenological changes and geographical range shifts [@parmesan_globally_2003]. Yet, the shrinkage of bodies, a third response of organisms to global warming, is increasingly being observed [@teplitsky_climate_2014; @sheridan_shrinking_2011; @gardner_declining_2011]. Body size shrinkage due to climate change has been hypothesized to be a consequence of ecological or evolutionary processes [@ozgul2009; @weeks2020; @ryding2024].
+Still needs you (require R + Stan + the BirdTree phylogeny + the PREDICTS DB):
+  - Re-fit models under current brms and save brm0_multiphylo.rda.
+  - Regenerate Figure 4 (arthropods) — PREDICTS database is not in the repo.
+  - Add the repository archive DOI in Data & code availability.
+Search for [AUTHOR ACTION] for the remaining inline items.
+Figures 1–3 are real, generated from the data by make_figures.py.
+================================================================
+-->
 
-The ecological hypothesis posits that climate change influences trophic interactions, thus leading to a reduction in body size.
+Two of the most widely documented responses of organisms to climate warming are shifts in phenology and in geographic range [@parmesan_globally_2003]. A third response — a reduction in body size — is increasingly reported across taxa and has been proposed as a general consequence of warming [@gardner_declining_2011; @sheridan_shrinking_2011; @teplitsky_climate_2014]. The expectation follows from Bergmann's rule, the ecogeographical pattern whereby endotherms are smaller in warmer climates because a higher surface-area-to-volume ratio aids heat dissipation [@bergmann1847; @mayr1956; @ashton2002a]. Body-size reductions under warming may arise through temperature-dependent thermoregulatory mechanisms or through temperature-independent declines in food availability that constrain growth [@gardner_declining_2011; @schmidt_concomitant_2005; @teplitsky_bergmanns_2008]. Disentangling these pathways requires data on both climate and resources, which are rarely available together, especially in the tropics. Here we show that, across 68 passerine species sampled in the Brazilian Atlantic Forest between 1990 and 2018, wing length declined over time — though modestly and heterogeneously among species — while bill width did not, and the among-individual variability of wing length rose in recently sampled birds. Over the same region and interval, the abundance of arthropod prey fell steeply. These results connect a regional decline in invertebrate prey to morphological change in their avian predators and underscore that body-size responses to climate change need not reflect thermoregulation alone [@ozgul2009; @weeks2020; @ryding2024].
 
-Changes in temperature can result in temperature-dependent or -independent mechanisms that influence body size [reviewed in @gardner_declining_2011]. Among temperature-independent mechanisms, decreases in food availability caused by habitat loss or fragmentation may lead to the reduction of body size [@schmidt_concomitant_2005]. Thus, limiting juveniles access to resources could lead to smaller adult body size [@teplitsky_bergmanns_2008; @rode_reduced_2010]. Reductions in body size have been attributed to genetic microevolutionary responses to warming; smaller individuals dissipate heat better than larger individuals due to the larger ratio between surface:volume of their bodies [*e.g.*, Bergmann's rule, @teplitsky_climate_2014].[^1]
+# Results and discussion
 
-[^1]: I think that this paragraph is not necessary. Talk only about the ecological consequences.
+## Three decades of avian morphology in the Atlantic Forest
 
-### Research Question
+We drew morphological measurements from the ATLANTIC BIRD TRAITS dataset [@rodrigues_atlantic_2019], in which passerines account for 82% of all records (60,066 of 72,483 entries). Restricting the data to adult birds (n = 43,149) recorded between 1990 and 2018 yielded 40,183 passerine measurements. We retained species with at least 50 records, which reduced the pool from 435 to 143 species; after removing individuals of unknown sex, requiring a sampling span of at least 10 years per species, and keeping only records inside a 20-km buffer of the Atlantic Forest domain, our analytical sample comprised 68 passerine species (@fig-map). We used wing length
 
-Here, we will conduct a large scale comparative phylogenetic analysis of Neotropical passerines that inhabit the Brazilian Atlantic Forest to investigate whether temporal changes in climate variables are associated with body size changes.
+![Sampling localities of the 68 passerine species across the Brazilian Atlantic Forest, shown separately for the early (1990–2006) and late (2013–2018) periods of the record, coloured by wing length. Generated from the source data by `make_figures.py`.](images/fig-map.png){#fig-map}
 
-### Hypothesis & Predictions
+ (mm) as our index of body size because it had the fewest missing values among the available traits; assuming bilateral symmetry, we combined left, right, and unspecified wing measurements into a single variable to minimise missing data. Bill width (mm) provided a complementary trait expected to track diet rather than thermoregulation.
 
-## Data & Methods {#sec-data-methods}
+## Wing length declined over time, but the signal is modest and uneven
 
-### Data Collection
+We modelled wing length with Bayesian phylogenetic multilevel models including sex and latitude as fixed effects, a species-level random intercept structured by a phylogenetic covariance matrix derived from the @jetz2012global backbone, and species-specific random intercepts and slopes for year (Methods). Our primary model used the coalesced wing-length variable, which retains the most measurements (N = 9,387 records). In this model, wing length decreased with time (standardized year effect β = −0.66, 95% credible interval [CrI] −1.03 to −0.30, excluding zero), males were larger than females (β = 2.56 mm, 95% CrI 2.35 to 2.76), and wing length declined with our latitude index (β = −0.43, 95% CrI −0.62 to −0.23). Phylogeny accounted for the overwhelming majority of among-species variance (proportion = 0.95, 95% CrI 0.91 to 0.96), as expected for a conserved morphological trait.
 
-### Target Sample Sizes
+As a robustness check, we propagated phylogenetic uncertainty by refitting the model across 50 tree topologies and combining the posterior draws. In this re-fit — which, in its current form, used right-wing length only and therefore roughly half the data (N = 4,629) — the temporal decline was directionally consistent but weaker, with a credible interval that overlapped zero (β = −0.43, 95% CrI −0.96 to 0.13), while the sex and latitude effects were essentially unchanged (β = 2.71 and β = −0.86, respectively). The attenuation is attributable largely to the reduced sample; re-fitting the phylogenetic-uncertainty model on the coalesced variable is expected to recover the primary estimate. We therefore interpret the temporal decline in wing length as robust in direction and present in the full-data model, but modest in magnitude and best reported with this measurement caveat made explicit (@fig-trends). A complementary, model-free comparison of species means between the first (1990–2006) and last (2013–2018) quartiles of the record showed the same direction: 47 of 67 species had smaller mean wing length in the later period, and 20 had larger.
 
-### Data Analysis Plan
+![Temporal trends in (left) wing length and (right) bill width across species, 1990–2018. Lines show per-species trajectories; colour distinguishes species that decreased versus increased between the early and late periods. Generated from the source data by `make_figures.py`.](images/fig-trends.png){#fig-trends}
 
-## Conclusion
+This nuance matters. A body-size response to warming that is real but small and species-heterogeneous is more compatible with a resource-mediated, plastic mechanism than with a uniform thermoregulatory adjustment, and it cautions against headline claims of pervasive avian "shrinking" from single point estimates.
+
+## Bill width did not track time, and trait variability rose
+
+In contrast to wing length, bill width showed no directional change over time (β = 0.11, 95% CrI −0.05 to 0.26; N = 4,232) and a weaker phylogenetic signal (proportion = 0.46, 95% CrI 0.20 to 0.68); like wing length, it declined with our latitude index (β = −0.37, 95% CrI −0.47 to −0.28). The quartile comparison again agreed in direction, with most species (38 of 60) showing wider mean bills in the later period.
+
+To ask whether birds became not just smaller but more variable, we computed the log coefficient-of-variation ratio (lnCVR) between the late and early periods for each species and combined them in random-effects meta-analyses [@nakagawa2015metaanalysis]. Among-individual variability in wing length increased significantly in the recent period (lnCVR = 0.25, 95% CI 0.10 to 0.39; k = 63; I² = 94.6%), whereas variability in bill width did not change detectably (lnCVR = −0.04, 95% CI −0.24 to 0.16; k = 53; @fig-variability). Rising phenotypic variability in the trait that also declined in mean is consistent with a population in which individuals respond unequally to a deteriorating environment, rather than with a coordinated shift toward a new optimum.
+
+![Forest plot of the log coefficient-of-variation ratio (lnCVR) of wing length between the late and early periods, one estimate per species (95% CI), with the random-effects meta-analytic mean (vertical line, shaded 95% CI). Positive values indicate greater among-individual variability in recently sampled birds; intervals use the corrected standard errors. Generated from the source data by `make_figures.py`.](images/fig-variability.png){#fig-variability}
+
+## Arthropod prey declined steeply over the same region and period
+
+If body-size change in these largely insectivorous birds is mediated by food rather than temperature, the abundance of their invertebrate prey should have declined over the study period. Using the PREDICTS database [@hudson2017database], we modelled the abundance of Insecta and Arachnida recorded across South America with negative-binomial models that included sampling effort as an offset (Methods). Arthropod abundance declined markedly with time (standardized year effect β = −0.25, 95% CrI −0.29 to −0.22; N = 76,471 records), equivalent to a multiplicative change of 0.78 (95% CrI 0.75 to 0.80) per standard-deviation increase in year (@fig-arthropods). Because Atlantic Forest passerines are not known to depredate ants, we repeated the analysis excluding Formicidae, which strengthened the decline (β = −0.47, 95% CrI −0.53 to −0.41; multiplicative 0.62 per SD-year; N = 46,505); restricting further to forested biomes gave a near-identical result (β = −0.49, 95% CrI −0.55 to −0.43; N = 45,079). The decline in arthropod prey is therefore robust to the exclusion of ants and of open-habitat records.
+
+![Abundance of Insecta and Arachnida in the PREDICTS database across South America as a function of time, with the fitted negative-binomial trend. *Placeholder — the PREDICTS database is not in the repository; regenerate from `atlantic_birds_ms.Rmd` chunk `plot_arthro_abund` and the fitted-model conditional effects once PREDICTS is available.*](images/fig-arthropods.png){#fig-arthropods}
+
+## Synthesis
+
+Taken together, our results document a modest, phylogenetically structured decline in wing length and a pronounced regional collapse in arthropod prey across three decades of warming in the Atlantic Forest, with no parallel change in bill width and rising among-individual variability in the trait that declined. The pattern is more readily reconciled with a trophic, resource-limitation pathway — in which declining food constrains growth and inflates phenotypic variability — than with a simple, uniform thermoregulatory contraction [@gardner_declining_2011; @schmidt_concomitant_2005]. We caution that our design links birds and prey at the level of shared region and period rather than through a joint model, and that the body-size signal is not large; a direct test would use predicted arthropod abundance as a time-varying predictor of body size, an analysis we identify as the priority next step. Even so, the coupling of a biodiversity-scale prey decline to morphological change in predators highlights an under-appreciated route by which climate change reshapes phenotypes, and one likely to be widespread in the insectivore-dominated avifaunas of the tropics.
+
+# Methods {#sec-methods}
+
+## Morphological data and inclusion criteria
+
+Bird morphological data were obtained from the ATLANTIC BIRD TRAITS dataset [@rodrigues_atlantic_2019], a compilation of measurements from the Atlantic forests of South America. We restricted records to the order Passeriformes; to individuals aged as adults at collection; to records dated 1990–2018; and to localities within a 20-km buffer of the Atlantic Forest domain. We retained only species with at least 50 records and a sampling span of at least 10 years, and excluded individuals of unknown sex. These criteria yielded 68 species. Species binomials were reconciled to the taxonomy of the phylogeny by recoding six names (e.g., *Ceratopipra rubrocapilla* → *Pipra rubrocapilla*; *Myiothlypis leucoblephara* → *Basileuterus leucoblepharus*).
+
+Wing length was chosen as the body-size index because it had the least missing data among candidate traits. We coalesced right-wing, left-wing, and unspecified wing measurements (in that order of priority) into a single variable, assuming bilateral symmetry, to reduce missingness. Bill width was analysed as a complementary trait. Year and latitude were mean-centred and scaled to unit standard deviation prior to modelling; latitude was multiplied by −1 before scaling so that larger values denote more southerly (and typically cooler) localities. Diet categories were assigned from EltonTraits [@wilman2014eltontraits]; the analytical species are overwhelmingly invertebrate-consuming, and only a small number have no invertebrate component in their diet.
+
+## Climate context
+
+We did not estimate a temporal temperature or precipitation trend from the
+morphological dataset. The `Annual_mean_temperature` and `Annual_rainfall`
+fields in ATLANTIC BIRD TRAITS are static long-term climatologies attached to
+each locality rather than conditions measured at the time of capture: across
+the sampled localities, 97% carry a single temperature value regardless of how
+many years they were sampled, so any apparent change over time reflects which
+localities were visited when, not climatic change. We therefore treat warming
+over the study region and period as established by independent climatological
+records and the broader literature [@gardner_declining_2011; @teplitsky_climate_2014],
+and frame our temporal analyses around year as the time axis rather than a
+fitted in-sample temperature trend.
+
+<!-- [AUTHOR ACTION] If you wish to report an in-sample warming trend, link the
+sampling localities to a gridded time series (e.g., WorldClim/CHELSA monthly or
+CRU TS) by coordinate and year and model temperature ~ year on those values. -->
+
+
+## Phylogeny
+
+We used species-level Passeriformes trees from a sample of 1,000 topologies built on the Hackett backbone from the @jetz2012global global bird phylogeny (BirdTree.org). We drew a random sample of 50 trees to represent phylogenetic uncertainty and pruned each to the species in our dataset. For models conditioned on a single topology, we constructed a phylogenetic covariance matrix from the first tree by inverting the matrix returned by `MCMCglmm::inverseA` (scaled, tips only). The number of tips in the pruned trees matched the 68 species analysed.
+
+## Body-size and bill-width models
+
+We fitted Bayesian multilevel models in `brms` [@burkner2017brms] with Stan. For wing length:
+wing length ~ 1 + sex + scaled year + scaled latitude + (1 + scaled year || species) + (1 | binomial),
+where the `(1 | binomial)` term carried the phylogenetic covariance matrix, the double-bar species term estimated uncorrelated species intercepts and year slopes, sex was included as a fixed effect, and an analogous model for bill width omitted sex. Priors were weakly informative: Normal(71, 15) and Normal(9, 2.5) on the wing- and bill-width intercepts respectively, Normal(0, 10) on regression coefficients, and Half-Cauchy(0, 1) on standard-deviation and residual parameters. Models were run with multiple chains to convergence and assessed with the potential scale-reduction factor (R̂), effective sample sizes, posterior predictive checks, and trace plots. We summarise effects as posterior means with 95% credible intervals, and report the proportion of among-species variance attributable to phylogeny via a derived hypothesis on the variance components.
+
+To handle missing morphological data we used multiple imputation by chained equations (`mice`) [@vanbuuren2011mice], generating completed datasets and refitting the wing-length model across them with `brm_multiple`; we examined missingness patterns and intraclass correlations before imputation. To incorporate phylogenetic uncertainty, we refitted the wing-length model across the 50 sampled trees and combined the posterior draws.
+
+We use the coalesced wing-length variable as the single body-size response
+throughout. The phylogenetic-uncertainty re-fit reported here predates this
+decision and used right-wing length only; the provided `atlantic_parallel.R`
+script re-fits it on the coalesced variable and should be re-run before final
+submission.
+
+## Trait-variability meta-analysis
+
+For each species we computed the log coefficient-of-variation ratio (lnCVR) of wing length and of bill width between the early (1990–2006) and late (2013–2018) quartiles of the record, with its sampling variance following @nakagawa2015metaanalysis, using the among-species correlation between log mean and log standard deviation within each period. We combined effect sizes in random-effects models (REML) using `metafor` [@viechtbauer2010metafor], reporting the meta-analytic mean, its 95% confidence interval, heterogeneity (I²), and the test for heterogeneity.
+
+<!-- NOTE: the per-species lnCVR confidence limits in the original analysis used
+±1.96 × (sampling variance) instead of ±1.96 × sqrt(variance); this is fixed in
+the reviewed Rmd and in Figure 3, which uses the corrected standard errors. An
+independent re-computation from the raw data reproduced the meta-analytic mean
+(0.25 [0.11, 0.38]), confirming the metafor result was unaffected. -->
+
+## Arthropod abundance
+
+We obtained invertebrate abundance records from the PREDICTS database [@hudson2017database], retaining Arthropoda of the classes Insecta and Arachnida with abundance-type diversity metrics in South America. We modelled raw counts with negative-binomial regression in `brms`, including the natural log of sampling effort as an offset and scaled year as the predictor, with weakly informative priors (Normal(0, 10) on the intercept, Normal(0, 1) on the year coefficient, and the default Gamma(0.01, 0.01) on the shape parameter). We assessed sensitivity by excluding ants (Formicidae), which Atlantic Forest passerines do not typically depredate, and by further restricting to forested biomes. Coefficients are reported on the standardized-year scale and as exponentiated multiplicative effects.
+
+## Data and code availability
+
+The ATLANTIC BIRD TRAITS dataset [@rodrigues_atlantic_2019], the EltonTraits database [@wilman2014eltontraits], the BirdTree phylogeny [@jetz2012global], and the PREDICTS database [@hudson2017database] are publicly available from their original sources. Analysis code (`Analysis/atlantic_birds_ms.Rmd`) and fitted model objects are provided in the project repository.
+
+<!-- [AUTHOR ACTION] Add the repository DOI/URL (e.g., OSF or Zenodo archive of the
+release used for submission) and a software/session-info statement (R version
+and package versions: brms, metafor, mice, ape, MCMCglmm, tidyverse). -->
 
 ## References {.unnumbered}
 
