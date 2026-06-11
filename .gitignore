@@ -4,3 +4,23 @@
 .Ruserdata
 Manuscript/path/
 .DS_Store
+
+# Review/support file (not for publication repo)
+CODE_REVIEW.md
+
+# Large downloaded data — never commit (the clootl AvesData tree repo is ~1 GB).
+# Pattern has no leading slash, so it matches the repo root AND Analysis/.
+AvesDataLite-main/
+Analysis/terraclimate/
+
+# Large generated model objects: these exceed GitHub's 100 MB/file limit
+# (e.g. brm0_multiphylo.rda is ~194 MB). Archive them on Zenodo/OSF instead,
+# as referenced in the manuscript's Data & code availability section.
+brm0_multiphylo.rda
+brm_bill_multiphylo.rda
+clootl_trees.rds
+
+# Zip files/archives
+*.zip
+Analysis/*.zip
+

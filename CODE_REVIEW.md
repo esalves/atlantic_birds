@@ -1,5 +1,116 @@
 # Code & manuscript review — Atlantic Forest birds
 
+> ## Update — third pass: analysis upgrades from the lab's Bergmann/migration manuscript
+>
+> Source: *"Seasonal migration does not erase the interspecific Bergmann pattern
+> in birds"* (Mizuno, Lundgren, Drobniak, Callaghan, **Santos**, Lagisz, Ortega,
+> Lin & Nakagawa). Procedures from that paper that improve the present analysis,
+> and what was changed:
+>
+> ### §A — Phylogeny (you asked to update it)
+> - **Tree source updated.** That paper uses McTavish et al. (2025) *A complete
+>   and dynamic tree of birds* via the **`clootl`** package (versioned, complete
+>   avian tree). We replaced the Jetz et al. (2012) BirdTree/Hackett trees
+>   (`read.nexus("Hackett_trees.nex")`, a file that wasn't even in the repo) with
+>   clootl in both `atlantic_parallel.R` and the Rmd `phylo` chunk. **API note:**
+>   `extractTree()` returns a *single* summary tree and takes `taxonomy_year` as a
+>   *year* (2021–2024), not a version; the 100-tree dated cloud comes from
+>   `sampleTrees()`, which first needs the AvesData repo downloaded once via
+>   `get_avesdata_repo(path=".")` (unpacks to `AvesDataLite-main`). clootl uses
+>   eBird scientific names **without underscores** (handled), and unmatched ABT
+>   binomials are dropped — reconcile names first and check which species matched.
+>   Record the tree version + taxonomy year used (`getCitations(tree)`).
+> - **Phylogenetic uncertainty via Rubin's rules.** They sample 50 trees from a
+>   pool of 100 and pool estimates across trees with **Rubin's rules**
+>   (Nakagawa & de Villemereuil 2019) — pooled mean, within+between-tree variance,
+>   Wald–Rubin 95% CI. `atlantic_parallel.R` now does this (`pool_rubin()`),
+>   replacing the crude `combine_models()`/draw-concatenation.
+> - **Optional:** add Pagel's-λ variance partitioning + parametric-bootstrap CIs
+>   for the variance components (their `phylolm` step), as a variance-decomposition
+>   check on a consensus tree rescaled to unit tip height. Note the trade-off:
+>   `phylolm`+λ is cleaner for the *spatial* signal, but `brms` is kept here because
+>   it supports the **random year slopes** that the *temporal* question needs.
+>
+> ### §B — Climate (you asked for better climate information)
+> - **Their approach:** range/area-weighted species climate from **WorldClim v2.1**
+>   rasters (temperature *and* precipitation), seasonal exposure windows.
+> - **Key lesson for our temporal study:** WorldClim — and the
+>   `Annual_mean_temperature`/`Annual_rainfall` fields in ATLANTIC BIRD TRAITS —
+>   are long-term climatologies, **static in time** (confirmed: 97% of localities
+>   have one temperature value across all sampling years). They cannot test change
+>   over time. So we wired in **time-resolved monthly climate** (TerraClimate
+>   1958–present, or CHELSA) extracted at each record's coordinates *and year* via
+>   the new `Analysis/climate_extraction.R`, producing per-record temperature and
+>   precipitation. The new Rmd `model_climate` chunk fits body size against actual
+>   `scaled_tmean` + `scaled_ppt` (+ year retained), with random temperature
+>   slopes — a genuine Bergmann/temperature-tracking test, and adds precipitation
+>   as the second climatic axis.
+>
+> ### §D — Species/dataset/tree matching via prepR4pcm
+> To make name matching robust (and auditable), both `atlantic_parallel.R` and
+> the Rmd `phylo` chunk now use **prepR4pcm** (Nakagawa, Ortega, Mizuno, Santos
+> et al. 2026; `pak::pak("itchyshin/prepR4pcm")`):
+> - **Retrieval:** `pr_get_tree(spp, source = "clootl", n_tree = 100)` returns the
+>   100-tree posterior (wraps clootl; `pr_cite_tree()` writes the provenance).
+> - **Reconciliation:** `reconcile_tree(..., fuzzy = TRUE, resolve = "flag")` runs
+>   the 4-stage cascade (exact → normalised → synonym → fuzzy); inspect with
+>   `reconcile_summary()` / `reconcile_report()`; then `reconcile_apply(..., drop_unresolved = TRUE)`
+>   returns aligned data + a pruned tree with **identical species sets** — the
+>   precondition for any PCM. We prune all 100 trees to that set and subsample 50.
+> - **Fixing misses:** `reconcile_override()` for one-off pairs;
+>   `reconcile_crosswalk(crosswalk_birdlife_birdtree)` for the bundled
+>   BirdLife↔BirdTree crosswalk; `reconcile_augment()` to graft a still-missing
+>   species as sister to a congener — if used, fit models **with and without** the
+>   grafts and report whether conclusions change.
+> - **DONE — manual remaps removed.** The six `gsub()` name remaps in the Rmd
+>   wrangling chunk (e.g. *Ceratopipra rubrocapilla* → *Pipra rubrocapilla*) were
+>   made for the **old BirdTree/Jetz** taxonomy and have been deleted, so the
+>   original ABT binomials now flow through to `reconcile_tree()`, which resolves
+>   synonymy against the eBird/clootl tree in an auditable way. Their ABT names are
+>   retained as a `historically_tricky` watch list in `atlantic_parallel.R` (with
+>   the old BirdTree targets in comments, for reference only — they are **not**
+>   assumed to be the eBird names). After running, confirm `reconcile_summary(rec)`
+>   resolves all (or nearly all) ~68 species; for anything flagged, look up its
+>   correct eBird tip and force it with `reconcile_override()` (or use
+>   `reconcile_crosswalk(crosswalk_birdlife_birdtree)`).
+> - **eBird genus changes fixed upfront (`ebird_synonyms`).** `clootl` errors
+>   *during retrieval* on names absent from the eBird/Clements taxonomy (it does
+>   not silently drop them on the `n_tree > 1`/`sampleTrees` path), so names must
+>   be corrected before `pr_get_tree()` — reconciliation can't recover a species
+>   that was never placed in the tree. Seven ABT binomials whose genera changed
+>   since 2018 are remapped to current eBird names in both `atlantic_parallel.R`
+>   and the Rmd: *Antilophia galeata*→*Chiroxiphia galeata*, *Tachyphonus
+>   cristatus*→*Loriotus cristatus*, *Pyrrhocoma ruficeps*→*Thlypopsis pyrrhocoma*,
+>   *Pyriglena pernambucensis*→*Pyriglena leuconota*, *Tangara sayaca*→*Thraupis
+>   sayaca*, *Tangara cayana*→*Stilpnia cayana*, *Tiaris fuliginosus*→*Asemospiza
+>   fuliginosa*. A `pr_get_tree(..., n_tree = 1)$unmatched` check (a `stopifnot`
+>   in the script) guards the expensive 100-tree pull — extend `ebird_synonyms`
+>   if it ever flags more.
+>
+> ### §C — Analytical framing borrowed
+> - Separate **slope** change from **mean (intercept)** change (they cleanly
+>   distinguished a migrant–resident slope difference from an average-size
+>   difference). For us: distinguish "size declines over time/with temperature"
+>   from "mean size differs among diet groups."
+> - **z-standardise** body size and all continuous climate predictors on a common
+>   scale; **AIC-based model selection** across candidate climate metrics
+>   (lowest/mean/highest monthly temperature) and main-effects vs interaction models.
+>
+> ### To run (needs R + internet + downloads)
+> 1. `install.packages("clootl")`; run `atlantic_parallel.R` → `brm0_multiphylo.rda`
+>    + `rubin_summary`.
+> 2. Download TerraClimate (or CHELSA) monthly rasters; run `climate_extraction.R`
+>    → `passer90_climate.rds`; then the `model_climate` chunk → `brm_climate.rda`.
+> 3. Refresh the manuscript Results and the phylogenetic-signal value (the current
+>    numbers are from the old BirdTree/year-proxy pipeline; flagged `[AUTHOR ACTION]`).
+>
+> New references added to `Manuscript/references.bib`: `mctavish2025tree`,
+> `miller2026clootl`, `nakagawa2019rubin`, `abatzoglou2018terraclimate`,
+> `karger2017chelsa`.
+
+---
+
+
 > ## Update — second pass (executed)
 >
 > Working through the suggested order of work, the following were **done** using

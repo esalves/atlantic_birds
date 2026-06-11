@@ -46,7 +46,7 @@ keywords:
   - trophic interactions
   - phylogenetic comparative analysis
 abstract: |
-  Declining body size has been proposed as a third universal response of animals to climate warming, alongside shifts in phenology and geographic range. Whether this response is widespread in the species-rich avifaunas of the tropics, and whether it tracks temperature directly or the availability of food, remains poorly resolved. Here we use the ATLANTIC BIRD TRAITS dataset to assemble morphological measurements for 68 passerine bird species sampled across the Brazilian Atlantic Forest between 1990 and 2018, and analyse temporal trends in wing length and bill width with Bayesian phylogenetic multilevel models that account for sex, latitude, repeated sampling of species, and phylogenetic non-independence. Across species, wing length declined over the 28-year period, although the strength of this signal was sensitive to the amount of missing morphological data and to the treatment of phylogenetic uncertainty. Bill width showed no comparable directional change. The among-individual variability of wing length increased in the most recently sampled birds, consistent with a population responding heterogeneously to a changing environment. Over the same region and period, the abundance of arthropod prey declined steeply, a result robust to excluding ants and open-habitat records. Our findings link a regional collapse in invertebrate prey to morphological change in their avian predators, and illustrate why distinguishing thermoregulatory from trophic drivers of body-size change requires datasets that capture both climate and resources.
+  Declining body size has been proposed as a third universal response of animals to climate warming, alongside shifts in phenology and geographic range. Whether this response is widespread in the species-rich avifaunas of the tropics, and whether it tracks temperature directly or the availability of food, remains poorly resolved. Here we use the ATLANTIC BIRD TRAITS dataset to assemble morphological measurements for 68 passerine bird species sampled across the Brazilian Atlantic Forest between 1990 and 2018, and analyse temporal trends in wing length and bill width with Bayesian phylogenetic multilevel models that account for sex, latitude, repeated sampling of species, and phylogenetic non-independence. Across species, wing length declined over the 28-year period — a decline robust to phylogenetic uncertainty and to the choice of phylogeny — whereas bill width showed no comparable directional change. The among-individual variability of wing length increased in the most recently sampled birds, consistent with a population responding heterogeneously to a changing environment. Over the same region and period, the abundance of arthropod prey declined steeply, a result robust to excluding ants and open-habitat records. Our findings link a regional collapse in invertebrate prey to morphological change in their avian predators, and illustrate why distinguishing thermoregulatory from trophic drivers of body-size change requires datasets that capture both climate and resources.
 plain-language-summary: |
   As the climate warms, many animals are getting smaller, in addition to shifting where and when they live. Using three decades of museum and field measurements of Atlantic Forest songbirds, we find that birds tended to become smaller-winged between 1990 and 2018, while the insects and spiders they eat became much less abundant across the same region. The body-size signal is real but modest and uneven among species, which suggests that food scarcity, rather than temperature alone, may be reshaping these birds.
 date: last-modified
@@ -65,18 +65,20 @@ sample build, quartile splits, and wing lnCVR meta-analytic mean were also
 independently reproduced from the raw data in Python (Manuscript/make_figures.py).
 
 Decisions already applied (see CODE_REVIEW.md):
-  - PRIMARY body-size model = the coalesced-wing-length model (brm0; the
-    decline excludes zero). The 50-tree phylogenetic-uncertainty model is
-    reported as a robustness check; it currently used right-wing length only
-    and should be re-fit on the coalesced variable with atlantic_parallel.R.
+  - Body-size (wing-length) result is now the coalesced-variable model fitted
+    across 50 clootl/McTavish trees and pooled with Rubin's rules
+    (atlantic_parallel.R): year effect beta = -0.66, 95% CI [-1.05, -0.28]
+    (excludes zero), N = 9,378, 68 species, phylogenetic signal 0.95. This
+    supersedes the earlier BirdTree / right-wing-only estimate.
   - The in-sample temperature/precipitation "trend" was REMOVED:
     Annual_mean_temperature and Annual_rainfall in the source data are static
     per-locality climatologies (97% of localities have a single value across
     all sampling years), so any year-trend in them is a sampling artifact, not
     warming. Warming over the period is instead established from the literature.
 
-Still needs you (require R + Stan + the BirdTree phylogeny + the PREDICTS DB):
-  - Re-fit models under current brms and save brm0_multiphylo.rda.
+Still needs you:
+  - Run atlantic_parallel_bill.R to refresh the BILL-WIDTH numbers on the clootl
+    tree/pipeline (its numbers still come from the old BirdTree fit).
   - Regenerate Figure 4 (arthropods) — PREDICTS database is not in the repo.
   - Add the repository archive DOI in Data & code availability.
 Search for [AUTHOR ACTION] for the remaining inline items.
@@ -96,15 +98,15 @@ We drew morphological measurements from the ATLANTIC BIRD TRAITS dataset [@rodri
 
  (mm) as our index of body size because it had the fewest missing values among the available traits; assuming bilateral symmetry, we combined left, right, and unspecified wing measurements into a single variable to minimise missing data. Bill width (mm) provided a complementary trait expected to track diet rather than thermoregulation.
 
-## Wing length declined over time, but the signal is modest and uneven
+## Wing length declined over time
 
-We modelled wing length with Bayesian phylogenetic multilevel models including sex and latitude as fixed effects, a species-level random intercept structured by a phylogenetic covariance matrix derived from the @jetz2012global backbone, and species-specific random intercepts and slopes for year (Methods). Our primary model used the coalesced wing-length variable, which retains the most measurements (N = 9,387 records). In this model, wing length decreased with time (standardized year effect β = −0.66, 95% credible interval [CrI] −1.03 to −0.30, excluding zero), males were larger than females (β = 2.56 mm, 95% CrI 2.35 to 2.76), and wing length declined with our latitude index (β = −0.43, 95% CrI −0.62 to −0.23). Phylogeny accounted for the overwhelming majority of among-species variance (proportion = 0.95, 95% CrI 0.91 to 0.96), as expected for a conserved morphological trait.
+We modelled wing length with Bayesian phylogenetic multilevel models including sex and latitude as fixed effects, a species-level random intercept structured by a phylogenetic covariance matrix derived from the complete avian phylogeny of @mctavish2025tree, and species-specific random intercepts and slopes for year; we propagated phylogenetic uncertainty across 50 trees and pooled estimates with Rubin's rules (Methods). Using the coalesced wing-length variable, wing length decreased over time (standardized year effect β = −0.66, 95% CI −1.05 to −0.28, excluding zero), males were larger than females (β = 2.56 mm, 95% CI 2.35 to 2.77), and wing length declined with our latitude index (β = −0.43, 95% CI −0.61 to −0.24); the analysis used 9,378 records across 68 species. Phylogeny accounted for the overwhelming majority of among-species variance (proportion = 0.95, 95% CI 0.94 to 0.96), as expected for a conserved morphological trait.
 
-As a robustness check, we propagated phylogenetic uncertainty by refitting the model across 50 tree topologies and combining the posterior draws. In this re-fit — which, in its current form, used right-wing length only and therefore roughly half the data (N = 4,629) — the temporal decline was directionally consistent but weaker, with a credible interval that overlapped zero (β = −0.43, 95% CrI −0.96 to 0.13), while the sex and latitude effects were essentially unchanged (β = 2.71 and β = −0.86, respectively). The attenuation is attributable largely to the reduced sample; re-fitting the phylogenetic-uncertainty model on the coalesced variable is expected to recover the primary estimate. We therefore interpret the temporal decline in wing length as robust in direction and present in the full-data model, but modest in magnitude and best reported with this measurement caveat made explicit (@fig-trends). A complementary, model-free comparison of species means between the first (1990–2006) and last (2013–2018) quartiles of the record showed the same direction: 47 of 67 species had smaller mean wing length in the later period, and 20 had larger.
+The temporal decline excluded zero and was robust to phylogenetic uncertainty and to the updated phylogeny (@fig-trends). A complementary, model-free comparison of species means between the first (1990–2006) and last (2013–2018) quartiles of the record showed the same direction: 47 of 67 species had smaller mean wing length in the later period, and 20 had larger.
 
 ![Temporal trends in (left) wing length and (right) bill width across species, 1990–2018. Lines show per-species trajectories; colour distinguishes species that decreased versus increased between the early and late periods. Generated from the source data by `make_figures.py`.](images/fig-trends.png){#fig-trends}
 
-This nuance matters. A body-size response to warming that is real but small and species-heterogeneous is more compatible with a resource-mediated, plastic mechanism than with a uniform thermoregulatory adjustment, and it cautions against headline claims of pervasive avian "shrinking" from single point estimates.
+Although now statistically clear and robust to phylogenetic uncertainty, the decline remains modest in magnitude and, as we show next, is accompanied by rising among-individual variability. A body-size response that is real but small and increasingly variable is more compatible with a resource-mediated, plastic mechanism than with a uniform thermoregulatory adjustment.
 
 ## Bill width did not track time, and trait variability rose
 
@@ -142,18 +144,31 @@ the sampled localities, 97% carry a single temperature value regardless of how
 many years they were sampled, so any apparent change over time reflects which
 localities were visited when, not climatic change. We therefore treat warming
 over the study region and period as established by independent climatological
-records and the broader literature [@gardner_declining_2011; @teplitsky_climate_2014],
-and frame our temporal analyses around year as the time axis rather than a
-fitted in-sample temperature trend.
+records and the broader literature [@gardner_declining_2011; @teplitsky_climate_2014].
 
-<!-- [AUTHOR ACTION] If you wish to report an in-sample warming trend, link the
-sampling localities to a gridded time series (e.g., WorldClim/CHELSA monthly or
-CRU TS) by coordinate and year and model temperature ~ year on those values. -->
+To move beyond year as a proxy for climate, we additionally link each record to
+**time-resolved** monthly climate — temperature and precipitation — from
+TerraClimate [@abatzoglou2018terraclimate] (CHELSA [@karger2017chelsa] as an
+alternative) at the record's coordinates and year of capture (`climate_extraction.R`).
+This yields the actual temperature and precipitation experienced by each
+individual, allowing body size to be modelled directly against climate, and
+adding precipitation as a second climatic axis, as in related comparative work.
+
+<!-- [AUTHOR ACTION] Run climate_extraction.R (needs the downloaded TerraClimate
+rasters) and the upgraded `brm_climate` model, then report the temperature- and
+precipitation-body size estimates here in place of the year-only proxy. -->
 
 
 ## Phylogeny
 
-We used species-level Passeriformes trees from a sample of 1,000 topologies built on the Hackett backbone from the @jetz2012global global bird phylogeny (BirdTree.org). We drew a random sample of 50 trees to represent phylogenetic uncertainty and pruned each to the species in our dataset. For models conditioned on a single topology, we constructed a phylogenetic covariance matrix from the first tree by inverting the matrix returned by `MCMCglmm::inverseA` (scaled, tips only). The number of tips in the pruned trees matched the 68 species analysed.
+We obtained species-level trees from the complete and dynamic avian phylogeny of @mctavish2025tree, accessed through the `clootl` R package [@miller2026clootl], which supersedes the earlier @jetz2012global BirdTree (Hackett-backbone) trees used in initial analyses. We retrieved the trees through the `prepR4pcm` package [@nakagawa2026prepr4pcm] and used its four-stage matching cascade (exact, normalised, synonym, and fuzzy matching) to reconcile our species names to the phylogeny's tip labels, auditing every match so that no species was silently dropped, before aligning the trait data to the pruned tree. We drew 50 trees from a pool of 100 to represent phylogenetic uncertainty. For models conditioned on a single topology, we constructed a phylogenetic covariance matrix by inverting the matrix returned by `MCMCglmm::inverseA` (scaled, tips only). To propagate phylogenetic uncertainty, we refitted the model across all 50 trees and pooled estimates across trees using Rubin's rules [@nakagawa2019rubin], reporting Wald–Rubin 95% intervals, rather than naively concatenating posterior draws.
+
+<!-- [AUTHOR ACTION] Wing-length results use the updated clootl/McTavish tree
+(atlantic_parallel.R). Run atlantic_parallel_bill.R to refresh the BILL-WIDTH
+estimates and its phylogenetic-signal value on the same tree/pipeline, then drop
+bill_rubin_summary / mean(bill_sig) into the bill-width paragraph below; its
+current numbers still come from the earlier BirdTree fit. -->
+
 
 ## Body-size and bill-width models
 
@@ -161,13 +176,11 @@ We fitted Bayesian multilevel models in `brms` [@burkner2017brms] with Stan. For
 wing length ~ 1 + sex + scaled year + scaled latitude + (1 + scaled year || species) + (1 | binomial),
 where the `(1 | binomial)` term carried the phylogenetic covariance matrix, the double-bar species term estimated uncorrelated species intercepts and year slopes, sex was included as a fixed effect, and an analogous model for bill width omitted sex. Priors were weakly informative: Normal(71, 15) and Normal(9, 2.5) on the wing- and bill-width intercepts respectively, Normal(0, 10) on regression coefficients, and Half-Cauchy(0, 1) on standard-deviation and residual parameters. Models were run with multiple chains to convergence and assessed with the potential scale-reduction factor (R̂), effective sample sizes, posterior predictive checks, and trace plots. We summarise effects as posterior means with 95% credible intervals, and report the proportion of among-species variance attributable to phylogeny via a derived hypothesis on the variance components.
 
-To handle missing morphological data we used multiple imputation by chained equations (`mice`) [@vanbuuren2011mice], generating completed datasets and refitting the wing-length model across them with `brm_multiple`; we examined missingness patterns and intraclass correlations before imputation. To incorporate phylogenetic uncertainty, we refitted the wing-length model across the 50 sampled trees and combined the posterior draws.
+To handle missing morphological data we used multiple imputation by chained equations (`mice`) [@vanbuuren2011mice], generating completed datasets and refitting the wing-length model across them with `brm_multiple`; we examined missingness patterns and intraclass correlations before imputation. To incorporate phylogenetic uncertainty, we refitted the wing-length model across the 50 sampled trees and pooled the estimates across trees with Rubin's rules [@nakagawa2019rubin].
 
 We use the coalesced wing-length variable as the single body-size response
-throughout. The phylogenetic-uncertainty re-fit reported here predates this
-decision and used right-wing length only; the provided `atlantic_parallel.R`
-script re-fits it on the coalesced variable and should be re-run before final
-submission.
+throughout, including in the phylogenetic-uncertainty analysis
+(`atlantic_parallel.R`).
 
 ## Trait-variability meta-analysis
 

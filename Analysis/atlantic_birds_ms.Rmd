@@ -73,12 +73,13 @@ passer90 <- birds %>%
             scaled_lat = scale(Latitude_decimal_degrees*-1),
             scaled_yr = scale(Year),
             Binomial = gsub(" ", "_", Binomial),
-            Binomial = gsub("Ceratopipra_rubrocapilla", "Pipra_rubrocapilla", Binomial),
-            Binomial = gsub("Myiothlypis_leucoblephara", "Basileuterus_leucoblepharus", Binomial),
-            Binomial = gsub("Myrmoderus_squamosus", "Myrmeciza_squamosa", Binomial),
-            Binomial = gsub("Pyriglena_pernambucensis", "Pyriglena_leuconota", Binomial),
-            Binomial = gsub("Rhopias_gularis", "Myrmotherula_gularis", Binomial),
-            Binomial = gsub("Tangara_sayaca", "Thraupis_sayaca", Binomial),
+            # NOTE: the six manual species-name remaps that used to live here
+            # (Ceratopipra_rubrocapilla -> Pipra_rubrocapilla, etc.) targeted the
+            # OLD BirdTree/Jetz taxonomy and have been REMOVED. Species names are
+            # now reconciled to the (eBird-based) clootl tree by prepR4pcm's
+            # reconcile_tree() in the phylo chunk, which handles synonymy/typos
+            # in an auditable way. The historical mappings are kept as an
+            # override scaffold there in case reconcile flags any of them.
             spp = Binomial # Creating variable for phylo matrix in model later
           ) %>%
           group_by(Binomial) %>%
@@ -441,7 +442,47 @@ summary(m1)
 # The `eval = FALSE` option prevents this chunk from being executed when the document is knitted, as it is time-consuming.
 # The full set of trees is large, so a smaller sample will be processed in the next chunk.
 ```{r phylo, cache=TRUE, eval= FALSE}
-trees <- read.nexus("Hackett_trees.nex")
+# UPGRADE (see CODE_REVIEW.md §A & §D): phylogeny now comes from McTavish et al.
+# (2025), "A complete and dynamic tree of birds", and species/tree matching uses
+# prepR4pcm (Nakagawa, Ortega, Mizuno, Santos et al. 2026), replacing the older
+# Jetz/Hackett trees AND the manual gsub() name remaps in the wrangling chunk.
+# install: pak::pak("itchyshin/prepR4pcm"); install.packages("clootl")
+library(prepR4pcm)
+
+passer90$species_name <- gsub("_", " ", passer90$Binomial)
+
+# ABT (2018) names whose genus/epithet changed in the current eBird/Clements
+# taxonomy; fix BEFORE querying clootl (which errors on names it can't find).
+ebird_synonyms <- c(
+  "Antilophia galeata"       = "Chiroxiphia galeata",
+  "Tachyphonus cristatus"    = "Loriotus cristatus",
+  "Pyrrhocoma ruficeps"      = "Thlypopsis pyrrhocoma",
+  "Pyriglena pernambucensis" = "Pyriglena leuconota",
+  "Tangara sayaca"           = "Thraupis sayaca",
+  "Tangara cayana"           = "Stilpnia cayana",
+  "Tiaris fuliginosus"       = "Asemospiza fuliginosa"
+)
+hit <- passer90$species_name %in% names(ebird_synonyms)
+passer90$species_name[hit] <- ebird_synonyms[passer90$species_name[hit]]
+spp_data <- unique(passer90$species_name)
+
+# (1) retrieve the 100-tree cloud via prepR4pcm's clootl backend.
+# Sampling across trees needs the AvesData repo downloaded once:
+if (!dir.exists("AvesDataLite-main")) clootl::get_avesdata_repo(path = ".")
+# get_avesdata_repo() records AVESDATA_PATH, so clootl finds the repo automatically.
+got   <- pr_get_tree(spp_data, source = "clootl", n_tree = 100, cache = TRUE)
+trees <- got$tree
+
+# (2) reconcile names through the 4-stage cascade (exact -> normalised ->
+#     synonym -> fuzzy), audit, then align data + prune tree. This supersedes
+#     the manual name remaps and the name.check()/drop.tip() chunk below.
+rec     <- reconcile_tree(passer90, trees[[1]], x_species = "species_name",
+                          fuzzy = TRUE, resolve = "flag")
+print(reconcile_summary(rec))
+aligned <- reconcile_apply(rec, data = passer90, tree = trees[[1]],
+                           species_col = "species_name", drop_unresolved = TRUE)
+# The canonical multi-tree fit (prune all 100, subsample 50, fit, Rubin-pool)
+# is implemented in atlantic_parallel.R.
 ```
 
 Chunk to process and save a sample of 50 trees:
@@ -637,6 +678,27 @@ pp_check(brm0)
 
 hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
 (hyp <- hypothesis(brm0, hyp, class = NULL))
+```
+
+## Upgraded model: body size vs. time-resolved climate
+Following the lab's Bergmann/migration manuscript, this model replaces *year* as a proxy with the **actual temperature and precipitation** each bird experienced, extracted per record and year by `climate_extraction.R` (TerraClimate; see CODE_REVIEW.md §B). Year is retained to separate climate tracking from other temporal change. Precipitation is added as a second climatic axis. Not evaluated here (requires the downloaded climate rasters).
+```{r model_climate, cache=TRUE, eval = FALSE}
+passer90_clim <- readRDS("passer90_climate.rds")
+
+brm_climate <- brm(conc.wing.length ~ 1 + Sex + scaled_tmean + scaled_ppt + scaled_lat + scaled_yr +
+            (1 + scaled_tmean || spp) + (1 | gr(Binomial, cov = A)),
+            data = passer90_clim,
+            data2 = list(A = A),
+            family = gaussian,
+            prior = c(prior(normal(71, 15), class = Intercept),
+                      prior(normal(0, 10), class = b),
+                      prior(cauchy(0, 1), class = sd),
+                      prior(cauchy(0, 1), class = sigma)),
+            iter = 2000, warmup = 1000, chains = 4, cores = 4,
+            control = list(max_treedepth = 12, adapt_delta = 0.95))
+
+save(brm_climate, file = "brm_climate.rda")
+summary(brm_climate)
 ```
 
 ## brm model of bill width
