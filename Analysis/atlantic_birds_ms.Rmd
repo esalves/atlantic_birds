@@ -24,14 +24,30 @@ Based on a large scale analysis of Neotropical passerines that inhabit the Brazi
 > Paragraph to talk about the main finding of this study in relation to body size and climate change. For *Nature Climate Change* remember to combine results and some methods so that readers understand what you did.
 
 # Methods
+
+## Pipeline switches
+The document knits top-to-bottom with no manual chunk running. By **default** it is
+fast and reproducible: heavy Bayesian models are *not* re-fit at knit — instead the
+pre-computed objects from `atlantic_parallel.R` (wing), `atlantic_parallel_bill.R`
+(bill), and the arthropod fit chunks are loaded and summarised. Flip a switch below
+to `TRUE` to regenerate that piece during the knit (slower; needs the extra packages).
+```{r config, include=FALSE}
+REFRESH_PREDICTS <- FALSE   # re-download PREDICTS via predictsr and rebuild dat_test.rds
+REFIT_ARTHROPODS <- FALSE   # refit the three negative-binomial arthropod models
+                            # (set TRUE together with REFRESH_PREDICTS to refit on the fresh data)
+RUN_CLIMATE      <- FALSE   # fit the in-document time-resolved climate model.
+# RUN_CLIMATE = TRUE requires passer90_climate.rds (run climate_extraction.R
+# first) and triggers the phylogeny chunk to build the covariance matrix A
+# (downloads the clootl tree). The reported wing/bill results are ALWAYS loaded
+# from the script outputs (*_multiphylo.rda) regardless of these switches —
+# refit those by running the scripts, not at knit.
+```
+
 ## Load libraries
-# This chunk loads all the necessary R packages for the analysis.
-# These packages are used for data manipulation (tidyverse, data.table, reshape2),
-# plotting (ggthemes), and statistical modeling (brms, lme4, ape, geiger, MCMCglmm, mice, tidybayes, metafor).
-```{r libraries, echo=TRUE,cache=FALSE, message=FALSE}
-library("tidyverse")
-library("ggthemes") 
-library("brms")
+```{r libraries, echo=TRUE, cache=FALSE, message=FALSE}
+library("tidyverse")    # dplyr/ggplot2/tibble (provides %>%) used throughout
+library("ggthemes")
+library("brms")         # also re-exports as_draws_df(), hypothesis()
 library("lme4")
 library("ape")
 library("geiger")
@@ -40,7 +56,8 @@ library("mice")
 library("tidybayes")
 library("reshape2")
 library("data.table")
-library('metafor')
+library("metafor")
+if (REFRESH_PREDICTS) library("predictsr")   # only needed when refreshing PREDICTS
 ```
 
 ## Load data
@@ -213,25 +230,31 @@ All other species in the **wing length** dataset have at least some invertebrate
 
 # Plots
 ## Plotting map of sample locations
-```{r maps_birds, cache=TRUE, message = FALSE}
-library("ggmap")
-
-bbox <- make_bbox(passer90$Longitude_decimal_degrees, passer90$Latitude_decimal_degrees, f = 0.01)
-map <- get_map(bbox, source = 'osm', color = 'bw')
-
-# I want to plot only the 1st and 3rd quartile of Years in the map:
+```{r maps_birds, cache=TRUE, message = FALSE, warning = FALSE}
+# Plot only the 1st and 3rd quartile of years:
 passer.quart.years <- passer90 %>%
-  filter(Year <= 2006 | Year >=2013)
-
+  filter(Year <= 2006 | Year >= 2013)
 passer.quart.years$period <- ifelse(passer.quart.years$Year <= 2006, '1990-2006', '2013-2018')
+pts_dat <- remove_missing(passer.quart.years, vars = "conc.wing.length")
 
-points <- ggmap(map) + 
-            geom_point(aes(x = Longitude_decimal_degrees, y = Latitude_decimal_degrees, colour = conc.wing.length), data = remove_missing(passer.quart.years, vars = "conc.wing.length"), alpha = .5) +
-            scale_color_viridis_c(option = "plasma")+
-            labs(title = "Localities of passerine records",
-                 x = "Longitude (decimal degrees)",
-                 y = "Latitude (decimal degrees)") +
-            facet_wrap(~period)
+# Try to draw an OSM basemap, but DON'T let a network/API failure break the knit:
+# fall back to a plain longitude/latitude scatter if the basemap can't be fetched.
+basemap <- tryCatch({
+  suppressMessages(require(ggmap))
+  bbox <- ggmap::make_bbox(passer90$Longitude_decimal_degrees,
+                           passer90$Latitude_decimal_degrees, f = 0.01)
+  ggmap::get_map(bbox, source = "osm", color = "bw")
+}, error = function(e) NULL)
+
+base_layer <- if (!is.null(basemap)) ggmap::ggmap(basemap) else ggplot()
+
+points <- base_layer +
+  geom_point(aes(x = Longitude_decimal_degrees, y = Latitude_decimal_degrees,
+                 colour = conc.wing.length), data = pts_dat, alpha = .5) +
+  scale_color_viridis_c(option = "plasma") +
+  labs(title = "Localities of passerine records",
+       x = "Longitude (decimal degrees)", y = "Latitude (decimal degrees)") +
+  facet_wrap(~period)
 
 points
 ```
@@ -441,7 +464,10 @@ summary(m1)
 # These trees represent the evolutionary relationships among the bird species and are used to account for phylogenetic non-independence in the models.
 # The `eval = FALSE` option prevents this chunk from being executed when the document is knitted, as it is time-consuming.
 # The full set of trees is large, so a smaller sample will be processed in the next chunk.
-```{r phylo, cache=TRUE, eval= FALSE}
+```{r phylo, cache=TRUE, eval= RUN_CLIMATE}
+# Builds the analysis frame `dat` and covariance matrix `A`. At knit this runs
+# only when RUN_CLIMATE = TRUE (the in-document climate model needs A); run it
+# interactively any time you want the exploratory single-tree models below.
 # UPGRADE (see CODE_REVIEW.md §A & §D): phylogeny now comes from McTavish et al.
 # (2025), "A complete and dynamic tree of birds", and species/tree matching uses
 # prepR4pcm (Nakagawa, Ortega, Mizuno, Santos et al. 2026), replacing the older
@@ -668,7 +694,7 @@ pp_check(brm0)
 
 ## Upgraded model: body size vs. time-resolved climate
 Following the lab's Bergmann/migration manuscript, this model replaces *year* as a proxy with the **actual temperature and precipitation** each bird experienced, extracted per record and year by `climate_extraction.R` (TerraClimate; see CODE_REVIEW.md §B). Year is retained to separate climate tracking from other temporal change. Precipitation is added as a second climatic axis. Not evaluated here (requires the downloaded climate rasters).
-```{r model_climate, cache=TRUE, eval = FALSE}
+```{r model_climate, cache=TRUE, eval = RUN_CLIMATE}
 # EXPLORATORY extension (eval = FALSE). Run climate_extraction.R on the RECONCILED
 # frame `dat` so the climate frame carries species_name matching A (apply the same
 # ebird_synonyms / reconciliation before extracting climate).
@@ -806,13 +832,12 @@ hyp <- "sd_species_name__Intercept^2 / (sd_species_name__Intercept^2 + sd_spp__I
 # NOTE: the original analysis used the 2016 release only; predictsr now returns
 # 2016 + 2022 combined (more data), so re-running may shift the estimates
 # slightly. To reproduce the 2016-only result, filter on the release/source year.
-```{r load_predicts_main, cache=TRUE, eval=FALSE}
-library(predictsr)
+```{r load_predicts_main, cache=TRUE, eval=REFRESH_PREDICTS}
 dat <- LoadPredictsData("predicts_extract.rds")  # downloads + caches to this file; reused on later runs
 ```
 
 Subsetting PREDICTS dataset to Brazil and Insecta + Arachnida classes only:
-```{r subset_predicts, cache=TRUE, eval=FALSE}
+```{r subset_predicts, cache=TRUE, eval=REFRESH_PREDICTS}
 # Playing with data from WHOLE Brazil to see what is going on:
 dat_test <- dat %>%
         filter(Phylum == "Arthropoda", Diversity_metric_type == "Abundance", UN_subregion == "South America", Class %in% c("Insecta", "Arachnida")) %>%
@@ -851,7 +876,7 @@ g_test
 
 ## Arthropod abundance brm model
 Negative binomial model with offset to investigate the relationship between the predictor **year** and the response (count) abundance of arthropods in Brazil.
-```{r brm_arthro_abund, cache=TRUE, eval=FALSE}
+```{r brm_arthro_abund, cache=TRUE, eval=REFIT_ARTHROPODS}
 start_time <- Sys.time()
 brm1 <-
   brm(data = dat_test, family = negbinomial,
@@ -892,7 +917,7 @@ save(dat_no_ants, file = "dat_no_ants.rds")
 ```
 
 Model with no ant abundance:
-```{r brm_arthro_abund_no_ants, cache=TRUE, eval=FALSE}
+```{r brm_arthro_abund_no_ants, cache=TRUE, eval=REFIT_ARTHROPODS}
 start_time <- Sys.time()
 brm_no_ants <-
   brm(data = dat_no_ants, family = negbinomial,
@@ -934,7 +959,7 @@ save(dat_no_grassland, file = "dat_no_grassland.rds")
 
 ## Arthropod abundance model without ants and excluding open biomes
 Model with no ant abundance and excluding grasslands/open biomes:
-```{r brm_arthro_abund_no_ants_no_grass, cache=TRUE, eval=FALSE}
+```{r brm_arthro_abund_no_ants_no_grass, cache=TRUE, eval=REFIT_ARTHROPODS}
 load("dat_no_grassland.rds")
 
 start_time <- Sys.time()
