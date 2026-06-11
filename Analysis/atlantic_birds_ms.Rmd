@@ -481,41 +481,25 @@ rec     <- reconcile_tree(passer90, trees[[1]], x_species = "species_name",
 print(reconcile_summary(rec))
 aligned <- reconcile_apply(rec, data = passer90, tree = trees[[1]],
                            species_col = "species_name", drop_unresolved = TRUE)
-# The canonical multi-tree fit (prune all 100, subsample 50, fit, Rubin-pool)
-# is implemented in atlantic_parallel.R.
+
+# Analysis frame + a single representative covariance matrix A, using the SAME
+# conventions as atlantic_parallel.R (species_name grouping, underscored tips,
+# ultrametric). Any single-tree exploratory model below uses `dat` and `A`.
+library(phytools)
+dat <- aligned$data
+dat$species_name <- gsub(" ", "_", dat$species_name); dat$spp <- dat$species_name
+rep_tree <- aligned$tree; rep_tree$tip.label <- gsub(" ", "_", rep_tree$tip.label)
+if (!ape::is.ultrametric(rep_tree)) rep_tree <- phytools::force.ultrametric(rep_tree, method = "nnls")
+inv.phylo <- inverseA(rep_tree, nodes = "TIPS", scale = TRUE)
+A <- solve(inv.phylo$Ainv); rownames(A) <- rownames(inv.phylo$Ainv)
+
+# CANONICAL, REPORTED phylogenetic results = the 50-tree, Rubin-pooled fits from
+# atlantic_parallel.R (wing) and atlantic_parallel_bill.R (bill); their saved
+# outputs are loaded and summarised in the results chunks further below. The
+# single-tree model chunks here are EXPLORATORY only (all eval = FALSE).
 ```
 
-Chunk to process and save a sample of 50 trees:
-```{r tree_sample, cache=TRUE, eval=FALSE}
-namecheck_passer <- name.check(trees[[1]], year_range) # checking which species are in the phylogeny but not in our data frame
-
-# namecheck_subset <- namecheck_passer$tree_not_data[grep("Thraupis", namecheck_passer$tree_not_data)] # Code to check if the species is available in the phylogeny under a different (synonim) genus name.
-
-set.seed(20240101) # FIX: set a seed so the sampled trees (and downstream results) are reproducible
-tree_samp <- sample(trees, size = 50) # Sampling 50 trees from the 1000 file. This is enough for the phylogenetic uncertainty.
-
-trees_passer <- lapply(tree_samp, drop.tip, namecheck_passer$tree_not_data) # pruning these species from all the 50 trees
-
-class(trees_passer) <- "multiPhylo"
-
-nrow(year_range) # number of species for which we have complete data
-length(trees_passer[[1]]$tip.label) # number of tips in the phylogenic trees
-
-save(trees_passer, file = "trees_passer.rda")
-
-
-rm(list = c("trees", "year_range", "by_binomial", "tree_samp", "namecheck_passer")) # remove objects that aren't needed anymore
-```
-
-Load multiphylo file with 50 sampled trees:
-```{r load_multiphylo, cache=TRUE}
-# The phylo object contains information on the relationship between species. Using this information, we can construct a covariance matrix of species.
-load("trees_passer.rda")
-inv.phylo <- inverseA(trees_passer[[1]], nodes = "TIPS", scale = TRUE)
-A <- solve(inv.phylo$Ainv)
-rownames(A) <- rownames(inv.phylo$Ainv)
-
-```
+> **Superseded.** The old workflow here sampled 50 Jetz/BirdTree trees with `name.check()` + `drop.tip()` and saved `trees_passer.rda`. That is replaced by the prepR4pcm reconciliation above (`reconcile_apply()` aligns data and tree and prunes in one auditable step) and by the multi-tree fitting in `atlantic_parallel.R`. The covariance matrix `A` and analysis frame `dat` are now built in the phylogeny chunk above, so no separate `name.check`/`load("trees_passer.rda")` step is needed.
 
 
 ## Multiple imputation wing length
@@ -621,12 +605,15 @@ save(passer90_imp4a, file = "passer90_imp4a.rda")
 ### Multilevel models with imputed data and phylogeny
 Here is a multi-level Bayesian model of the response variable *Wing length* including the phylogeny of the species in question. If I run with the original data set, even though we have over 14k entries, there are only 4.6k complete entries that **brm** will use to estimate parameters. This model is running over the imputed dataset passer90_imp4a:
 ```{r model_phylo_imp, cache=TRUE, eval = FALSE}
-load("passer90_imp4a.rda")
+# EXPLORATORY (eval = FALSE). The REPORTED wing result is the 50-tree,
+# Rubin-pooled fit from atlantic_parallel.R. To run this consistently, impute the
+# RECONCILED frame `dat` (so names match A's species_name), not the old passer90.
+imp <- mice::mice(dat, print = FALSE, seed = 20240101)
 
 start_time <- Sys.time()
-brm.imputed <- brm_multiple(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(Binomial, cov = A)),
-            data2 = list(A = A), # FIX: cov_ranef is deprecated/removed in current brms; pass the phylo covariance matrix via data2 and gr(..., cov = A) in the formula
-            data = passer90_imp4a,
+brm.imputed <- brm_multiple(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(species_name, cov = A)),
+            data2 = list(A = A),
+            data = imp,
             family = gaussian,
             prior = c(prior(normal(71, 15), class = Intercept),
                       prior(normal(0, 10), class = b),
@@ -644,10 +631,12 @@ save(brm.imputed, file = "brm_imputed.rda")
 ## brm model of wing length
 I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data. Glauco made some comments that I have to check^[Glauco's comments on July 04 2019: 1. Uni ou biparental??? 2. What is the physiological response of birds to an increase in air temperature? Should they react by reducing body size in order to dissipate heat better. 3. Estimate the heritability of wing length. Look up the average generation time for passerine birds. Estimate what is the selection differential on wing length over the period of the data. 4. I thought later about migratory status of the birds. Should I include it in the analysis?]
 ```{r model_phylo, cache=TRUE, eval = FALSE}
+# EXPLORATORY single-consensus-tree fit (eval = FALSE). The REPORTED wing result
+# is the 50-tree, Rubin-pooled fit from atlantic_parallel.R (loaded below).
 start_time <- Sys.time()
-brm0 <- brm(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(Binomial, cov = A)),
-            data2 = list(A = A), # FIX: cov_ranef is deprecated/removed in current brms; pass the phylo covariance matrix via data2 and gr(..., cov = A) in the formula
-            data = passer90,
+brm0 <- brm(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(species_name, cov = A)),
+            data2 = list(A = A),
+            data = dat,
             family = gaussian,
             prior = c(prior(normal(71, 15), class = Intercept),
                       prior(normal(0, 10), class = b),
@@ -664,29 +653,29 @@ end_time <- Sys.time();end_time - start_time
 save(brm0, file = "brm0.rda")
 ```
 
-Summary and model convergence checks:
-```{r model_summary, cache=TRUE}
+Summary and convergence checks for the exploratory single-tree fit (the
+`brm0.rda` here is the older single-consensus-tree object; the REPORTED result is
+the multi-tree summary further below). Not run at knit.
+```{r model_summary, cache=TRUE, eval=FALSE}
 load("brm0.rda")
 
 summary(brm0)
 
 mcmc_plot(brm0)
-#brms::launch_shinystan(brm0)
-plot(brm0)
 plot(conditional_effects(brm0))
 pp_check(brm0)
-
-hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
-(hyp <- hypothesis(brm0, hyp, class = NULL))
 ```
 
 ## Upgraded model: body size vs. time-resolved climate
 Following the lab's Bergmann/migration manuscript, this model replaces *year* as a proxy with the **actual temperature and precipitation** each bird experienced, extracted per record and year by `climate_extraction.R` (TerraClimate; see CODE_REVIEW.md §B). Year is retained to separate climate tracking from other temporal change. Precipitation is added as a second climatic axis. Not evaluated here (requires the downloaded climate rasters).
 ```{r model_climate, cache=TRUE, eval = FALSE}
+# EXPLORATORY extension (eval = FALSE). Run climate_extraction.R on the RECONCILED
+# frame `dat` so the climate frame carries species_name matching A (apply the same
+# ebird_synonyms / reconciliation before extracting climate).
 passer90_clim <- readRDS("passer90_climate.rds")
 
 brm_climate <- brm(conc.wing.length ~ 1 + Sex + scaled_tmean + scaled_ppt + scaled_lat + scaled_yr +
-            (1 + scaled_tmean || spp) + (1 | gr(Binomial, cov = A)),
+            (1 + scaled_tmean || spp) + (1 | gr(species_name, cov = A)),
             data = passer90_clim,
             data2 = list(A = A),
             family = gaussian,
@@ -702,21 +691,23 @@ summary(brm_climate)
 ```
 
 ## brm model of bill width
-I will keep this full model here for a while. I will run the model from the chunk above as a test model with the multiple imputation data.
-```{r model_phylo_gape, cache=TRUE, eval=TRUE}
+EXPLORATORY single-consensus-tree bill model (eval = FALSE). The REPORTED bill
+result is the 50-tree, Rubin-pooled fit from `atlantic_parallel_bill.R` (loaded
+in the bill results chunk below).
+```{r model_phylo_gape, cache=TRUE, eval=FALSE}
 # Defining the priors to use in the gape model:
 start_time <- Sys.time()
-brm0.gape <- brm(Bill_width.mm. ~ 1 + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(Binomial, cov = A)),
-            data2 = list(A = A), # FIX: cov_ranef is deprecated/removed in current brms; pass the phylo covariance matrix via data2 and gr(..., cov = A) in the formula
-            data = passer90,
+brm0.gape <- brm(Bill_width.mm. ~ 1 + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(species_name, cov = A)),
+            data2 = list(A = A),
+            data = dat,
             family = gaussian,
             prior = c(prior(normal(9, 2.5), class = Intercept),
                       prior(normal(0, 10), class = b),
                       prior(cauchy(0, 1), class = sd),
                       prior(cauchy(0, 1), class = sigma)),
-            iter = 1500, 
-            warmup = 1000, 
-            chains = 2, 
+            iter = 1500,
+            warmup = 1000,
+            chains = 2,
             cores = 2
             )
 end_time <- Sys.time();end_time - start_time
@@ -724,20 +715,14 @@ end_time <- Sys.time();end_time - start_time
 save(brm0.gape, file = "brm0.gape.model.rda")
 ```
 
-Summary and model convergence checks:
-```{r model_summary_gape, cache=FALSE}
-load("brm0.gape.model.rda")
+### Bill-width results (reported): 50-tree, Rubin-pooled fit
+Loads the output of `atlantic_parallel_bill.R`.
+```{r bill_results_multiphylo, cache=TRUE}
+load("brm_bill_multiphylo.rda")   # provides: bill_fits, bill_rubin_summary, bill_sig
 
-summary(brm0.gape)
-
-#mcmc_plot(brm0.gape)
-#brms::launch_shinystan(brm0)
-#plot(brm0.gape)
-plot(conditional_effects(brm0.gape))
-#pp_check(brm0.gape)
-
-hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
-(hyp <- hypothesis(brm0.gape, hyp, class = NULL))
+bill_rubin_summary                # pooled fixed effects (Wald–Rubin 95% CI)
+# pooled phylogenetic signal across the 50 trees:
+round(c(mean = mean(bill_sig), lwr = quantile(bill_sig, .025), upr = quantile(bill_sig, .975)), 3)
 ```
 
 
@@ -745,37 +730,29 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 I asked Ari to run the multilevel model of **Wing length** on the server so that we could run the model over a sample of 50 tree topologies, in order to incorporate phylogenetic uncertainty. The code to run that model is in the file *atlantic_parallel.R* (included in the repository). We saved the results of this run as a list of 50 per-tree fits in **brm0_multiphylo.rda**. Below, I load this file to check its summary and diagnostics.
 
 ```{r model_summary_multi_phylo, cache=TRUE}
-# FIX: removed hardcoded absolute path. This file is the list of 50 per-tree
-# model fits produced by atlantic_parallel.R on the server. Save it in the repo
-# under a name that does NOT clash with the single-tree brm0.rda above.
+# Output of atlantic_parallel.R: fits (50 per-tree brmsfit objects),
+# rubin_summary (Wald–Rubin pooled fixed effects), and clootl_version.
 load("brm0_multiphylo.rda")
 
-brm_multi_phylo <- combine_models(mlist = brm0)
-summary(brm_multi_phylo)
+rubin_summary                     # REPORTED wing-length fixed effects (pooled across trees)
 
+# pooled phylogenetic signal (proportion of variance) across the 50 trees:
+wing_sig <- sapply(fits, function(f)
+  hypothesis(f,
+    "sd_species_name__Intercept^2 / (sd_species_name__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0",
+    class = NULL)$hypothesis$Estimate)
+round(c(mean = mean(wing_sig), lwr = quantile(wing_sig, .025), upr = quantile(wing_sig, .975)), 3)
+```
 
-mcmc_plot(brm_multi_phylo)
-#brms::launch_shinystan(brm0)
-plot(brm_multi_phylo)
-plot(conditional_effects(brm_multi_phylo))
-pp_check(brm_multi_phylo)
-
-hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sd_spp__scaled_yr^2 + sigma^2) = 0"
-(hyp <- hypothesis(brm_multi_phylo, hyp, class = NULL))
-
-post <- as_draws_df(brm_multi_phylo) # FIX: posterior_samples() is deprecated; use as_draws_df()
-
-beta_yr_ef <- 
-  post %>% 
-  transmute(beta_yr_ef = b_scaled_yr)
-
+Posterior of the year effect, pooled across the 50 per-tree fits:
+```{r year_effect_density, cache=TRUE}
 require("tidybayes")
+beta_yr <- unlist(lapply(fits, function(f) as_draws_df(f)$b_scaled_yr))
 
-beta_yr_ef %>%
+tibble::tibble(beta_yr_ef = beta_yr) %>%
   ggplot(aes(x = beta_yr_ef)) +
-  geom_density(linewidth = 0, fill = "royalblue") + # FIX: size= -> linewidth= for ggplot2 >= 3.4
-  stat_pointinterval(aes(y = 0), # FIX: stat_pointintervalh() is deprecated; stat_pointinterval() handles horizontal intervals
-                      point_interval = mode_hdi, .width = .89) +
+  geom_density(linewidth = 0, fill = "royalblue") +
+  stat_pointinterval(aes(y = 0), point_interval = mode_hdi, .width = .89) +
   scale_y_continuous(NULL, breaks = NULL) +
   labs(x = "Year effect (centred/scaled)") +
   theme_classic()
@@ -783,10 +760,13 @@ beta_yr_ef %>%
 
 Here is a multi-level Bayesian model of the response variable *Body mass* including the phylogeny of the species in question. I want to try using the *get_prior()* function the next time I run this model^[https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/missing-data-and-other-opportunities.html]. Right now, I won't evaluate this chunk, to save time. I will run the code locally and just past the results from a local **brms** run.
 ```{r model_phylo_mass, cache=TRUE, eval= FALSE}
+# EXPLORATORY (eval = FALSE): body mass is not part of the main analysis. Uses the
+# same synced conventions (dat, species_name, A). For a reported result it would
+# need the multi-tree treatment in atlantic_parallel.R.
 start_time <- Sys.time()
-brm1 <- brm(Body_mass.g. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(Binomial, cov = A)),
-            data2 = list(A = A), # FIX: cov_ranef is deprecated/removed in current brms; pass the phylo covariance matrix via data2 and gr(..., cov = A) in the formula
-            data = passer90,
+brm1 <- brm(Body_mass.g. ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | gr(species_name, cov = A)),
+            data2 = list(A = A),
+            data = dat,
             family = gaussian,
             prior = c(prior(normal(71, 15), class = Intercept),
                       prior(normal(0, 10), class = b),
@@ -807,7 +787,7 @@ mcmc_plot(brm1)
 plot(conditional_effects(brm1), points = TRUE)
 pp_check(brm1)
 
-hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept^2 + sigma^2) = 0"
+hyp <- "sd_species_name__Intercept^2 / (sd_species_name__Intercept^2 + sd_spp__Intercept^2 + sigma^2) = 0"
 (hyp <- hypothesis(brm1, hyp, class = NULL))
 
 ```
@@ -817,13 +797,18 @@ hyp <- "sd_Binomial__Intercept^2 / (sd_Binomial__Intercept^2 + sd_spp__Intercept
 # This section of the analysis investigates the temporal trend in arthropod abundance, which is a potential driver of the observed changes in bird body size.
 # The data for this analysis comes from the PREDICTS project, a large database of biodiversity records.
 
-# This chunk is intended to load the full PREDICTS dataset.
-# The original file path has been removed as it was a local path.
-# To run this chunk, you will need to download the PREDICTS database and provide the correct path to the CSV file.
-# The `eval = FALSE` option prevents this chunk from running automatically.
+# This chunk loads the full PREDICTS dataset via the official `predictsr` package
+# (Duffin, Biodiversity Futures Lab), which downloads the open-access extract
+# (2016 + 2022 releases) straight from the NHM Data Portal API and caches it —
+# no manual CSV download or local path needed. install.packages("predictsr").
+# eval = FALSE because the first call downloads a large file; run it once and the
+# cached copy (and chunk cache) are reused thereafter.
+# NOTE: the original analysis used the 2016 release only; predictsr now returns
+# 2016 + 2022 combined (more data), so re-running may shift the estimates
+# slightly. To reproduce the 2016-only result, filter on the release/source year.
 ```{r load_predicts_main, cache=TRUE, eval=FALSE}
-# Please download the PREDICTS database and replace the file path below
-dat <- read_csv("path/to/your/predicts/database.csv", guess_max = 70000)
+library(predictsr)
+dat <- LoadPredictsData("predicts_extract.rds")  # downloads + caches to this file; reused on later runs
 ```
 
 Subsetting PREDICTS dataset to Brazil and Insecta + Arachnida classes only:
@@ -866,9 +851,9 @@ g_test
 
 ## Arthropod abundance brm model
 Negative binomial model with offset to investigate the relationship between the predictor **year** and the response (count) abundance of arthropods in Brazil.
-```{r brm_arthro_abund, cache=TRUE}
+```{r brm_arthro_abund, cache=TRUE, eval=FALSE}
 start_time <- Sys.time()
-brm1 <- 
+brm1 <-
   brm(data = dat_test, family = negbinomial,
       Measurement ~ 1 + offset(log_sampling) + scaled_yr,
       prior = c(prior(normal(0, 10), class = Intercept),
@@ -907,9 +892,9 @@ save(dat_no_ants, file = "dat_no_ants.rds")
 ```
 
 Model with no ant abundance:
-```{r brm_arthro_abund_no_ants, cache=TRUE}
+```{r brm_arthro_abund_no_ants, cache=TRUE, eval=FALSE}
 start_time <- Sys.time()
-brm_no_ants <- 
+brm_no_ants <-
   brm(data = dat_no_ants, family = negbinomial,
       Measurement ~ 1 + offset(log_sampling) + scaled_yr,
       prior = c(prior(normal(0, 10), class = Intercept),
@@ -949,11 +934,11 @@ save(dat_no_grassland, file = "dat_no_grassland.rds")
 
 ## Arthropod abundance model without ants and excluding open biomes
 Model with no ant abundance and excluding grasslands/open biomes:
-```{r brm_arthro_abund_no_ants_no_grass, cache=TRUE}
+```{r brm_arthro_abund_no_ants_no_grass, cache=TRUE, eval=FALSE}
 load("dat_no_grassland.rds")
 
 start_time <- Sys.time()
-brm_no_ants_no_grass <- 
+brm_no_ants_no_grass <-
   brm(data = dat_no_grassland, family = negbinomial,
       Measurement ~ 1 + offset(log_sampling) + scaled_yr,
       prior = c(prior(normal(0, 10), class = Intercept),

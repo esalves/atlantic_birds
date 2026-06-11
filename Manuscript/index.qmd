@@ -77,9 +77,8 @@ Decisions already applied (see CODE_REVIEW.md):
     warming. Warming over the period is instead established from the literature.
 
 Still needs you:
-  - Run atlantic_parallel_bill.R to refresh the BILL-WIDTH numbers on the clootl
-    tree/pipeline (its numbers still come from the old BirdTree fit).
-  - Regenerate Figure 4 (arthropods) — PREDICTS database is not in the repo.
+  - Regenerate Figure 4 (arthropods): run the arthropod chunks — PREDICTS now
+    auto-downloads via the predictsr package (no manual CSV needed).
   - Add the repository archive DOI in Data & code availability.
 Search for [AUTHOR ACTION] for the remaining inline items.
 Figures 1–3 are real, generated from the data by make_figures.py.
@@ -110,7 +109,7 @@ Although now statistically clear and robust to phylogenetic uncertainty, the dec
 
 ## Bill width did not track time, and trait variability rose
 
-In contrast to wing length, bill width showed no directional change over time (β = 0.11, 95% CrI −0.05 to 0.26; N = 4,232) and a weaker phylogenetic signal (proportion = 0.46, 95% CrI 0.20 to 0.68); like wing length, it declined with our latitude index (β = −0.37, 95% CrI −0.47 to −0.28). The quartile comparison again agreed in direction, with most species (38 of 60) showing wider mean bills in the later period.
+In contrast to wing length, bill width showed no directional change over time (β = 0.11, 95% CI −0.03 to 0.26; N = 4,223) and a weaker phylogenetic signal (proportion = 0.55, 95% CI 0.49 to 0.62); like wing length, it declined with our latitude index (β = −0.38, 95% CI −0.47 to −0.28). The quartile comparison again agreed in direction, with most species (38 of 60) showing wider mean bills in the later period.
 
 To ask whether birds became not just smaller but more variable, we computed the log coefficient-of-variation ratio (lnCVR) between the late and early periods for each species and combined them in random-effects meta-analyses [@nakagawa2015metaanalysis]. Among-individual variability in wing length increased significantly in the recent period (lnCVR = 0.25, 95% CI 0.10 to 0.39; k = 63; I² = 94.6%), whereas variability in bill width did not change detectably (lnCVR = −0.04, 95% CI −0.24 to 0.16; k = 53; @fig-variability). Rising phenotypic variability in the trait that also declined in mean is consistent with a population in which individuals respond unequally to a deteriorating environment, rather than with a coordinated shift toward a new optimum.
 
@@ -120,7 +119,7 @@ To ask whether birds became not just smaller but more variable, we computed the 
 
 If body-size change in these largely insectivorous birds is mediated by food rather than temperature, the abundance of their invertebrate prey should have declined over the study period. Using the PREDICTS database [@hudson2017database], we modelled the abundance of Insecta and Arachnida recorded across South America with negative-binomial models that included sampling effort as an offset (Methods). Arthropod abundance declined markedly with time (standardized year effect β = −0.25, 95% CrI −0.29 to −0.22; N = 76,471 records), equivalent to a multiplicative change of 0.78 (95% CrI 0.75 to 0.80) per standard-deviation increase in year (@fig-arthropods). Because Atlantic Forest passerines are not known to depredate ants, we repeated the analysis excluding Formicidae, which strengthened the decline (β = −0.47, 95% CrI −0.53 to −0.41; multiplicative 0.62 per SD-year; N = 46,505); restricting further to forested biomes gave a near-identical result (β = −0.49, 95% CrI −0.55 to −0.43; N = 45,079). The decline in arthropod prey is therefore robust to the exclusion of ants and of open-habitat records.
 
-![Abundance of Insecta and Arachnida in the PREDICTS database across South America as a function of time, with the fitted negative-binomial trend. *Placeholder — the PREDICTS database is not in the repository; regenerate from `atlantic_birds_ms.Rmd` chunk `plot_arthro_abund` and the fitted-model conditional effects once PREDICTS is available.*](images/fig-arthropods.png){#fig-arthropods}
+![Abundance of Insecta and Arachnida in the PREDICTS database across South America as a function of time, with the fitted negative-binomial trend. *Placeholder — regenerate from `atlantic_birds_ms.Rmd` (the `predictsr` data-load chunk now downloads PREDICTS automatically, then run `plot_arthro_abund` and the fitted-model conditional effects).*](images/fig-arthropods.png){#fig-arthropods}
 
 ## Synthesis
 
@@ -163,11 +162,9 @@ precipitation-body size estimates here in place of the year-only proxy. -->
 
 We obtained species-level trees from the complete and dynamic avian phylogeny of @mctavish2025tree, accessed through the `clootl` R package [@miller2026clootl], which supersedes the earlier @jetz2012global BirdTree (Hackett-backbone) trees used in initial analyses. We retrieved the trees through the `prepR4pcm` package [@nakagawa2026prepr4pcm] and used its four-stage matching cascade (exact, normalised, synonym, and fuzzy matching) to reconcile our species names to the phylogeny's tip labels, auditing every match so that no species was silently dropped, before aligning the trait data to the pruned tree. We drew 50 trees from a pool of 100 to represent phylogenetic uncertainty. For models conditioned on a single topology, we constructed a phylogenetic covariance matrix by inverting the matrix returned by `MCMCglmm::inverseA` (scaled, tips only). To propagate phylogenetic uncertainty, we refitted the model across all 50 trees and pooled estimates across trees using Rubin's rules [@nakagawa2019rubin], reporting Wald–Rubin 95% intervals, rather than naively concatenating posterior draws.
 
-<!-- [AUTHOR ACTION] Wing-length results use the updated clootl/McTavish tree
-(atlantic_parallel.R). Run atlantic_parallel_bill.R to refresh the BILL-WIDTH
-estimates and its phylogenetic-signal value on the same tree/pipeline, then drop
-bill_rubin_summary / mean(bill_sig) into the bill-width paragraph below; its
-current numbers still come from the earlier BirdTree fit. -->
+<!-- Both wing- and bill-width models now use the updated clootl/McTavish tree
+with prepR4pcm reconciliation and Rubin's-rules pooling across 50 trees
+(atlantic_parallel.R and atlantic_parallel_bill.R). -->
 
 
 ## Body-size and bill-width models
@@ -194,7 +191,7 @@ independent re-computation from the raw data reproduced the meta-analytic mean
 
 ## Arthropod abundance
 
-We obtained invertebrate abundance records from the PREDICTS database [@hudson2017database], retaining Arthropoda of the classes Insecta and Arachnida with abundance-type diversity metrics in South America. We modelled raw counts with negative-binomial regression in `brms`, including the natural log of sampling effort as an offset and scaled year as the predictor, with weakly informative priors (Normal(0, 10) on the intercept, Normal(0, 1) on the year coefficient, and the default Gamma(0.01, 0.01) on the shape parameter). We assessed sensitivity by excluding ants (Formicidae), which Atlantic Forest passerines do not typically depredate, and by further restricting to forested biomes. Coefficients are reported on the standardized-year scale and as exponentiated multiplicative effects.
+We obtained invertebrate abundance records from the PREDICTS database [@hudson2017database], accessed through the `predictsr` package [@duffin2025predictsr], retaining Arthropoda of the classes Insecta and Arachnida with abundance-type diversity metrics in South America. We modelled raw counts with negative-binomial regression in `brms`, including the natural log of sampling effort as an offset and scaled year as the predictor, with weakly informative priors (Normal(0, 10) on the intercept, Normal(0, 1) on the year coefficient, and the default Gamma(0.01, 0.01) on the shape parameter). We assessed sensitivity by excluding ants (Formicidae), which Atlantic Forest passerines do not typically depredate, and by further restricting to forested biomes. Coefficients are reported on the standardized-year scale and as exponentiated multiplicative effects.
 
 ## Data and code availability
 
