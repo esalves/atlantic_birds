@@ -19,7 +19,7 @@ Two of the main responses of organisms to climate change are phenological change
 
 Changes in temperature can result in temperature-dependent or -independent mechanisms that influece body size [reviewed in @gardner_declining_2011]. Among temperature-independent mechanisms, decreases in food availability caused by habitat loss or fragmentation may lead to the reduction of body size [@schmidt_concomitant_2005]. Thus, limiting juveniles access to resources could lead to smaller adult body size [@teplitsky_bergmanns_2008; @rode_reduced_2010]. Reductions in body size have been attributed to genetic microevolutionary responses to warming; smaller individuals dissipate heat better than larger individuals due to the larger ratio between surface:volume of their bodies [e.g., Bergmann's rule, @teplitsky_climate_2014].^[I think that this paragraph is not necessary. Talk only about the ecological consequences.]
 
-Based on a large scale analysis of Neotropical passerines that inhabit the Brazilian Atlantic Forest, we show here that annual mean temperature has been increasing, while precipitation^[We need to choose what precipitation variable to use. It would be good to choose one that relates to the availability of food (insects or fruits).] has been decreasing over a period of **XX** years in the areas inhabited by these passerines.
+Based on a large scale analysis of Neotropical passerines that inhabit the Brazilian Atlantic Forest, we show here that annual mean temperature has been increasing over a period of **XX** years in the areas inhabited by these passerines.
 
 > Paragraph to talk about the main finding of this study in relation to body size and climate change. For *Nature Climate Change* remember to combine results and some methods so that readers understand what you did.
 
@@ -693,14 +693,11 @@ pp_check(brm0)
 ```
 
 ## Upgraded model: body size vs. time-resolved climate
-Following the lab's Bergmann/migration manuscript, this model replaces *year* as a proxy with the **actual temperature and precipitation** each bird experienced, extracted per record and year by `climate_extraction.R` (TerraClimate; see CODE_REVIEW.md §B). Year is retained to separate climate tracking from other temporal change. Precipitation is added as a second climatic axis. Not evaluated here (requires the downloaded climate rasters).
+This model replaces *year* as a proxy with the **actual temperature** each bird experienced, extracted per record and year by `climate_extraction.R` (WorldClim CRU-TS 4.09 downscaled). Year is retained to separate climate tracking from other temporal change. Not evaluated here (requires the downloaded climate rasters).
 ```{r model_climate, cache=TRUE, eval = RUN_CLIMATE}
-# EXPLORATORY extension (eval = FALSE). Run climate_extraction.R on the RECONCILED
-# frame `dat` so the climate frame carries species_name matching A (apply the same
-# ebird_synonyms / reconciliation before extracting climate).
 passer90_clim <- readRDS("passer90_climate.rds")
 
-brm_climate <- brm(conc.wing.length ~ 1 + Sex + scaled_tmean + scaled_ppt + scaled_lat + scaled_yr +
+brm_climate <- brm(conc.wing.length ~ 1 + Sex + scaled_tmean + scaled_lat + scaled_yr +
             (1 + scaled_tmean || spp) + (1 | gr(species_name, cov = A)),
             data = passer90_clim,
             data2 = list(A = A),
@@ -990,6 +987,37 @@ fixef(brm_no_ants_no_grass)[1:2, ] %>%
 
 plot(conditional_effects(brm_no_ants_no_grass))
 pp_check(brm_no_ants_no_grass)
+```
+
+## Export Figure 4 (arthropod decline) for the manuscript
+Saves the fitted abundance decline (ants and open biomes excluded) to the
+manuscript's images folder as `fig-arthropods.png`, replacing the placeholder.
+```{r export_fig_arthropods, cache=FALSE}
+load("brm_no_ants_no_grass.rda")
+load("dat_no_grassland.rds")
+
+ce <- conditional_effects(brm_no_ants_no_grass, effects = "scaled_yr")[[1]]
+# put the x-axis back on the calendar-year scale for readability
+yr_mu <- mean(dat_no_grassland$Sample_midpoint, na.rm = TRUE)
+yr_sd <- sd(dat_no_grassland$Sample_midpoint,  na.rm = TRUE)
+ce$year   <- ce$scaled_yr * yr_sd + yr_mu
+dat_no_grassland$year <- dat_no_grassland$Sample_midpoint
+
+fig4 <- ggplot() +
+  geom_point(data = dat_no_grassland,
+             aes(x = year, y = Measurement / Sampling_effort),
+             alpha = 0.15, size = 0.6, colour = "grey50") +
+  geom_ribbon(data = ce, aes(x = year, ymin = lower__, ymax = upper__),
+              fill = "#5B7FB5", alpha = 0.3) +
+  geom_line(data = ce, aes(x = year, y = estimate__), colour = "#2E5090", linewidth = 1) +
+  scale_y_continuous(trans = "log1p") +
+  labs(x = "Year", y = "Arthropod abundance per unit sampling effort",
+       title = "Forest arthropod decline (ants and open biomes excluded)") +
+  theme_classic()
+
+ggsave(file.path("..", "Manuscript", "images", "fig-arthropods.png"),
+       fig4, width = 6.4, height = 4.4, dpi = 150)
+fig4
 ```
 
 

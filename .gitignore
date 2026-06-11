@@ -12,6 +12,17 @@ CODE_REVIEW.md
 # Pattern has no leading slash, so it matches the repo root AND Analysis/.
 AvesDataLite-main/
 Analysis/terraclimate/
+Analysis/worldclim/
+
+# Generated intermediate files (re-run climate_extraction.R / atlantic_drmsem.R)
+Analysis/passer90_climate.rds
+Analysis/drmsem_effects_cache.rds
+Analysis/drmsem_phylo_prep.rds
+Analysis/drmsem_phylo_results.rds
+
+# Scratch outputs
+Rplots.pdf
+temperature_diagnostic/
 
 # Large generated model objects: these exceed GitHub's 100 MB/file limit
 # (e.g. brm0_multiphylo.rda is ~194 MB). Archive them on Zenodo/OSF instead,
