@@ -113,6 +113,8 @@ div.csl-indent {
 <meta name="citation_reference" content="citation_title=Climatologies at high resolution for the earth’s land surface areas;,citation_author=Dirk Nikolaus Karger;,citation_author=Olaf Conrad;,citation_author=Jürgen Böhner;,citation_author=Tobias Kawohl;,citation_author=Holger Kreft;,citation_author=Rodrigo Wilber Soria-Auza;,citation_author=Niklaus E. Zimmermann;,citation_author=H. Peter Linder;,citation_author=Michael Kessler;,citation_publication_date=2017;,citation_cover_date=2017;,citation_year=2017;,citation_doi=10.1038/sdata.2017.122;,citation_volume=4;,citation_journal_title=Scientific Data;">
 <meta name="citation_reference" content="citation_title=prepR4pcm: Prepare data and trees for phylogenetic comparative methods;,citation_author=Shinichi Nakagawa;,citation_author=Santiago Ortega;,citation_author=Ayumi Mizuno;,citation_author=Eduardo S. A. Santos;,citation_author=Malgorzata Lagisz;,citation_author=Bhavya Jain;,citation_author=Jimuel Jr Celeste;,citation_author=Sergio Poo Hernandez;,citation_publication_date=2026;,citation_cover_date=2026;,citation_year=2026;,citation_fulltext_html_url=https://github.com/itchyshin/prepR4pcm;">
 <meta name="citation_reference" content="citation_title=Predictsr: Access the ’PREDICTS’ biodiversity database;,citation_author=Connor Duffin;,citation_publication_date=2025;,citation_cover_date=2025;,citation_year=2025;,citation_fulltext_html_url=https://github.com/Biodiversity-Futures-Lab/predictsr;">
+<meta name="citation_reference" content="citation_title=WorldClim 2: New 1-km spatial resolution climate surfaces for global land areas;,citation_author=Stephen E. Fick;,citation_author=Robert J. Hijmans;,citation_publication_date=2017;,citation_cover_date=2017;,citation_year=2017;,citation_fulltext_html_url=https://doi.org/10.1002/joc.5086;,citation_issue=12;,citation_doi=10.1002/joc.5086;,citation_volume=37;,citation_journal_title=International Journal of Climatology;">
+<meta name="citation_reference" content="citation_title=Version 4 of the CRU TS monthly high-resolution gridded multivariate climate dataset;,citation_author=Ian Harris;,citation_author=Timothy J. Osborn;,citation_author=Phil Jones;,citation_author=David Lister;,citation_publication_date=2020;,citation_cover_date=2020;,citation_year=2020;,citation_fulltext_html_url=https://doi.org/10.1038/s41597-020-0453-3;,citation_issue=1;,citation_doi=10.1038/s41597-020-0453-3;,citation_volume=7;,citation_journal_title=Scientific Data;">
 </head>
 
 <body class="quarto-light">
@@ -345,10 +347,11 @@ Figure&nbsp;5: Abundance of forest Insecta and Arachnida in the PREDICTS databas
 <section id="climate-context" class="level2" data-number="2.2">
 <h2 data-number="2.2" class="anchored" data-anchor-id="climate-context"><span class="header-section-number">2.2</span> Climate context</h2>
 <p>We did not estimate a temporal temperature or precipitation trend from the morphological dataset. The <code>Annual_mean_temperature</code> and <code>Annual_rainfall</code> fields in ATLANTIC BIRD TRAITS are static long-term climatologies attached to each locality rather than conditions measured at the time of capture: across the sampled localities, 97% carry a single temperature value regardless of how many years they were sampled, so any apparent change over time reflects which localities were visited when, not climatic change. We therefore treat warming over the study region and period as established by independent climatological records and the broader literature <span class="citation" data-cites="gardner_declining_2011 teplitsky_climate_2014">(<a href="#ref-gardner_declining_2011" role="doc-biblioref">Gardner et al. 2011</a>; <a href="#ref-teplitsky_climate_2014" role="doc-biblioref">Teplitsky and Millien 2014</a>)</span>.</p>
-<p>To move beyond year as a proxy for climate, we additionally link each record to <strong>time-resolved</strong> monthly climate — temperature and precipitation — from TerraClimate <span class="citation" data-cites="abatzoglou2018terraclimate">(<a href="#ref-abatzoglou2018terraclimate" role="doc-biblioref">Abatzoglou et al. 2018</a>)</span> (CHELSA <span class="citation" data-cites="karger2017chelsa">(<a href="#ref-karger2017chelsa" role="doc-biblioref">Karger et al. 2017</a>)</span> as an alternative) at the record’s coordinates and year of capture (<code>climate_extraction.R</code>). This yields the actual temperature and precipitation experienced by each individual, allowing body size to be modelled directly against climate, and adding precipitation as a second climatic axis, as in related comparative work.</p>
-<!-- [AUTHOR ACTION] Run climate_extraction.R (needs the downloaded TerraClimate
-rasters) and the upgraded `brm_climate` model, then report the temperature- and
-precipitation-body size estimates here in place of the year-only proxy. -->
+<p>To move beyond year as a proxy for climate, we additionally link each record to <strong>time-resolved</strong> monthly temperature from WorldClim historical weather (CRU-TS 4.09 downscaled with WorldClim 2.1; <span class="citation" data-cites="fick2017worldclim">Fick and Hijmans (<a href="#ref-fick2017worldclim" role="doc-biblioref">2017</a>)</span>; <span class="citation" data-cites="harris2020crudata">Harris et al. (<a href="#ref-harris2020crudata" role="doc-biblioref">2020</a>)</span>) at the record’s coordinates and year of capture (<code>climate_extraction.R</code>). This yields the actual temperature experienced by each individual, allowing body size to be modelled directly against climate.</p>
+<!-- [AUTHOR ACTION] Run climate_extraction.R (WorldClim, downloads ~few GB of
+decadal tmin/tmax zips to Analysis/worldclim/) and the upgraded `brm_climate`
+model, then report the temperature–body size estimates here in place of the
+year-only proxy. -->
 </section>
 <section id="phylogeny" class="level2" data-number="2.3">
 <h2 data-number="2.3" class="anchored" data-anchor-id="phylogeny"><span class="header-section-number">2.3</span> Phylogeny</h2>
@@ -386,9 +389,6 @@ and package versions: brms, metafor, mice, ape, MCMCglmm, tidyverse). -->
 <section id="references" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="references">References</h2>
 <div id="refs" class="references csl-bib-body hanging-indent" role="list">
-<div id="ref-abatzoglou2018terraclimate" class="csl-entry" role="listitem">
-Abatzoglou, John T., Solomon Z. Dobrowski, Sean A. Parks, and Katherine C. Hegewisch. 2018. <span>“TerraClimate, a High-Resolution Global Dataset of Monthly Climate and Climatic Water Balance from 1958–2015.”</span> <em>Scientific Data</em> 5: 170191. <a href="https://doi.org/10.1038/sdata.2017.191">https://doi.org/10.1038/sdata.2017.191</a>.
-</div>
 <div id="ref-ashton2002a" class="csl-entry" role="listitem">
 Ashton, Kyle G. 2002. <span>“Patterns of Within-Species Body Size Variation of Birds: Strong Evidence for Bergmann’s Rule.”</span> <em>Global Ecology and Biogeography</em> 11 (6): 505–23. <a href="https://doi.org/10.1046/j.1466-822X.2002.00313.x">https://doi.org/10.1046/j.1466-822X.2002.00313.x</a>.
 </div>
@@ -404,17 +404,20 @@ Buuren, Stef van, and Karin Groothuis-Oudshoorn. 2011. <span>“<span class="noc
 <div id="ref-duffin2025predictsr" class="csl-entry" role="listitem">
 Duffin, Connor. 2025. <em>Predictsr: Access the ’PREDICTS’ Biodiversity Database</em>. <a href="https://github.com/Biodiversity-Futures-Lab/predictsr">https://github.com/Biodiversity-Futures-Lab/predictsr</a>.
 </div>
+<div id="ref-fick2017worldclim" class="csl-entry" role="listitem">
+Fick, Stephen E., and Robert J. Hijmans. 2017. <span>“WorldClim 2: New 1-Km Spatial Resolution Climate Surfaces for Global Land Areas.”</span> <em>International Journal of Climatology</em> 37 (12): 4302–15. <a href="https://doi.org/10.1002/joc.5086">https://doi.org/10.1002/joc.5086</a>.
+</div>
 <div id="ref-gardner_declining_2011" class="csl-entry" role="listitem">
 Gardner, Janet L., Anne Peters, Michael R. Kearney, Leo Joseph, and Robert Heinsohn. 2011. <span>“Declining Body Size: A Third Universal Response to Warming?”</span> <em>Trends in Ecology &amp; Evolution</em> 26 (6): 285–91. <a href="https://doi.org/10.1016/j.tree.2011.03.005">https://doi.org/10.1016/j.tree.2011.03.005</a>.
+</div>
+<div id="ref-harris2020crudata" class="csl-entry" role="listitem">
+Harris, Ian, Timothy J. Osborn, Phil Jones, and David Lister. 2020. <span>“Version 4 of the <span>CRU TS</span> Monthly High-Resolution Gridded Multivariate Climate Dataset.”</span> <em>Scientific Data</em> 7 (1): 109. <a href="https://doi.org/10.1038/s41597-020-0453-3">https://doi.org/10.1038/s41597-020-0453-3</a>.
 </div>
 <div id="ref-hudson2017database" class="csl-entry" role="listitem">
 <span class="nocase">Hudson, Lawrence N, Tim Newbold, Sara Contu, et al.</span> 2017. <span>“The Database of the Predicts (Projecting Responses of Ecological Diversity in Changing Terrestrial Systems) Project.”</span> <em>Ecology and Evolution</em> 7 (1): 145–88.
 </div>
 <div id="ref-jetz2012global" class="csl-entry" role="listitem">
 Jetz, W, GH Thomas, JB Joy, K Hartmann, and AO Mooers. 2012. <span>“The Global Diversity of Birds in Space and Time.”</span> <em>Nature</em> 491 (7424): 444.
-</div>
-<div id="ref-karger2017chelsa" class="csl-entry" role="listitem">
-Karger, Dirk Nikolaus, Olaf Conrad, Jürgen Böhner, et al. 2017. <span>“Climatologies at High Resolution for the Earth’s Land Surface Areas.”</span> <em>Scientific Data</em> 4: 170122. <a href="https://doi.org/10.1038/sdata.2017.122">https://doi.org/10.1038/sdata.2017.122</a>.
 </div>
 <div id="ref-mayr1956" class="csl-entry" role="listitem">
 Mayr, Ernst. 1956. <span>“Geographical Character Gradients and Climatic Adaptation.”</span> <em>Evolution</em> 10 (1): 105–8. <a href="https://doi.org/10.2307/2406103">https://doi.org/10.2307/2406103</a>.
