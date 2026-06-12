@@ -131,7 +131,7 @@ apath <- function(...) file.path(ANALYSIS_DIR, ...)
 #                          corroborating result) holds on the full dataset or is
 #                          an artefact of the arthropod subsetting.
 # The two modes write SEPARATE caches (suffix below), so you can run both.
-INCLUDE_ARTHRO <- TRUE
+INCLUDE_ARTHRO <- FALSE
 .mode <- if (INCLUDE_ARTHRO) "arthro" else "noarthro"
 
 # --- Spatial arthropod aggregation ------------------------------------------
@@ -894,4 +894,143 @@ if (!is.null(results$phylo)) .lines <- c(.lines,
   .fence("Effect: scaled_tmean -> wing_length",              results$effects$tmean))
 writeLines(.lines, RESULTS_MD)
 message("Wrote results to ", RESULTS_RDS, " and ", RESULTS_MD)
+
+# ============================================================================
+# 12. FIGURES  (export result visualisations — runs every time)
+# ============================================================================
+# Four core figures, saved as mode-tagged PNGs in Analysis/figures/. Each is
+# built from objects already in the session and wrapped in tryCatch so a single
+# plotting failure never aborts the run.
+FIG_DIR <- apath("figures")
+if (!dir.exists(FIG_DIR)) dir.create(FIG_DIR, recursive = TRUE)
+fpath     <- function(name) file.path(FIG_DIR, paste0(name, "_", .mode, ".png"))
+.try_save <- function(name, plot_obj, w = 7, h = 5) {
+  tryCatch({
+    ggplot2::ggsave(fpath(name), plot_obj, width = w, height = h, dpi = 300)
+    message("  saved ", fpath(name))
+  }, error = function(e) message("  figure '", name, "' failed: ", conditionMessage(e)))
+}
+
+# --- 12a. Annotated DAG (self-contained ggplot path diagram) ---------------
+# Built from standardize(sem_fit, "sd_x") so it always renders (the package's
+# plot(sem_fit) draws by side-effect / needs a graph-layout backend and ggsave'd
+# blank). Node positions are fixed; mean edges are coloured by standardized
+# coefficient (solid = p<0.05, dashed = n.s.); sigma edges are dotted purple.
+.try_save("drmsem_dag", local({
+  ps  <- as.data.frame(standardize(sem_fit, method = "sd_x"))
+  pos <- data.frame(
+    node = c("scaled_yr","scaled_lat","Sex","scaled_tmean","arthro_obs_std","wing_length"),
+    x    = c(0, 0, 0, 1.2, 1.2, 2.4),
+    y    = c(3.2, 2.0, 0.6, 3.2, 1.3, 2.1),
+    role = c("exogenous","exogenous","exogenous","mediator","mediator","response"),
+    stringsAsFactors = FALSE)
+  xy <- function(n, col) pos[[col]][match(n, pos$node)]
+  em <- ps[ps$component == "mu", ]
+  em$fromn <- ifelse(em$term == "SexMale", "Sex", em$from)
+  em <- em[em$fromn %in% pos$node & em$to %in% pos$node, ]
+  em$x0 <- xy(em$fromn,"x"); em$y0 <- xy(em$fromn,"y")
+  em$x1 <- xy(em$to,"x");    em$y1 <- xy(em$to,"y")
+  em$linef <- ifelse(em$p.value < 0.05, "significant", "n.s.")
+  es <- ps[ps$component == "sigma", ]
+  es$x0 <- xy(es$from,"x"); es$y0 <- xy(es$from,"y")
+  es$x1 <- xy("wing_length","x"); es$y1 <- xy("wing_length","y")
+  # Draw only nodes that actually appear in this model (so the no-arthropod
+  # variant doesn't show a phantom arthro_obs_std node).
+  present <- unique(c(em$fromn, em$to, es$from, "wing_length"))
+  pos_draw <- pos[pos$node %in% present, ]
+  # Colour-scale limits exclude the Sex outlier (std coef ~2.5) so the gradient
+  # stays informative for the climate/arthropod paths; Sex saturates.
+  .clim <- max(0.6, stats::quantile(abs(em$std.estimate[em$fromn != "Sex"]), 0.95, na.rm = TRUE))
+  ggplot() +
+    geom_segment(data = em,
+      aes(x = x0, y = y0, xend = x1, yend = y1, colour = std.estimate, linetype = linef),
+      arrow = grid::arrow(length = grid::unit(0.18, "cm"), type = "closed"), linewidth = 0.7) +
+    geom_text(data = em,
+      aes(x = x0 + 0.62*(x1-x0), y = y0 + 0.62*(y1-y0),
+          label = sprintf("%.2f", std.estimate), colour = std.estimate),
+      size = 2.7, fontface = "bold") +
+    geom_curve(data = es, aes(x = x0, y = y0, xend = x1, yend = y1),
+      curvature = -0.3, linetype = "dotted", colour = "#762a83", linewidth = 0.6,
+      arrow = grid::arrow(length = grid::unit(0.15, "cm"), type = "closed")) +
+    geom_text(data = es,
+      aes(x = x0 + 0.5*(x1-x0), y = y0 + 0.5*(y1-y0) + 0.18,
+          label = paste0("sigma ", sprintf("%.2f", std.estimate))),
+      colour = "#762a83", size = 2.5) +
+    geom_label(data = pos_draw, aes(x = x, y = y, label = node, fill = role),
+      colour = "black", size = 3.1) +
+    scale_colour_gradient2(low = "#b2182b", mid = "grey75", high = "#1b7837",
+      midpoint = 0, limits = c(-.clim, .clim), oob = scales::squish,
+      name = "std. coef (mu)") +
+    scale_fill_manual(values = c(exogenous = "#ECECEC", mediator = "#CDE7DD",
+      response = "#FCE3C8"), name = NULL) +
+    scale_linetype_manual(values = c(significant = "solid", `n.s.` = "dashed"), name = NULL) +
+    coord_cartesian(xlim = c(-0.3, 2.8), ylim = c(0.2, 3.7)) +
+    theme_void() + theme(legend.position = "bottom") +
+    labs(title = paste0("drmSEM path diagram [", .mode,
+                        "] — standardized coefficients (dotted = sigma)"))
+}), w = 9, h = 6.5)
+
+# --- 12b. Coefficient forest (raw paths ± 95% CI, faceted mu vs sigma) ------
+# Raw estimates keep units honest (mu ≈ mm per SD; sigma on the log scale), so
+# the two components are faceted with free axes rather than forced onto one scale.
+.try_save("drmsem_coef_forest", local({
+  pd <- as.data.frame(path_table)
+  pd$label <- paste(pd$from, "→", pd$to, "(", pd$term, ")")
+  pd$lo  <- pd$estimate - 1.96 * pd$std.error
+  pd$hi  <- pd$estimate + 1.96 * pd$std.error
+  pd$sig <- ifelse(pd$p.value < 0.05, "p < 0.05", "n.s.")
+  ggplot(pd, aes(estimate, reorder(label, estimate), colour = sig)) +
+    geom_vline(xintercept = 0, linetype = 2, colour = "grey50") +
+    geom_pointrange(aes(xmin = lo, xmax = hi)) +
+    facet_wrap(~ component, scales = "free", ncol = 1) +
+    scale_colour_manual(values = c("p < 0.05" = "#1b7837", "n.s." = "grey60")) +
+    labs(x = "coefficient (mu: mm per SD of predictor; sigma: log scale)",
+         y = NULL, colour = NULL,
+         title = paste0("drmSEM path coefficients [", .mode, "]")) +
+    theme_minimal()
+}), h = 6)
+
+# --- 12c. Effect-decomposition forest (year and temperature → wing) --------
+if (exists("effects_yr") && exists("effects_temp")) .try_save("drmsem_effects_forest", local({
+  mk <- function(e, lbl) { d <- as.data.frame(e); d$panel <- lbl; d }
+  ed <- rbind(mk(effects_yr, "scaled_yr → wing"),
+              mk(effects_temp, "scaled_tmean → wing"))
+  ed$quantity <- factor(ed$quantity,
+    levels = c("total_path","direct","indirect","mean_mediated","distribution_mediated"))
+  ggplot(ed, aes(estimate, quantity)) +
+    geom_vline(xintercept = 0, linetype = 2, colour = "grey50") +
+    geom_pointrange(aes(xmin = conf.low, xmax = conf.high)) +
+    facet_wrap(~ panel, scales = "free_x") +
+    labs(x = "effect on wing length (mm)", y = NULL,
+         title = paste0("Effect decomposition [", .mode, "]")) +
+    theme_minimal()
+}), w = 9, h = 4)
+
+# --- 12d. Distributional (sigma) channel: fold-change in residual SD --------
+# exp(slope * x) over +/- 2 SD of each sigma predictor, with a pointwise band
+# from the slope SE. Shows the novel variance result (e.g. warmer -> less
+# variable wings; the year trend whose sign is under scrutiny).
+.try_save("drmsem_sigma_curves", local({
+  sr <- as.data.frame(path_table)
+  sr <- sr[sr$component == "sigma", , drop = FALSE]
+  lab <- c(scaled_yr = "Year (SD)", scaled_tmean = "Temperature (SD)")
+  xx <- seq(-2, 2, length.out = 60)
+  cur <- do.call(rbind, lapply(seq_len(nrow(sr)), function(i) {
+    b <- sr$estimate[i]; se <- sr$std.error[i]
+    f_lo <- exp((b - 1.96 * se) * xx); f_hi <- exp((b + 1.96 * se) * xx)
+    data.frame(
+      predictor = ifelse(sr$term[i] %in% names(lab), lab[sr$term[i]], sr$term[i]),
+      x = xx, fold = exp(b * xx),
+      lo = pmin(f_lo, f_hi), hi = pmax(f_lo, f_hi))
+  }))
+  ggplot(cur, aes(x, fold)) +
+    geom_hline(yintercept = 1, linetype = 2, colour = "grey50") +
+    geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.2) +
+    geom_line(linewidth = 1, colour = "#762a83") +
+    facet_wrap(~ predictor, scales = "free_x") +
+    labs(x = "predictor (SD units)",
+         y = "fold-change in residual SD of wing length",
+         title = paste0("Distributional (sigma) channel [", .mode, "]")) +
+    theme_minimal()
+}), w = 8, h = 4)
 

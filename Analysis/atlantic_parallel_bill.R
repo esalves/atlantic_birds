@@ -53,6 +53,9 @@ ebird_synonyms <- c(
   "Pyriglena pernambucensis" = "Pyriglena leuconota",
   "Tangara sayaca"           = "Thraupis sayaca",
   "Tangara cayana"           = "Stilpnia cayana",
+  "Tangara palmarum"         = "Thraupis palmarum",
+  "Tangara peruviana"        = "Stilpnia peruviana",
+  "Dixiphia pipra"           = "Pseudopipra pipra",
   "Tiaris fuliginosus"       = "Asemospiza fuliginosa"
 )
 hit <- passer90$species_name %in% names(ebird_synonyms)

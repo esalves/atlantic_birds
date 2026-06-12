@@ -18,11 +18,16 @@ Analysis/worldclim/
 Analysis/passer90_climate.rds
 Analysis/drmsem_effects_cache.rds
 Analysis/drmsem_effects_cache_arthro.rds
+Analysis/drmsem_effects_cache_noarthro.rds
 Analysis/drmsem_phylo_prep.rds
 Analysis/drmsem_phylo_prep_arthro.rds
+Analysis/drmsem_phylo_prep_noarthro.rds
 Analysis/drmsem_phylo_results.rds
 Analysis/drmsem_phylo_results_arthro.rds
+Analysis/drmsem_phylo_results_noarthro.rds
 Analysis/drmsem_results_arthro.rds
+Analysis/drmsem_results_noarthro.rds
+
 
 
 # Scratch outputs

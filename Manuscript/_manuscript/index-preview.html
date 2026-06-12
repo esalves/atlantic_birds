@@ -1,55 +1,179 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+    <meta charset="utf-8">
+    <meta name="generator" content="quarto-1.9.37">
 
-<meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.37">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="author" content="Eduardo S.A. Santos">
+    <meta name="author" content="João C.T. Menezes">
+    <meta name="author" content="Gustavo Burin">
+    <meta name="dcterms.date" content="2026-06-11">
+    <meta name="keywords" content="body size, climate change, morphological adaptation, trophic interactions, phylogenetic comparative analysis">
 
-<meta name="author" content="Eduardo S.A. Santos">
-<meta name="author" content="João C.T. Menezes">
-<meta name="author" content="Gustavo Burin">
-<meta name="dcterms.date" content="2026-06-11">
-<meta name="keywords" content="body size, climate change, morphological adaptation, trophic interactions, phylogenetic comparative analysis">
+    <title>Shrinking body size and rising prey scarcity in Atlantic Forest birds over three decades of climate change</title>
+    <style>
+      /* Default styles provided by pandoc.
+      ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+      */
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      div.columns{display: flex; gap: min(4vw, 1.5em);}
+      div.column{flex: auto; overflow-x: auto;}
+      div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+      ul.task-list{list-style: none;}
+      ul.task-list li input[type="checkbox"] {
+        width: 0.8em;
+        margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+        vertical-align: middle;
+      }
+      /* CSS for syntax highlighting */
+      html { -webkit-text-size-adjust: 100%; }
+      pre > code.sourceCode { white-space: pre; position: relative; }
+      pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+      pre > code.sourceCode > span:empty { height: 1.2em; }
+      .sourceCode { overflow: visible; }
+      code.sourceCode > span { color: inherit; text-decoration: inherit; }
+      div.sourceCode { margin: 1em 0; }
+      pre.sourceCode { margin: 0; }
+      @media screen {
+      div.sourceCode { overflow: auto; }
+      }
+      @media print {
+      pre > code.sourceCode { white-space: pre-wrap; }
+      pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+      }
+      pre.numberSource code
+        { counter-reset: source-line 0; }
+      pre.numberSource code > span
+        { position: relative; left: -4em; counter-increment: source-line; }
+      pre.numberSource code > span > a:first-child::before
+        { content: counter(source-line);
+          position: relative; left: -1em; text-align: right; vertical-align: baseline;
+          border: none; display: inline-block;
+          -webkit-touch-callout: none; -webkit-user-select: none;
+          -khtml-user-select: none; -moz-user-select: none;
+          -ms-user-select: none; user-select: none;
+          padding: 0 4px; width: 4em;
+        }
+      pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+      div.sourceCode
+        {   }
+      @media screen {
+      pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+      }
+      /* CSS for citations */
+      div.csl-bib-body { }
+      div.csl-entry {
+        clear: both;
+      }
+      .hanging-indent div.csl-entry {
+        margin-left:2em;
+        text-indent:-2em;
+      }
+      div.csl-left-margin {
+        min-width:2em;
+        float:left;
+      }
+      div.csl-right-inline {
+        margin-left:2em;
+        padding-left:1em;
+      }
+      div.csl-indent {
+        margin-left: 2em;
+      }    </style>
 
-<title>Shrinking body size and rising prey scarcity in Atlantic Forest birds over three decades of climate change</title>
-<style>
-/* Default styles provided by pandoc.
-** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
-*/
-code{white-space: pre-wrap;}
-span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
-div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-ul.task-list{list-style: none;}
-ul.task-list li input[type="checkbox"] {
-  width: 0.8em;
-  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
-  vertical-align: middle;
-}
-/* CSS for citations */
-div.csl-bib-body { }
-div.csl-entry {
-  clear: both;
-}
-.hanging-indent div.csl-entry {
-  margin-left:2em;
-  text-indent:-2em;
-}
-div.csl-left-margin {
-  min-width:2em;
-  float:left;
-}
-div.csl-right-inline {
-  margin-left:2em;
-  padding-left:1em;
-}
-div.csl-indent {
-  margin-left: 2em;
-}</style>
+    <style>
+      body.hypothesis-enabled #quarto-embed-header {
+        padding-right: 36px;
+      }
 
+      #quarto-embed-header {
+        height: 3em;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: solid 1px;
+      }
 
+      #quarto-embed-header h6 {
+        font-size: 1.1em;
+        padding-top: 0.6em;
+        margin-left: 1em;
+        margin-right: 1em;
+        font-weight: 400;
+      }
+
+      #quarto-embed-header a.quarto-back-link,
+      #quarto-embed-header a.quarto-download-embed {
+        font-size: 0.8em;
+        margin-top: 1em;
+        margin-bottom: 1em;
+        margin-left: 1em;
+        margin-right: 1em;
+      }
+
+      .quarto-back-container {
+        padding-left: 0.5em;
+        display: flex;
+      }
+
+      .headroom {
+          will-change: transform;
+          transition: transform 200ms linear;
+      }
+
+      .headroom--pinned {
+          transform: translateY(0%);
+      }
+
+      .headroom--unpinned {
+          transform: translateY(-100%);
+      }      
+    </style>
+
+    <script>
+    window.document.addEventListener("DOMContentLoaded", function () {
+
+      var header = window.document.querySelector("#quarto-embed-header");
+      const titleBannerEl = window.document.querySelector("body > #title-block-header");
+      if (titleBannerEl) {
+        titleBannerEl.style.paddingTop = header.clientHeight + "px";
+      }
+      const contentEl = window.document.getElementById('quarto-content');
+      for (const child of contentEl.children) {
+        child.style.paddingTop = header.clientHeight + "px";
+        child.style.marginTop = "1em";
+      }
+
+      // Use the article root if the `back` call doesn't work. This isn't perfect
+      // but should typically work
+      window.quartoBackToArticle = () => {
+        var currentUrl = window.location.href;
+        window.history.back();
+        setTimeout(() => {
+            // if location was not changed in 100 ms, then there is no history back
+            if(currentUrl === window.location.href){              
+                // redirect to site root
+                window.location.href = "index.html";
+            }
+        }, 100);
+      }
+
+      const headroom = new window.Headroom(header, {
+        tolerance: 5,
+        onPin: function () {
+        },
+        onUnpin: function () {
+        },
+      });
+      headroom.init();
+    });
+    </script>
+
+    
+<script src="site_libs/manuscript-notebook/headroom.min.js"></script>
 <script src="site_libs/clipboard/clipboard.min.js"></script>
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -64,9 +188,8 @@ div.csl-indent {
 <script src="site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
 <link href="site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
 <link href="site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
-
-
-<meta name="citation_title" content="Shrinking body size and rising prey scarcity in Atlantic Forest birds over three decades of climate change">
+     
+      <meta name="citation_title" content="Shrinking body size and rising prey scarcity in Atlantic Forest birds over three decades of climate change">
 <meta name="citation_abstract" content="Declining body size has been proposed as a third universal response of animals to climate warming, alongside shifts in phenology and geographic range. Whether this response is widespread in the species-rich avifaunas of the tropics, and whether it tracks temperature directly or the availability of food, remains poorly resolved. Here we use the ATLANTIC BIRD TRAITS dataset to assemble morphological measurements for 68 passerine bird species sampled across the Brazilian Atlantic Forest between 1990 and 2018, and analyse temporal trends in wing length and bill width with Bayesian phylogenetic multilevel models that account for sex, latitude, repeated sampling of species, and phylogenetic non-independence. Across species, wing length declined over the 28-year period — a decline robust to phylogenetic uncertainty and to the choice of phylogeny — whereas bill width showed no comparable directional change. The among-individual variability of wing length increased in the most recently sampled birds, consistent with a population responding heterogeneously to a changing environment. Over the same region and period, the abundance of arthropod prey declined steeply in forested biomes; the decline strengthened when ants were included as prey — justified by documented opportunistic predation of flying ant reproductives by passerines — and remained substantial under the conservative ant-exclusion assumption. Our findings link a regional collapse in invertebrate prey to morphological change in their avian predators, and illustrate why distinguishing thermoregulatory from trophic drivers of body-size change requires datasets that capture both climate and resources.
 ">
 <meta name="citation_keywords" content="body size,climate change,morphological adaptation,trophic interactions,phylogenetic comparative analysis">
@@ -118,9 +241,16 @@ div.csl-indent {
 <meta name="citation_reference" content="citation_title=Are invasive fire ants kept in check by native aerial insectivores?;,citation_author=Jackson A. Helms;,citation_author=Aaron P. Godfrey;,citation_author=Tayna Ames;,citation_author=Eli S. Bridge;,citation_publication_date=2016;,citation_cover_date=2016;,citation_year=2016;,citation_issue=5;,citation_doi=10.1098/rsbl.2016.0059;,citation_volume=12;,citation_journal_title=Biology Letters;">
 </head>
 
-<body class="quarto-light">
+  <body class="quarto-notebook quarto-light">
+    <div id="quarto-embed-header" class="headroom fixed-top bg-primary">
+      
+      <a onclick="window.quartoBackToArticle(); return false;" class="btn btn-primary quarto-back-link" href=""><i class="bi bi-caret-left"></i> Back to Article</a>
+      <h6><i class="bi bi-journal-code"></i> Article Notebook</h6>
 
-<header id="title-block-header" class="quarto-title-block default toc-left page-columns page-full">
+            <a href="./index.qmd" class="btn btn-primary quarto-download-embed" download="index.qmd">Download Source</a>
+          </div>
+
+     <header id="title-block-header" class="quarto-title-block default toc-left page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
       <h1 class="title">Shrinking body size and rising prey scarcity in Atlantic Forest birds over three decades of climate change</h1>
@@ -173,7 +303,7 @@ div.csl-indent {
               </div>
       </div>
       <div class="quarto-title-meta-column-end quarto-other-formats-target">
-      <div class="quarto-alternate-formats"><div class="quarto-title-meta-heading">Other Formats</div><div class="quarto-title-meta-contents"><p><a href="index.docx"><i class="bi bi-file-word"></i>MS Word</a></p></div></div></div>
+      </div>
     </div>
 
     <div>
@@ -222,14 +352,9 @@ div.csl-indent {
 </div>
 <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
 </div>
-<main class="content quarto-banner-title-block" id="quarto-document-content">
+<main class="content quarto-banner-title-block" id="quarto-document-content">      
 
-
-
-  
-
-
-<!--
+       <!--
 NOTE TO AUTHORS (delete before submission)
 ================================================================
 Complete Nature Climate Change Letter draft. Quantitative statements come
@@ -258,6 +383,9 @@ Figures 1–4 are generated by make_figures.py; Figure 5 (arthropods) is exporte
 from the Rmd (export_fig_arthropods chunk).
 ================================================================
 -->
+<div class="cell-container"><div class="cell-decorator"><pre>In [1]:</pre></div><div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>arth <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"../Analysis/arthropod_estimates.rds"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div></div>
 <p>Two of the most widely documented responses of organisms to climate warming are shifts in phenology and in geographic range <span class="citation" data-cites="parmesan_globally_2003">(<a href="#ref-parmesan_globally_2003" role="doc-biblioref">Parmesan and Yohe 2003</a>)</span>. A third response — a reduction in body size — is increasingly reported across taxa and has been proposed as a general consequence of warming <span class="citation" data-cites="gardner_declining_2011 sheridan_shrinking_2011 teplitsky_climate_2014">(<a href="#ref-gardner_declining_2011" role="doc-biblioref">Gardner et al. 2011</a>; <a href="#ref-sheridan_shrinking_2011" role="doc-biblioref">Sheridan and Bickford 2011</a>; <a href="#ref-teplitsky_climate_2014" role="doc-biblioref">Teplitsky and Millien 2014</a>)</span>. The expectation follows from Bergmann’s rule, the ecogeographical pattern whereby endotherms are smaller in warmer climates because a higher surface-area-to-volume ratio aids heat dissipation <span class="citation" data-cites="bergmann1847 mayr1956 ashton2002a">(<a href="#ref-bergmann1847" role="doc-biblioref">Bergmann 1847</a>; <a href="#ref-mayr1956" role="doc-biblioref">Mayr 1956</a>; <a href="#ref-ashton2002a" role="doc-biblioref">Ashton 2002</a>)</span>. Body-size reductions under warming may arise through temperature-dependent thermoregulatory mechanisms or through temperature-independent declines in food availability that constrain growth <span class="citation" data-cites="gardner_declining_2011 schmidt_concomitant_2005 teplitsky_bergmanns_2008">(<a href="#ref-gardner_declining_2011" role="doc-biblioref">Gardner et al. 2011</a>; <a href="#ref-schmidt_concomitant_2005" role="doc-biblioref">Schmidt and Jensen 2005</a>; <a href="#ref-teplitsky_bergmanns_2008" role="doc-biblioref">Teplitsky et al. 2008</a>)</span>. Disentangling these pathways requires data on both climate and resources, which are rarely available together, especially in the tropics. Here we show that, across 68 passerine species sampled in the Brazilian Atlantic Forest between 1990 and 2018, wing length declined over time — though modestly and heterogeneously among species — while bill width did not, and the among-individual variability of wing length rose in recently sampled birds. Over the same region and interval, the abundance of arthropod prey fell steeply. These results connect a regional decline in invertebrate prey to morphological change in their avian predators and underscore that body-size responses to climate change need not reflect thermoregulation alone <span class="citation" data-cites="ozgul2009 weeks2020 ryding2024">(<a href="#ref-ozgul2009" role="doc-biblioref">Ozgul et al. 2009</a>; <a href="#ref-weeks2020" role="doc-biblioref">Weeks et al. 2020</a>; <a href="#ref-ryding2024" role="doc-biblioref">Ryding et al. 2024</a>)</span>.</p>
 <section id="results-and-discussion" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Results and discussion</h1>
@@ -477,48 +605,8 @@ Wilman, Hamish, Jonathan Belmaker, Jennifer Simpson, Carolina de la Rosa, Marcel
 </div>
 </section>
 </section>
-
-<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" id="quarto-citation"><h2 class="anchored quarto-appendix-heading">Citation</h2><div><div class="quarto-appendix-secondary-label">BibTeX citation:</div><pre class="sourceCode code-with-copy quarto-appendix-bibtex"><code class="sourceCode bibtex">@online{s.a._santos2026,
-  author = {S.A. Santos, Eduardo and C.T. Menezes, João and Burin,
-    Gustavo},
-  title = {Shrinking Body Size and Rising Prey Scarcity in {Atlantic}
-    {Forest} Birds over Three Decades of Climate Change},
-  date = {2026-06-11},
-  langid = {en},
-  abstract = {Declining body size has been proposed as a third universal
-    response of animals to climate warming, alongside shifts in
-    phenology and geographic range. Whether this response is widespread
-    in the species-rich avifaunas of the tropics, and whether it tracks
-    temperature directly or the availability of food, remains poorly
-    resolved. Here we use the ATLANTIC BIRD TRAITS dataset to assemble
-    morphological measurements for 68 passerine bird species sampled
-    across the Brazilian Atlantic Forest between 1990 and 2018, and
-    analyse temporal trends in wing length and bill width with Bayesian
-    phylogenetic multilevel models that account for sex, latitude,
-    repeated sampling of species, and phylogenetic non-independence.
-    Across species, wing length declined over the 28-year period — a
-    decline robust to phylogenetic uncertainty and to the choice of
-    phylogeny — whereas bill width showed no comparable directional
-    change. The among-individual variability of wing length increased in
-    the most recently sampled birds, consistent with a population
-    responding heterogeneously to a changing environment. Over the same
-    region and period, the abundance of arthropod prey declined steeply
-    in forested biomes; the decline strengthened when ants were included
-    as prey — justified by documented opportunistic predation of flying
-    ant reproductives by passerines — and remained substantial under the
-    conservative ant-exclusion assumption. Our findings link a regional
-    collapse in invertebrate prey to morphological change in their avian
-    predators, and illustrate why distinguishing thermoregulatory from
-    trophic drivers of body-size change requires datasets that capture
-    both climate and resources.}
-}
-</code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre><div class="quarto-appendix-secondary-label">For attribution, please cite this work as:</div><div id="ref-s.a._santos2026" class="csl-entry quarto-appendix-citeas" role="listitem">
-S.A. Santos, Eduardo, João C.T. Menezes, and Gustavo Burin. 2026.
-<span>“Shrinking Body Size and Rising Prey Scarcity in Atlantic Forest
-Birds over Three Decades of Climate Change.”</span> bioRxiv, June 11.
-</div></div></section></div></main>
-<!-- /main column -->
-<script id="quarto-html-after-body" type="application/javascript">
+     </main>
+<!-- /main column -->  <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
     const icon = "";
     const anchorJS = new window.AnchorJS();
@@ -917,9 +1005,7 @@ Birds over Three Decades of Climate Change.”</span> bioRxiv, June 11.
       }
     }
   });
-  </script>
-</div> <!-- /content -->
-<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+  </script>  </div> <!-- /content -->  <script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
 (function() {
   let previousOnload = window.onload;
   window.onload = () => {
@@ -950,9 +1036,6 @@ Birds over Three Decades of Climate Change.”</span> bioRxiv, June 11.
   };
   
 })();
-          </script>
-
-
-
-
+          </script> 
+  
 </body></html>

@@ -33,7 +33,7 @@ pre-computed objects from `atlantic_parallel.R` (wing), `atlantic_parallel_bill.
 to `TRUE` to regenerate that piece during the knit (slower; needs the extra packages).
 ```{r config, include=FALSE}
 REFRESH_PREDICTS <- FALSE   # re-download PREDICTS via predictsr and rebuild dat_test.rds
-REFIT_ARTHROPODS <- TRUE   # refit the three negative-binomial arthropod models
+REFIT_ARTHROPODS <- FALSE   # refit the three negative-binomial arthropod models
                             # (set TRUE together with REFRESH_PREDICTS to refit on the fresh data)
 RUN_CLIMATE      <- TRUE   # fit the in-document time-resolved climate model.
 # RUN_CLIMATE = TRUE requires passer90_climate.rds (run climate_extraction.R
@@ -78,7 +78,7 @@ elton <- read_tsv("BirdFuncDat.txt")
 This chunk performs the main data wrangling and cleaning operations.
 It filters the `birds` dataset to include only adult passerine birds recorded after 1990 within the Atlantic Forest.
 New variables are created, including a consolidated wing length, scaled year and latitude, and cleaned species names.
-The data is then filtered to include only species with at least 50 records and a temporal range of at least 10 years.
+The data is then filtered to include only species with at least 30 records and a temporal range of at least 5 years.
 Finally, it selects the relevant columns, adds diet information from the Elton Traits dataset, and saves the cleaned data to `passer90.rda`.
 ```{r newdataframes,cache=TRUE, eval=TRUE}
 passer90 <- birds %>%
@@ -100,13 +100,13 @@ passer90 <- birds %>%
             spp = Binomial # Creating variable for phylo matrix in model later
           ) %>%
           group_by(Binomial) %>%
-          filter(n() >= 50) %>% # keeping only spp that have at least 50 records
+          filter(n() >= 30) %>% # keeping only spp that have at least 30 records
             mutate(
                   min = min(Year),
                   max = max(Year),
                   range = max-min
                         ) %>%
-            filter(range >= 10) # keeping only spp that range at least 10 yrs
+            filter(range >= 5) # keeping only spp that range at least 5 yrs
 
 # keeping only variables that I will use in the models:
 passer90 <- passer90 %>%
@@ -122,6 +122,18 @@ passer90$scaled_lat <- as.numeric(passer90$scaled_lat)
 passer90$scaled_yr <- as.numeric(passer90$scaled_yr)
 
 save(passer90, file = "passer90.rda")
+
+saveRDS(
+  list(
+    n_spp           = dplyr::n_distinct(passer90$Binomial),
+    n_rec           = nrow(passer90),
+    yr_min          = min(passer90$Year, na.rm = TRUE),
+    yr_max          = max(passer90$Year, na.rm = TRUE),
+    threshold_min_n = 30L,
+    threshold_min_range = 5L
+  ),
+  "data_summary.rds"
+)
 
 rm(birds)
 ```
@@ -162,9 +174,9 @@ g_year_max <- ggplot(data = year_range, aes(x = max)) +
 g_year_max
 ```
 
-For each species in the dataset, the range of years of data available ranges from 2 to 28. It seems reasonable to use only those species for which we have at least 10 years of data. I haven't looked into what constitutes a good longitudinal dataset, but less than 10 years just seems too little in order to establish a link between temperature and body size.
+For each species in the dataset, the range of years of data available ranges from 2 to 28. We retain species with at least 5 years of data to ensure a minimum longitudinal signal while maximising species coverage.
 
-After filtering out the species with less than 10 years of data, we ended up with a total of 68 passerine species.
+After filtering, we ended up with a total of `r dplyr::n_distinct(passer90$Binomial)` passerine species.
 
 ## Exploratory plots
 Plotting some relationships:
@@ -216,7 +228,7 @@ Of the passerines in the **wing length** dataset, here is a breakdown of their d
 ```{r summary_diets, cache=TRUE}
 table(elton[,20])
 
-(table(elton[,20])/68)*100
+(table(elton[,20])/dplyr::n_distinct(passer90$Binomial))*100
 ```
 The tables above present the counts and percetange of species, respectively, per diet category.
 
@@ -988,6 +1000,86 @@ fixef(brm_no_grass)[1:2, ] %>%
 
 plot(conditional_effects(brm_no_grass))
 pp_check(brm_no_grass)
+```
+
+## Save arthropod estimates for manuscript inline reporting
+Extracts key estimates from both models and writes `arthropod_estimates.rds`
+so that `index.qmd` can reference them via inline R without hardcoding numbers.
+```{r save_arthropod_estimates, cache=FALSE}
+load("brm_no_grass.rda")           # main:  ants included + forest biomes
+load("brm_no_ants_no_grass.rda")   # sensitivity: ants excluded + forest biomes
+load("dat_no_grassland.rds")
+
+# helper: extract slope + 95% CrI + exponentiated versions from a brms fit
+arth_coefs <- function(fit, dat) {
+  fe   <- fixef(fit)["scaled_yr", c("Estimate", "Q2.5", "Q97.5")]
+  list(
+    b    = round(fe["Estimate"], 2),
+    lo   = round(fe["Q2.5"],    2),
+    hi   = round(fe["Q97.5"],   2),
+    mult      = round(exp(fe["Estimate"]), 2),
+    mult_lo   = round(exp(fe["Q2.5"]),    2),
+    mult_hi   = round(exp(fe["Q97.5"]),   2),
+    n    = nrow(dat)
+  )
+}
+
+# ants excluded + forest biomes dataset (needed for N)
+dat_no_ants_forest <- dat_no_grassland %>%
+  filter(Family != "Formicidae")
+
+arth_est <- list(
+  main = arth_coefs(brm_no_grass,          dat_no_grassland),
+  sens = arth_coefs(brm_no_ants_no_grass,  dat_no_ants_forest)
+)
+
+saveRDS(arth_est, file = "arthropod_estimates.rds")
+message("Saved arthropod_estimates.rds — main N = ", arth_est$main$n,
+        ", β = ", arth_est$main$b,
+        "  |  sens N = ", arth_est$sens$n,
+        ", β = ", arth_est$sens$b)
+```
+
+## Sensitivity: ants-included vs ants-excluded
+Compares the `scaled_yr` slope between the main model (ants included, forest
+biomes) and the sensitivity model (ants excluded, forest biomes) to assess how
+much the ant-inclusion assumption changes the estimated arthropod decline.
+```{r compare_ant_models, cache=TRUE}
+load("brm_no_grass.rda")
+load("brm_arthro_abund_no_ants.rda")
+
+# scaled_yr slope on the log-count scale (exp = multiplicative change per SD year)
+slope_main <- fixef(brm_no_grass)["scaled_yr", c("Estimate", "Q2.5", "Q97.5")]
+slope_sens <- fixef(brm_no_ants)["scaled_yr",  c("Estimate", "Q2.5", "Q97.5")]
+
+comparison <- data.frame(
+  model     = c("Ants included (main)", "Ants excluded (sensitivity)"),
+  log_slope = c(slope_main["Estimate"], slope_sens["Estimate"]),
+  Q2.5      = c(slope_main["Q2.5"],     slope_sens["Q2.5"]),
+  Q97.5     = c(slope_main["Q97.5"],    slope_sens["Q97.5"])
+)
+comparison$exp_slope <- exp(comparison$log_slope)
+comparison$exp_Q2.5  <- exp(comparison$Q2.5)
+comparison$exp_Q97.5 <- exp(comparison$Q97.5)
+print(comparison)
+
+# Posterior overlap: draw from both models and compare
+draws_main <- as_draws_df(brm_no_grass)$b_scaled_yr
+draws_sens <- as_draws_df(brm_no_ants)$b_scaled_yr
+
+overlap_df <- data.frame(
+  value = c(draws_main, draws_sens),
+  model = rep(c("Ants included", "Ants excluded"), each = length(draws_main))
+)
+
+ggplot(overlap_df, aes(x = value, fill = model)) +
+  geom_density(alpha = 0.5) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_fill_manual(values = c("Ants included" = "#2E5090", "Ants excluded" = "#B55A2E")) +
+  labs(x = "scaled_yr slope (log scale)", y = "Density",
+       title = "Posterior comparison: ant-inclusion sensitivity",
+       fill = NULL) +
+  theme_classic()
 ```
 
 ## Export Figure 4 (arthropod decline) for the manuscript

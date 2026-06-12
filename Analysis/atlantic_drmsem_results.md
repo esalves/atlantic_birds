@@ -1,68 +1,90 @@
 # drmSEM findings — Atlantic Forest passerines
 
-**Script:** `atlantic_drmsem.R` · **Model tag:** `v3-arthro-spatArthro200km`
-**Recorded:** 2026-06-11 (from the saved run caches + reported Fisher's C)
+**Script:** `atlantic_drmsem.R` · **Recorded:** 2026-06-11
+Two model scopes are reported. Coefficients are phylogeny-corrected (50-tree
+Rubin-pooled; **Pagel's λ = 1 on all trees in both models** — strong
+phylogenetic signal, but the phylo-corrected paths are nearly identical to the
+i.i.d. fits, so conclusions are robust to phylogenetic correction). Temperature
+is time-resolved WorldClim (CRU-TS 4.09 downscaled).
 
-## Model specification
+| | Arthropod model (`INCLUDE_ARTHRO = TRUE`) | Full-data model (`INCLUDE_ARTHRO = FALSE`) |
+|---|---|---|
+| Nodes | temperature, arthropod, wing (+σ) | temperature, wing (+σ) |
+| Arthropod index | observed PREDICTS, spatial (200 km), endogenous | — |
+| N / species / years | 2,006 / 67 / 1998–2008 | **8,767 / 68 / 1990–2018** |
+| **Fisher's C** | 9.06, df 4, **p = 0.057** (marginal) | **0.24, df 2, p = 0.885** (clean) |
 
-Distributional piecewise SEM, **arthropod model** (`INCLUDE_ARTHRO = TRUE`):
+## Path coefficients (phylogeny-corrected, sd_x)
 
-- **Nodes:** `scaled_tmean ~ scaled_yr + scaled_lat`; `arthro_obs_std ~ scaled_yr + scaled_tmean + scaled_lat`; `wing_length ~ scaled_tmean + arthro_obs_std + Sex + scaled_lat` with `sigma(wing_length) ~ scaled_yr + scaled_tmean`.
-- **Arthropod index:** observed PREDICTS log(abundance/effort), **spatially resolved** as a locality × year mean within a 200 km radius (Atlantic-Forest-year fallback) — varies within year, mitigating pseudoreplication.
-- **Temperature:** time-resolved WorldClim (CRU-TS 4.09 downscaled), per record × year.
-- **Sample:** N ≈ 2,006 individual records, 67 species (arthropod-covered window).
-- **Phylogeny:** `relmat()` on the wing-length node; Pagel's λ AIC-selected per tree; coefficients Rubin-pooled across 50 clootl trees. **λ = 1.0 for all 50 trees** (strong phylogenetic signal — the phylogeny-corrected coefficients below are authoritative).
+| Path | Component | Arthropod model | Full-data model |
+|---|---|---:|---:|
+| year → temperature | mu | +0.062 (p = 0.024) | +0.029 (p < 1e-6) |
+| latitude → temperature | mu | −0.41 | −0.47 |
+| year → arthropod | mu | −0.87 (p < 1e-87) | — |
+| temperature → arthropod | mu | +0.23 (p < 1e-10) | — |
+| latitude → arthropod | mu | +0.40 | — |
+| **temperature → wing** | **mu** | **−0.55 (p = 0.012)** | **+0.11 (p = 0.31)** |
+| arthropod → wing | mu | +0.06 (p = 0.63) | — |
+| Sex (Male) → wing | mu | +2.59 | +2.55 |
+| latitude → wing | mu | +0.02 (n.s.) | −0.11 (n.s.) |
+| **year → σ(wing)** | **sigma** | **−0.099 (p = 0.004)** | **+0.074 (p < 1e-20)** |
+| **temperature → σ(wing)** | **sigma** | **−0.16 (p < 1e-8)** | **−0.17 (p < 1e-80)** |
 
-## Global fit (main SEM)
+## Effect decomposition (year/temperature → wing)
 
-**Fisher's C = 9.18 on 4 df, p = 0.0567.** The DAG is marginally **consistent** with the data (not rejected at α = 0.05) — a clean recovery from the earlier p ≈ 1e-59 rejection, achieved by spatially resolving the arthropod index and adding the `scaled_lat → arthro_obs_std` edge. Borderline; report as "consistent but marginal."
+| Effect | Arthropod model | Full-data model |
+|---|---:|---:|
+| year → wing (total indirect) | −0.043 [−0.146, 0.046] n.s. | +0.003 [−0.004, 0.010] n.s. |
+| year → wing via temperature | −0.016 [−0.036, −0.002] sig. | (only channel) |
+| year → wing via arthropod | −0.026 [−0.130, 0.065] n.s. | — |
+| temperature → wing (direct) | −0.41 [−0.79, −0.10] sig. | +0.10 [−0.10, 0.33] n.s. |
 
-## Phylogeny-corrected path coefficients (50-tree Rubin-pooled, λ = 1)
+## Findings (what the two models jointly establish)
 
-| Path | Component | Estimate | 95% CI | p |
-|---|---|---:|---|---:|
-| scaled_yr → scaled_tmean | mu | +0.062 | [0.008, 0.115] | 0.024 |
-| scaled_lat → scaled_tmean | mu | −0.406 | [−0.451, −0.361] | 8e-71 |
-| scaled_yr → arthro_obs_std | mu | −0.896 | [−0.981, −0.811] | 2e-94 |
-| scaled_tmean → arthro_obs_std | mu | +0.262 | [0.194, 0.330] | 5e-14 |
-| scaled_lat → arthro_obs_std | mu | +0.403 | [0.343, 0.463] | 2e-39 |
-| **scaled_tmean → wing_length** | **mu** | **−0.557** | **[−0.989, −0.126]** | **0.011** |
-| arthro_obs_std → wing_length | mu | +0.062 | [−0.166, 0.290] | 0.59 |
-| Sex (Male) → wing_length | mu | +2.587 | [2.132, 3.042] | 8e-29 |
-| scaled_lat → wing_length | mu | +0.019 | [−0.419, 0.457] | 0.93 |
-| **scaled_yr → sigma(wing_length)** | **sigma** | **−0.099** | **[−0.166, −0.031]** | **0.004** |
-| **scaled_tmean → sigma(wing_length)** | **sigma** | **−0.160** | **[−0.212, −0.108]** | 2e-9 |
+**1. Wing-size variance has increased over time — confirmed on the full data.**
+`year → σ(wing)` = **+0.074, p < 1e-20** across all 8,767 records (1990–2018).
+This corroborates the lnCVR "variance rising" result. The *negative* sign in the
+arthropod model (−0.099) was an artefact of its restricted 1998–2008 subset —
+**the full-data run resolves the sign in favour of rising variance.**
 
-(mu estimates ≈ mm per 1 SD of predictor; sigma on the log scale.)
+**2. Warmer → less variable wings — robust everywhere.**
+`temperature → σ(wing)` = −0.16 to −0.17 (p < 1e-8 in both). The most stable
+result in the whole analysis.
 
-## Effect decomposition (main SEM, simulation-based)
+**3. The mean Bergmann response is NOT robust.** `temperature → wing` is
+significantly negative (−0.55) only in the smaller arthropod subset; on the full
+data it is +0.11 and non-significant. So "warmer → smaller wings" is specific to
+the 1998–2008 arthropod-covered sample, not a general pattern — report it as
+fragile/subset-dependent, not a headline.
 
-| Effect | Estimate | 95% CI | Note |
-|---|---:|---|---|
-| scaled_yr → wing (both mediators, total indirect) | −0.043 | [−0.146, 0.046] | n.s. |
-| scaled_yr → wing **via temperature** | **−0.016** | **[−0.036, −0.002]** | significant |
-| scaled_yr → wing via arthropod | −0.029 | [−0.130, 0.065] | n.s. |
-| scaled_tmean → wing (total) | −0.396 | [−0.748, −0.070] | significant |
-| scaled_tmean → wing (**direct**) | −0.409 | [−0.795, −0.099] | significant |
-| scaled_tmean → wing (indirect via arthropod) | +0.013 | [−0.032, 0.053] | n.s. |
+**4. No food-limitation effect on body size.** `arthropod → wing` ≈ 0 (p = 0.63),
+even with the spatially-resolved index. Arthropods declined strongly over time
+(`year → arthropod` = −0.87) but that decline does not reach wing length.
 
-Distribution-mediated components ≈ 0 throughout.
+**5. No net temporal trend in mean size through climate.** The overall
+`year → wing` mean effect is ≈ 0 in both models (CIs cross zero). Years did warm
+(`year → temperature` = +0.03 to +0.06), but little mean size change is
+transmitted.
 
-## Findings
+**6. DAG fit favours the full-data model.** Fisher's C is clean for the full-data
+model (p = 0.89, one passing d-sep claim) and only marginal for the arthropod
+model (p = 0.057, held together by the `latitude → arthropod` adjustment edge).
 
-1. **Temperature → smaller wings (Bergmann-consistent), acting directly.** Phylogeny-corrected `scaled_tmean → wing_length` = −0.56 mm/SD (p = 0.011); the temperature effect is essentially all direct (−0.41), not routed through arthropods. With warming in-sample (`year → temperature` = +0.06), the **year → temperature → wing** channel is small but significant (−0.016, CI excludes 0) — the temporal Bergmann mediation.
+**7. Phylogeny barely matters here.** λ = 1 on all 50 trees in both models, yet
+phylo-corrected and i.i.d. paths coincide → conclusions robust to phylogenetic
+correction. (`brm0_multiphylo.rda` remains the formal phylogenetic authority.)
 
-2. **No food-limitation effect on body size.** `arthro_obs_std → wing_length` = +0.06 (p = 0.59); the arthropod channel of the year→size effect is non-significant. The spatial index *strengthened* this null rather than reversing it, so it is not a level-mismatch artifact.
+## Bottom line
 
-3. **Arthropods declined steeply but it is a dead-end path.** `year → arthropod` = −0.90 (p ≈ 1e-94); arthropods are higher in warmer (+0.26) and higher-latitude (+0.40) cells. None of this reaches wing length.
+The defensible story is **distributional, not about the mean**: morphological
+*variability* rose over 1990–2018 (full data, p < 1e-20) and falls with
+temperature, while the *mean*-size Bergmann response is weak and subset-fragile
+and food limitation shows no effect on size. The variance results are the
+contribution; the mean-size and food-limitation hypotheses are not supported on
+the full data.
 
-4. **Overall year → size effect is weak** (−0.043, CI crosses 0); only the temperature sub-channel is reliable.
+## Provenance
 
-5. **Variance — one robust, one fragile.** `temperature → sigma(wing)` = −0.16 (p ≈ 2e-9; warmer → less variable) holds across all runs. `year → sigma(wing)` = −0.099 (p = 0.004) is *negative* here (variability falling over time), **opposite to the lnCVR "variance rising" result** — this is sensitive to the arthropod-covered subset and must be checked on the full dataset (`INCLUDE_ARTHRO = FALSE`).
-
-## Caveats
-
-- **Borderline DAG fit** (p = 0.057). The `scaled_lat → arthro_obs_std` edge is partly a real spatial gradient (given the local index) and partly a sampling adjustment — see design decision (1).
-- **Restricted sample** (N ≈ 2,006, arthropod-covered window). The variance-over-time result in particular is subset-dependent.
-- **Authoritative phylogeny:** the primary brms analysis (`brm0_multiphylo.rda`) remains the formal authority; these are the drmSEM corroboration.
-- **Pending:** the full-data temperature/variance model (`INCLUDE_ARTHRO = FALSE`, all ~8,700 records, 1990–2018) has not yet been run; it adjudicates the `year → sigma` sign.
+Auto-generated per-run records: `drmsem_results_arthro.{rds,md}`,
+`drmsem_results_noarthro.{rds,md}`; figures in `figures/` (`*_arthro`,
+`*_noarthro`). This file is the curated cross-model summary.

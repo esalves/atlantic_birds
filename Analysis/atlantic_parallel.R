@@ -68,16 +68,28 @@ ebird_synonyms <- c(
   "Pyrrhocoma ruficeps"      = "Thlypopsis pyrrhocoma", # genus AND epithet changed
   "Pyriglena pernambucensis" = "Pyriglena leuconota",   # now a subspecies of leuconota
   "Tangara sayaca"           = "Thraupis sayaca",
-  "Tangara cayana"           = "Stilpnia cayana",        # moved to Stilpnia (verify)
-  "Tiaris fuliginosus"       = "Asemospiza fuliginosa"   # Tiaris split -> Asemospiza (verify)
+  "Tangara cayana"           = "Stilpnia cayana",        # moved to Stilpnia
+  "Tangara palmarum"         = "Thraupis palmarum",      # Palm Tanager stays in Thraupis
+  "Tangara peruviana"        = "Stilpnia peruviana",     # moved to Stilpnia (eBird 2020+)
+  "Dixiphia pipra"           = "Pseudopipra pipra",      # SACC 876 (2023): Dixiphia -> Pseudopipra
+  "Tiaris fuliginosus"       = "Asemospiza fuliginosa"   # Tiaris split -> Asemospiza
 )
 hit <- passer90$species_name %in% names(ebird_synonyms)
 passer90$species_name[hit] <- ebird_synonyms[passer90$species_name[hit]]
 spp_data <- unique(passer90$species_name)
 
 # Sanity check before the expensive 100-tree pull (n_tree = 1 reports unmatched
-# names instead of erroring); investigate anything it lists.
-stopifnot(length(pr_get_tree(spp_data, source = "clootl", n_tree = 1)$unmatched) == 0)
+# names instead of erroring). Strip any unmatched species so the 100-tree call
+# doesn't error hard. Herpsilochmus sellowi (described 2013, Pacheco et al.) is
+# not in eBird/Clements 2025 taxonomy and will be dropped here; reconcile_apply()
+# with drop_unresolved = TRUE also removes tree-absent species from the model.
+.check <- pr_get_tree(spp_data, source = "clootl", n_tree = 1)
+if (length(.check$unmatched) > 0) {
+  message("Removing ", length(.check$unmatched), " species absent from eBird taxonomy: ",
+          paste(.check$unmatched, collapse = ", "))
+  spp_data <- setdiff(spp_data, .check$unmatched)
+}
+stopifnot(length(.check$unmatched) <= 1)
 
 # --- (1) Retrieve the tree cloud with prepR4pcm (clootl backend) ----------
 # pr_get_tree() wraps clootl and returns a posterior of trees when n_tree > 1.
