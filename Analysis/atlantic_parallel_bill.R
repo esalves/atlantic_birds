@@ -68,6 +68,12 @@ spp_data <- unique(passer90$species_name)
 if (!nzchar(Sys.getenv("AVESDATA_PATH")) || !dir.exists(Sys.getenv("AVESDATA_PATH"))) {
   clootl::get_avesdata_repo(path = ANALYSIS_DIR)
 }
+.check <- pr_get_tree(spp_data, source = "clootl", n_tree = 1)
+if (length(.check$unmatched) > 0) {
+  message("Removing ", length(.check$unmatched), " species absent from eBird taxonomy: ",
+          paste(.check$unmatched, collapse = ", "))
+  spp_data <- setdiff(spp_data, .check$unmatched)
+}
 got   <- pr_get_tree(spp_data, source = "clootl", n_tree = 100, cache = TRUE)
 trees <- got$tree
 

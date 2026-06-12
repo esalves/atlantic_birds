@@ -224,6 +224,12 @@ if (!nzchar(Sys.getenv("AVESDATA_PATH")) || !dir.exists(Sys.getenv("AVESDATA_PAT
   clootl::get_avesdata_repo(path = ANALYSIS_DIR)
 
 spp_relaxed <- unique(dat_relaxed$species_name)
+.check_r <- pr_get_tree(spp_relaxed, source = "clootl", n_tree = 1)
+if (length(.check_r$unmatched) > 0) {
+  message("Removing ", length(.check_r$unmatched), " species absent from eBird taxonomy: ",
+          paste(.check_r$unmatched, collapse = ", "))
+  spp_relaxed <- setdiff(spp_relaxed, .check_r$unmatched)
+}
 # pr_get_tree only accepts n_tree = 100; subsample afterwards
 got_relaxed <- pr_get_tree(spp_relaxed, source = "clootl",
                            n_tree = 100L, cache = TRUE)
