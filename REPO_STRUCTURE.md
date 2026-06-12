@@ -14,14 +14,17 @@ atlantic_birds/
 │   ├── output/           # results consumed downstream / by the manuscript
 │   │   └── models/       # fitted brms model objects (*.rda)
 │   └── figures/          # script-generated diagnostic figures (drmSEM, sensitivity)
-├── Manuscript/           # Quarto manuscript (index.qmd), references.bib, make_figures.py, images/
+├── Manuscript/           # Quarto manuscript: index.qmd, references.bib, make_figures.py,
+│                         # _quarto.yml, images/, data/ (basemap). Build output
+│                         # (_freeze/, _manuscript/, index_files/, .quarto/) is git-ignored.
 ├── archive/              # superseded / exploratory / scratch (kept for provenance, not in the pipeline)
 │   ├── legacy_models/    # BirdTree-era models, loaded only by the Rmd's eval=FALSE chunks
 │   ├── biotime/          # BioTIME exploration (not used by the manuscript)
-│   └── temperature_diagnostic/
+│   ├── temperature_diagnostic/
+│   ├── RegisteredReport/ # the registered report (separate, completed deliverable)
+│   └── manuscript_agu_template/  # unused AGU Quarto extension + .cls/.sty (target is html+docx)
 ├── DataManagementPlan/   # project DMP (unchanged)
-├── RegisteredReport/     # the registered report (separate deliverable, unchanged)
-└── README.md, CODE_REVIEW.md, atlantic_birds.Rproj
+└── README.md, CODE_REVIEW.md, REPO_STRUCTURE.md, atlantic_birds.Rproj
 ```
 
 ## Path convention (scripts)
