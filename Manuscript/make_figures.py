@@ -28,7 +28,7 @@ DATA = os.path.join(HERE, "data", "south_america.geojson")
 # Canonical analytical sample (89 species / 15,332 records), exported from
 # passer90.rda by Analysis/update_descriptive_stats.R so the figures use the
 # exact same build as the models and the quoted text.
-CSV  = os.path.join(HERE, "..", "Analysis", "passer90_export.csv")
+CSV  = os.path.join(HERE, "..", "Analysis", "data", "derived", "passer90_export.csv")
 
 # --- model-estimated wing~year effect (Rubin-pooled; atlantic_parallel.R) ---
 WING_YR_BETA, WING_YR_LO, WING_YR_HI = -0.7294, -1.0854, -0.3733   # mm per SD-year

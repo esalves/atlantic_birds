@@ -93,12 +93,12 @@ from the Rmd (export_fig_arthropods chunk).
 -->
 
 ```{r load-estimates, include=FALSE}
-arth    <- readRDS("../Analysis/arthropod_estimates.rds")
-diet    <- readRDS("../Analysis/diet_interaction_results.rds")
-dat_sum <- readRDS("../Analysis/data_summary.rds")
-desc    <- readRDS("../Analysis/descriptive_summary.rds")  # quartile, lnCVR, pooled model numbers
-drm_a   <- readRDS("../Analysis/drmsem_results_arthro.rds")   # drmSEM: arthropod-coverage causal model
-drm_f   <- readRDS("../Analysis/drmsem_results_noarthro.rds") # drmSEM: full-record temperature/variance model
+arth    <- readRDS("../Analysis/output/arthropod_estimates.rds")
+diet    <- readRDS("../Analysis/output/diet_interaction_results.rds")
+dat_sum <- readRDS("../Analysis/output/data_summary.rds")
+desc    <- readRDS("../Analysis/output/descriptive_summary.rds")  # quartile, lnCVR, pooled model numbers
+drm_a   <- readRDS("../Analysis/output/drmsem_results_arthro.rds")   # drmSEM: arthropod-coverage causal model
+drm_f   <- readRDS("../Analysis/output/drmsem_results_noarthro.rds") # drmSEM: full-record temperature/variance model
 
 # format a count with a thousands separator for inline use
 .n <- function(x) format(x, big.mark = ",", trim = TRUE)
@@ -131,7 +131,7 @@ slope_low  <- round(yr_A - int_est, 2)   # diet −1 SD
 slope_high <- round(yr_A + int_est, 2)   # diet +1 SD
 
 # sensitivity threshold results (Tier 1)
-sens <- tryCatch(readRDS("../Analysis/sensitivity_thresholds_tier1.rds"),
+sens <- tryCatch(readRDS("../Analysis/output/sensitivity_thresholds_tier1.rds"),
                  error = function(e) NULL)
 if (!is.null(sens)) {
   n_sens_total     <- nrow(sens)

@@ -29,20 +29,27 @@ library(dplyr)
 
 set.seed(20240101)
 
-# --- robust path resolution (find repo files regardless of getwd()) --------
-.find_file <- function(fname, subdir = "Analysis") {
-  dirs <- getwd(); d <- getwd()
-  for (i in 1:8) { d <- dirname(d); dirs <- c(dirs, d) }
-  cand <- unique(c(file.path(dirs, fname), file.path(dirs, subdir, fname)))
-  hit  <- cand[file.exists(cand)]
-  if (!length(hit)) stop("Could not locate '", fname,
-      "'. Run from inside the atlantic_birds repo, or setwd() to the Analysis/ folder.")
-  normalizePath(hit[1], winslash = "/")
+# --- robust path resolution (repo layout: Analysis/{scripts,data,output,figures}) ---
+.find_analysis_dir <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in 1:10) {
+    if (dir.exists(file.path(d, "data", "derived")) && dir.exists(file.path(d, "scripts")))
+      return(d)
+    if (dir.exists(file.path(d, "Analysis", "data", "derived")))
+      return(normalizePath(file.path(d, "Analysis"), winslash = "/"))
+    parent <- dirname(d); if (identical(parent, d)) break; d <- parent
+  }
+  stop("Could not locate Analysis/ (need Analysis/data/derived and Analysis/scripts). ",
+       "Run from inside the atlantic_birds repo.")
 }
-ANALYSIS_DIR <- dirname(.find_file("passer90.rda"))
-apath <- function(...) file.path(ANALYSIS_DIR, ...)
+ANALYSIS_DIR <- .find_analysis_dir()
+raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
+derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
+out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
+script_path  <- function(...) file.path(ANALYSIS_DIR, "scripts", ...)
 
-load(apath("passer90.rda"))
+load(derived_path("passer90.rda"))
 passer90$species_name <- gsub("_", " ", passer90$Binomial)
 
 # ABT (2018) -> current eBird/Clements names (see atlantic_parallel.R).
@@ -66,7 +73,7 @@ spp_data <- unique(passer90$species_name)
 # Only download the AvesData repo if clootl has no recorded location for it
 # (AVESDATA_PATH); avoids a redundant re-download when it already exists elsewhere.
 if (!nzchar(Sys.getenv("AVESDATA_PATH")) || !dir.exists(Sys.getenv("AVESDATA_PATH"))) {
-  clootl::get_avesdata_repo(path = ANALYSIS_DIR)
+  clootl::get_avesdata_repo(path = raw_path())
 }
 .check <- pr_get_tree(spp_data, source = "clootl", n_tree = 1)
 if (length(.check$unmatched) > 0) {
@@ -148,4 +155,4 @@ bill_sig <- sapply(bill_fits, function(f) {
 })
 print(round(c(mean = mean(bill_sig), lwr = quantile(bill_sig, .025), upr = quantile(bill_sig, .975)), 3))
 
-save(bill_fits, bill_rubin_summary, bill_sig, file = apath("brm_bill_multiphylo.rda"))
+save(bill_fits, bill_rubin_summary, bill_sig, file = out_path("models", "brm_bill_multiphylo.rda"))

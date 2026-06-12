@@ -42,22 +42,28 @@ SEED    <- 20240303
 
 set.seed(SEED)
 
-# ── path helpers ────────────────────────────────────────────────────────────
-.find_file <- function(fname, subdir = "Analysis") {
-  dirs <- getwd(); d <- getwd()
-  for (i in 1:8) { d <- dirname(d); dirs <- c(dirs, d) }
-  cand <- unique(c(file.path(dirs, fname), file.path(dirs, subdir, fname)))
-  hit  <- cand[file.exists(cand)]
-  if (!length(hit)) stop("Could not locate '", fname, "'. Run from inside the repo.")
-  normalizePath(hit[1], winslash = "/")
+# ── path helpers (repo layout: Analysis/{scripts,data,output,figures}) ───────
+.find_analysis_dir <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in 1:10) {
+    if (dir.exists(file.path(d, "data", "derived")) && dir.exists(file.path(d, "scripts")))
+      return(d)
+    if (dir.exists(file.path(d, "Analysis", "data", "derived")))
+      return(normalizePath(file.path(d, "Analysis"), winslash = "/"))
+    parent <- dirname(d); if (identical(parent, d)) break; d <- parent
+  }
+  stop("Could not locate Analysis/ (need Analysis/data/derived and Analysis/scripts).")
 }
-ANALYSIS_DIR <- dirname(.find_file("passer90.rda"))
-apath <- function(...) file.path(ANALYSIS_DIR, ...)
+ANALYSIS_DIR <- .find_analysis_dir()
+raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
+derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
+out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
 
 # ── load data ────────────────────────────────────────────────────────────────
-load(apath("passer90.rda"))          # → passer90 (already filtered; rerun Rmd to update thresholds)
+load(derived_path("passer90.rda"))   # → passer90 (already filtered; rerun Rmd to update thresholds)
 
-elton_raw <- readr::read_tsv(apath("BirdFuncDat.txt"), show_col_types = FALSE)
+elton_raw <- readr::read_tsv(raw_path("BirdFuncDat.txt"), show_col_types = FALSE)
 elton_raw$Scientific <- gsub(" ", "_", elton_raw$Scientific)
 
 # Join continuous invertebrate diet proportion (0–100)
@@ -115,7 +121,7 @@ dat$species_name[hit] <- ebird_synonyms[dat$species_name[hit]]
 
 # ── phylogeny ────────────────────────────────────────────────────────────────
 if (!nzchar(Sys.getenv("AVESDATA_PATH")) || !dir.exists(Sys.getenv("AVESDATA_PATH")))
-  clootl::get_avesdata_repo(path = ANALYSIS_DIR)
+  clootl::get_avesdata_repo(path = raw_path())
 
 spp_data <- unique(dat$species_name)
 .check <- pr_get_tree(spp_data, source = "clootl", n_tree = 1)
@@ -328,7 +334,7 @@ saveRDS(
                        group_by(diet_cat2) %>%
                        summarise(n = n(), mean_inv = mean(diet_inv), .groups = "drop")
   ),
-  apath("diet_interaction_results.rds")
+  out_path("diet_interaction_results.rds")
 )
 message("Saved: diet_interaction_results.rds")
 

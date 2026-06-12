@@ -41,20 +41,26 @@ SEED    <- 20240202
 
 set.seed(SEED)
 
-# ── path helpers (mirrors atlantic_parallel.R) ─────────────────────────────
-.find_file <- function(fname, subdir = "Analysis") {
-  dirs <- getwd(); d <- getwd()
-  for (i in 1:8) { d <- dirname(d); dirs <- c(dirs, d) }
-  cand <- unique(c(file.path(dirs, fname), file.path(dirs, subdir, fname)))
-  hit  <- cand[file.exists(cand)]
-  if (!length(hit)) stop("Could not locate '", fname, "'. Run from inside the repo.")
-  normalizePath(hit[1], winslash = "/")
+# ── path helpers (mirrors atlantic_parallel.R; layout: Analysis/{scripts,data,output,figures}) ──
+.find_analysis_dir <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in 1:10) {
+    if (dir.exists(file.path(d, "data", "derived")) && dir.exists(file.path(d, "scripts")))
+      return(d)
+    if (dir.exists(file.path(d, "Analysis", "data", "derived")))
+      return(normalizePath(file.path(d, "Analysis"), winslash = "/"))
+    parent <- dirname(d); if (identical(parent, d)) break; d <- parent
+  }
+  stop("Could not locate Analysis/ (need Analysis/data/derived and Analysis/scripts).")
 }
-ANALYSIS_DIR <- dirname(.find_file("passer90.rda"))
-apath <- function(...) file.path(ANALYSIS_DIR, ...)
+ANALYSIS_DIR <- .find_analysis_dir()
+raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
+derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
+out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
 
 # ── raw data ───────────────────────────────────────────────────────────────
-birds_raw <- read.csv(apath("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv"))
+birds_raw <- read.csv(raw_path("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv"))
 
 base_filter <- function(df) {
   df %>%
@@ -178,7 +184,7 @@ tier1_df <- bind_rows(lapply(tier1_results, as.data.frame))
 message("\nTier 1 summary:")
 print(tier1_df %>% arrange(b_yr))
 
-saveRDS(tier1_df, apath("sensitivity_thresholds_tier1.rds"))
+saveRDS(tier1_df, out_path("sensitivity_thresholds_tier1.rds"))
 message("Saved: sensitivity_thresholds_tier1.rds")
 
 # ── Tier 1 plot ─────────────────────────────────────────────────────────────
@@ -199,7 +205,7 @@ p_tier1 <- ggplot(tier1_df,
        subtitle = "Non-phylogenetic models; dots = posterior mean, bars = 95% CrI") +
   theme_classic()
 
-ggsave(apath("sensitivity_thresholds_tier1.png"), p_tier1,
+ggsave(fig_path("sensitivity_thresholds_tier1.png"), p_tier1,
        width = 9, height = 7, dpi = 150)
 message("Saved: sensitivity_thresholds_tier1.png")
 
@@ -221,7 +227,7 @@ message("Relaxed dataset: ", n_distinct(dat_relaxed$Binomial), " species, ",
 
 # retrieve and reconcile trees
 if (!nzchar(Sys.getenv("AVESDATA_PATH")) || !dir.exists(Sys.getenv("AVESDATA_PATH")))
-  clootl::get_avesdata_repo(path = ANALYSIS_DIR)
+  clootl::get_avesdata_repo(path = raw_path())
 
 spp_relaxed <- unique(dat_relaxed$species_name)
 .check_r <- pr_get_tree(spp_relaxed, source = "clootl", n_tree = 1)
@@ -295,7 +301,7 @@ message("\nTier 2 pooled results (no sex filter, n>=30, range>=5):")
 print(rubin_relaxed)
 
 # compare with main analysis pooled result
-load(apath("brm0_multiphylo.rda"))   # → rubin_summary (main, n>=30, range>=5, sex filter)
+load(out_path("models", "brm0_multiphylo.rda"))   # → rubin_summary (main, n>=30, range>=5, sex filter)
 message("\nMain (n>=30, range>=5, sex filter) vs No-sex-filter (n>=30, range>=5):")
 print(rubin_summary)
 
@@ -307,7 +313,7 @@ saveRDS(
     main_summary     = rubin_summary,
     tier1_df         = tier1_df
   ),
-  apath("sensitivity_thresholds_tier2.rds")
+  out_path("sensitivity_thresholds_tier2.rds")
 )
 message("Saved: sensitivity_thresholds_tier2.rds")
 

@@ -97,17 +97,23 @@ library(ggplot2)
 # 0. PATH HELPERS  (mirrors pattern from atlantic_parallel.R)
 # ============================================================================
 
-.find_file <- function(fname, subdir = "Analysis") {
-  dirs <- getwd(); d <- getwd()
-  for (i in 1:8) { d <- dirname(d); dirs <- c(dirs, d) }
-  cand <- unique(c(file.path(dirs, fname), file.path(dirs, subdir, fname)))
-  hit  <- cand[file.exists(cand)]
-  if (!length(hit)) stop("Could not locate '", fname,
-      "'. Run from inside the atlantic_birds repo.")
-  normalizePath(hit[1], winslash = "/")
+.find_analysis_dir <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in 1:10) {
+    if (dir.exists(file.path(d, "data", "derived")) && dir.exists(file.path(d, "scripts")))
+      return(d)
+    if (dir.exists(file.path(d, "Analysis", "data", "derived")))
+      return(normalizePath(file.path(d, "Analysis"), winslash = "/"))
+    parent <- dirname(d); if (identical(parent, d)) break; d <- parent
+  }
+  stop("Could not locate Analysis/ (need Analysis/data/derived and Analysis/scripts). ",
+       "Run from inside the atlantic_birds repo.")
 }
-ANALYSIS_DIR <- dirname(.find_file("passer90.rda"))
-apath <- function(...) file.path(ANALYSIS_DIR, ...)
+ANALYSIS_DIR <- .find_analysis_dir()
+raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
+derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
+out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
 
 # ============================================================================
 # CONFIG: simulation cost + result caching
@@ -149,7 +155,7 @@ SEM_SEED    <- 20250611
 EFFECT_B    <- 200L     # coefficient draws  (CI precision)        — 50 for dev
 EFFECT_NSIM <- 200L     # inner sims, distribution-mediated leg    — 50 for dev
 RECOMPUTE   <- FALSE    # TRUE = ignore the cache and recompute
-CACHE_FILE  <- apath(paste0("drmsem_effects_cache_", .mode, ".rds"))
+CACHE_FILE  <- out_path(paste0("drmsem_effects_cache_", .mode, ".rds"))
 # Bump MODEL_TAG whenever node FORMULAS change (the data signature alone won't
 # catch a structural change, so this forces the effect/phylo caches to refit).
 MODEL_TAG   <- paste0("v3-", .mode, if (INCLUDE_ARTHRO) paste0("-spatArthro", ARTHRO_RADIUS_KM, "km") else "")
@@ -158,8 +164,8 @@ MODEL_TAG   <- paste0("v3-", .mode, if (INCLUDE_ARTHRO) paste0("-spatArthro", AR
 RUN_PHYLO        <- TRUE                  # FALSE skips the whole phylo variant
 N_PHYLO_TREES    <- 50L                   # trees sampled for Rubin pooling
 LAMBDA_GRID      <- c(0, 0.25, 0.5, 0.75, 0.9, 1)  # Pagel's lambda grid (AIC-selected)
-PHYLO_PREP_CACHE <- apath(paste0("drmsem_phylo_prep_", .mode, ".rds"))   # reconciled trees + matched data
-PHYLO_CACHE      <- apath(paste0("drmsem_phylo_results_", .mode, ".rds")) # pooled paths + per-tree lambda
+PHYLO_PREP_CACHE <- out_path(paste0("drmsem_phylo_prep_", .mode, ".rds"))   # reconciled trees + matched data
+PHYLO_CACHE      <- out_path(paste0("drmsem_phylo_results_", .mode, ".rds")) # pooled paths + per-tree lambda
 RECOMPUTE_PHYLO  <- FALSE                 # TRUE = ignore phylo caches and refit
 
 # ============================================================================
@@ -168,7 +174,7 @@ RECOMPUTE_PHYLO  <- FALSE                 # TRUE = ignore phylo caches and refit
 
 # Bird data: prefer time-resolved WorldClim temperature (passer90_climate.rds);
 # fall back to static Annual_mean_temperature from passer90.rda if not yet generated.
-climate_path <- apath("passer90_climate.rds")
+climate_path <- derived_path("passer90_climate.rds")
 if (file.exists(climate_path)) {
   birds <- readRDS(climate_path)
   message("Using time-resolved temperature (scaled_tmean from WorldClim).")
@@ -181,7 +187,7 @@ if (file.exists(climate_path)) {
     "Run climate_extraction.R (WorldClim) first to generate passer90_climate.rds.",
     call. = FALSE
   )
-  load(apath("passer90.rda"))   # → passer90
+  load(derived_path("passer90.rda"))   # → passer90
   birds <- passer90
   birds$scaled_tmean <- as.numeric(scale(birds$Annual_mean_temperature))
 }
@@ -189,7 +195,7 @@ if (file.exists(climate_path)) {
 # Raw arthropod records (PREDICTS, forest biomes only, ants included). The MAIN
 # model aggregates these directly (section 2); the fitted brm_no_grass model is
 # only needed for the commented exogenous-index sensitivity in section 9.
-load(apath("dat_no_grassland.rds"))   # → dat_no_grassland
+load(derived_path("dat_no_grassland.rds"))   # → dat_no_grassland
 
 # ============================================================================
 # 2. BUILD SPATIALLY-RESOLVED ARTHROPOD AGGREGATE (AF-region, locality × year)
@@ -541,7 +547,7 @@ print(dag_plot)
 
 # # --- 9a. Predicted exogenous index (population-level, per year) ----------
 # arthro_env <- new.env()
-# load(apath("brm_no_grass.rda"), envir = arthro_env)
+# load(out_path("models", "brm_no_grass.rda"), envir = arthro_env)
 # brm_arthro  <- arthro_env$brm_no_grass
 # # Recover the date-scaling brm_arthro used (scale() on Sample_midpoint Dates).
 # arthro_sp_num  <- as.numeric(dat_no_grassland$Sample_midpoint)
@@ -660,7 +666,7 @@ if (isTRUE(RUN_PHYLO) &&
     # download when AVESDATA_PATH is unset/missing (the download dominates cost).
     if (!nzchar(Sys.getenv("AVESDATA_PATH")) ||
         !dir.exists(Sys.getenv("AVESDATA_PATH"))) {
-      clootl::get_avesdata_repo(path = ANALYSIS_DIR)
+      clootl::get_avesdata_repo(path = raw_path())
     }
     # Sanity check before the expensive 100-tree pull: n_tree = 1 REPORTS the
     # names absent from the clootl eBird/Clements taxonomy instead of erroring.
@@ -857,8 +863,8 @@ if (isTRUE(RUN_PHYLO) &&
 # fitted) the pooled phylogenetic paths are recorded in the codebase rather than
 # living only on the console. Ungated by the effect cache, so it always reflects
 # the current run. Files are mode-specific (arthro vs noarthro).
-RESULTS_RDS <- apath(paste0("drmsem_results_", .mode, ".rds"))
-RESULTS_MD  <- apath(paste0("drmsem_results_", .mode, ".md"))
+RESULTS_RDS <- out_path(paste0("drmsem_results_", .mode, ".rds"))
+RESULTS_MD  <- out_path(paste0("drmsem_results_", .mode, ".md"))
 
 results <- list(
   model_tag  = MODEL_TAG,
@@ -922,7 +928,7 @@ message("Wrote results to ", RESULTS_RDS, " and ", RESULTS_MD)
 # Four core figures, saved as mode-tagged PNGs in Analysis/figures/. Each is
 # built from objects already in the session and wrapped in tryCatch so a single
 # plotting failure never aborts the run.
-FIG_DIR <- apath("figures")
+FIG_DIR <- fig_path()
 if (!dir.exists(FIG_DIR)) dir.create(FIG_DIR, recursive = TRUE)
 fpath     <- function(name) file.path(FIG_DIR, paste0(name, "_", .mode, ".png"))
 .try_save <- function(name, plot_obj, w = 7, h = 5) {

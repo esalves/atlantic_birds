@@ -47,20 +47,26 @@ YEAR_MAX <- 2018L
 BBOX_PAD <- 0.5                        # degrees of padding around localities
 WC_BASE  <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.09"
 
-# --- robust path resolution (find repo files regardless of getwd()) --------
-.find_file <- function(fname, subdir = "Analysis") {
-  dirs <- getwd(); d <- getwd()
-  for (i in 1:8) { d <- dirname(d); dirs <- c(dirs, d) }
-  cand <- unique(c(file.path(dirs, fname), file.path(dirs, subdir, fname)))
-  hit  <- cand[file.exists(cand)]
-  if (!length(hit)) stop("Could not locate '", fname,
-      "'. Run from inside the atlantic_birds repo, or setwd() to the Analysis/ folder.")
-  normalizePath(hit[1], winslash = "/")
+# --- robust path resolution (repo layout: Analysis/{scripts,data,output,figures}) ---
+.find_analysis_dir <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in 1:10) {
+    if (dir.exists(file.path(d, "data", "derived")) && dir.exists(file.path(d, "scripts")))
+      return(d)
+    if (dir.exists(file.path(d, "Analysis", "data", "derived")))
+      return(normalizePath(file.path(d, "Analysis"), winslash = "/"))
+    parent <- dirname(d); if (identical(parent, d)) break; d <- parent
+  }
+  stop("Could not locate Analysis/ (need Analysis/data/derived and Analysis/scripts). ",
+       "Run from inside the atlantic_birds repo.")
 }
-ANALYSIS_DIR <- dirname(.find_file("passer90.rda"))
-apath <- function(...) file.path(ANALYSIS_DIR, ...)
+ANALYSIS_DIR <- .find_analysis_dir()
+raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
+derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
+out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
 
-load(apath("passer90.rda"))
+load(derived_path("passer90.rda"))
 
 # --- match the model's species labels (reconciled eBird names, underscored) -
 passer90$species_name <- gsub("_", " ", passer90$Binomial)
@@ -100,7 +106,7 @@ bbox <- terra::ext(
 )
 
 # --- download + cache helpers ----------------------------------------------
-WC_DIR <- apath("worldclim")
+WC_DIR <- raw_path("worldclim")
 if (!dir.exists(WC_DIR)) dir.create(WC_DIR, recursive = TRUE)
 options(timeout = 3600)
 
@@ -182,7 +188,7 @@ passer90 <- passer90 %>%
 passer90$scaled_tmean <- as.numeric(scale(passer90$rec_tmean))
 passer90$spp          <- passer90$species_name   # match the model's grouping terms
 
-saveRDS(passer90, apath("passer90_climate.rds"))
+saveRDS(passer90, derived_path("passer90_climate.rds"))
 message("Saved passer90_climate.rds with time-resolved WorldClim (",
         RES, ", CRU-TS 4.09 downscaled) per record.")
 

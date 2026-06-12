@@ -38,22 +38,29 @@ library(dplyr)
 
 set.seed(20240101)
 
-# --- robust path resolution -------------------------------------------------
-# Locate repo files regardless of getwd(): check the working dir, an Analysis/
-# subdir, and parent directories (and their Analysis/ subdir) walking upward.
-.find_file <- function(fname, subdir = "Analysis") {
-  dirs <- getwd(); d <- getwd()
-  for (i in 1:8) { d <- dirname(d); dirs <- c(dirs, d) }
-  cand <- unique(c(file.path(dirs, fname), file.path(dirs, subdir, fname)))
-  hit  <- cand[file.exists(cand)]
-  if (!length(hit)) stop("Could not locate '", fname,
-      "'. Run from inside the atlantic_birds repo, or setwd() to the Analysis/ folder.")
-  normalizePath(hit[1], winslash = "/")
+# --- robust path resolution (repo layout: Analysis/{scripts,data,output,figures}) ---
+# Locate the Analysis/ directory regardless of getwd() (script may be run from the
+# repo root, Analysis/, or Analysis/scripts/), then build paths into its subfolders.
+.find_analysis_dir <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in 1:10) {
+    if (dir.exists(file.path(d, "data", "derived")) && dir.exists(file.path(d, "scripts")))
+      return(d)
+    if (dir.exists(file.path(d, "Analysis", "data", "derived")))
+      return(normalizePath(file.path(d, "Analysis"), winslash = "/"))
+    parent <- dirname(d); if (identical(parent, d)) break; d <- parent
+  }
+  stop("Could not locate Analysis/ (need Analysis/data/derived and Analysis/scripts). ",
+       "Run from inside the atlantic_birds repo.")
 }
-ANALYSIS_DIR <- dirname(.find_file("passer90.rda"))  # = .../atlantic_birds/Analysis
-apath <- function(...) file.path(ANALYSIS_DIR, ...)  # build all paths from here
+ANALYSIS_DIR <- .find_analysis_dir()                 # = .../atlantic_birds/Analysis
+raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
+derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
+out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
+script_path  <- function(...) file.path(ANALYSIS_DIR, "scripts", ...)
 
-load(apath("passer90.rda"))                # cleaned data from atlantic_birds_ms.Rmd
+load(derived_path("passer90.rda"))         # cleaned data from atlantic_birds_ms.Rmd
 # clootl/eBird uses scientific names WITHOUT underscores; provide a clean column.
 passer90$species_name <- gsub("_", " ", passer90$Binomial)
 
@@ -101,7 +108,7 @@ stopifnot(length(.check$unmatched) <= 1)
 # the repo already lives elsewhere (e.g. you ran get_avesdata_repo(path=".") from
 # the repo root). The download is the dominant cost, so this guard matters.
 if (!nzchar(Sys.getenv("AVESDATA_PATH")) || !dir.exists(Sys.getenv("AVESDATA_PATH"))) {
-  clootl::get_avesdata_repo(path = ANALYSIS_DIR)
+  clootl::get_avesdata_repo(path = raw_path())
 }
 # cache = TRUE stores the result on disk and reuses it on identical calls, so
 # re-sourcing this script does not re-query clootl every time.
@@ -203,7 +210,7 @@ pool_rubin <- function(fits, pars = c("b_Intercept","b_SexMale","b_scaled_yr","b
 rubin_summary <- pool_rubin(fits)
 print(rubin_summary)
 
-save(fits, rubin_summary, clootl_version, file = apath("brm0_multiphylo.rda"))
+save(fits, rubin_summary, clootl_version, file = out_path("models", "brm0_multiphylo.rda"))
 
 # NOTE: Pagel's-lambda-style variance partitioning and parametric-bootstrap
 # CIs for the variance components (as in the Mizuno et al. paper) can be added

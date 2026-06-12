@@ -32,6 +32,11 @@ pre-computed objects from `atlantic_parallel.R` (wing), `atlantic_parallel_bill.
 (bill), and the arthropod fit chunks are loaded and summarised. Flip a switch below
 to `TRUE` to regenerate that piece during the knit (slower; needs the extra packages).
 ```{r config, include=FALSE}
+# Repo reorganised into Analysis/{scripts,data,output,figures}. This Rmd lives in
+# Analysis/scripts/; anchor all chunk file paths at the Analysis/ directory so the
+# relative paths below (data/raw/, data/derived/, output/, ../Manuscript/) resolve
+# regardless of where the knit is launched from.
+knitr::opts_knit$set(root.dir = normalizePath(file.path(dirname(knitr::current_input(dir = TRUE)), "..")))
 REFRESH_PREDICTS <- FALSE   # re-download PREDICTS via predictsr and rebuild dat_test.rds
 REFIT_ARTHROPODS <- FALSE   # refit the three negative-binomial arthropod models
                             # (set TRUE together with REFRESH_PREDICTS to refit on the fresh data)
@@ -65,13 +70,13 @@ This chunk loads the primary dataset for the analysis.
 The `birds` dataframe is created by reading the `ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv` file.
 This dataset contains morphological measurements and other data for Atlantic Forest birds.
 ```{r data,echo=TRUE, cache=TRUE, message=FALSE, eval=TRUE}
-birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv", guess_max = 70000)
+birds <- read_csv("data/raw/ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv", guess_max = 70000)
 ```
 
 This chunk loads the Elton Traits dataset, which provides functional trait data for birds, including diet information.
 The `elton` dataframe is created by reading the `BirdFuncDat.txt` file.
 ```{r import_elton_traits, cache=TRUE, eval=TRUE}
-elton <- read_tsv("BirdFuncDat.txt")
+elton <- read_tsv("data/raw/BirdFuncDat.txt")
 ```
 
 ## Data wrangling and new variables
@@ -121,7 +126,7 @@ passer90$Diet <- elton$`Diet-5Cat`[match(passer90$spp, elton$Scientific)]
 passer90$scaled_lat <- as.numeric(passer90$scaled_lat)
 passer90$scaled_yr <- as.numeric(passer90$scaled_yr)
 
-save(passer90, file = "passer90.rda")
+save(passer90, file = "data/derived/passer90.rda")
 
 saveRDS(
   list(
@@ -132,7 +137,7 @@ saveRDS(
     threshold_min_n = 30L,
     threshold_min_range = 5L
   ),
-  "data_summary.rds"
+  "output/data_summary.rds"
 )
 
 rm(birds)
@@ -140,7 +145,7 @@ rm(birds)
 
 Checking the range of years per species in the *passer90* dataframe. Creating a new data frame that contains one entry per species in order to prune the phylogeny later.
 ```{r year_range, cache=TRUE}
-load("passer90.rda")
+load("data/derived/passer90.rda")
 
 by_binomial <- group_by(passer90, Binomial)
 year_range <- summarise(by_binomial,
@@ -539,7 +544,7 @@ A <- solve(inv.phylo$Ainv); rownames(A) <- rownames(inv.phylo$Ainv)
 # single-tree model chunks here are EXPLORATORY only (all eval = FALSE).
 ```
 
-> **Superseded.** The old workflow here sampled 50 Jetz/BirdTree trees with `name.check()` + `drop.tip()` and saved `trees_passer.rda`. That is replaced by the prepR4pcm reconciliation above (`reconcile_apply()` aligns data and tree and prunes in one auditable step) and by the multi-tree fitting in `atlantic_parallel.R`. The covariance matrix `A` and analysis frame `dat` are now built in the phylogeny chunk above, so no separate `name.check`/`load("trees_passer.rda")` step is needed.
+> **Superseded.** The old workflow here sampled 50 Jetz/BirdTree trees with `name.check()` + `drop.tip()` and saved `trees_passer.rda`. That is replaced by the prepR4pcm reconciliation above (`reconcile_apply()` aligns data and tree and prunes in one auditable step) and by the multi-tree fitting in `atlantic_parallel.R`. The covariance matrix `A` and analysis frame `dat` are now built in the phylogeny chunk above, so no separate `name.check`/`load("../archive/legacy_models/trees_passer.rda")` step is needed.
 
 
 ## Multiple imputation wing length
@@ -639,7 +644,7 @@ passer90_imp4a <- mice.mids(passer90_imp4, maxit = 20, print = FALSE)
 plot(passer90_imp4a)
 densityplot(passer90_imp4a, ~conc.wing.length)
 
-save(passer90_imp4a, file = "passer90_imp4a.rda")
+save(passer90_imp4a, file = "../archive/legacy_models/passer90_imp4a.rda")
 ```
 
 ### Multilevel models with imputed data and phylogeny
@@ -665,7 +670,7 @@ brm.imputed <- brm_multiple(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat 
 
 end_time <- Sys.time();end_time - start_time
 
-save(brm.imputed, file = "brm_imputed.rda")
+save(brm.imputed, file = "../archive/legacy_models/brm_imputed.rda")
 ```
 
 ## brm model of wing length
@@ -690,14 +695,14 @@ brm0 <- brm(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat + (1 + scaled_yr
 
 end_time <- Sys.time();end_time - start_time
 
-save(brm0, file = "brm0.rda")
+save(brm0, file = "../archive/legacy_models/brm0.rda")
 ```
 
 Summary and convergence checks for the exploratory single-tree fit (the
 `brm0.rda` here is the older single-consensus-tree object; the REPORTED result is
 the multi-tree summary further below). Not run at knit.
 ```{r model_summary, cache=TRUE, eval=FALSE}
-load("brm0.rda")
+load("../archive/legacy_models/brm0.rda")
 
 summary(brm0)
 
@@ -709,7 +714,7 @@ pp_check(brm0)
 ## Upgraded model: body size vs. time-resolved climate
 This model replaces *year* as a proxy with the **actual temperature** each bird experienced, extracted per record and year by `climate_extraction.R` (WorldClim CRU-TS 4.09 downscaled). Year is retained to separate climate tracking from other temporal change. Not evaluated here (requires the downloaded climate rasters).
 ```{r model_climate, cache=TRUE, eval = RUN_CLIMATE}
-passer90_clim <- readRDS("passer90_climate.rds")
+passer90_clim <- readRDS("data/derived/passer90_climate.rds")
 
 brm_climate <- brm(conc.wing.length ~ 1 + Sex + scaled_tmean + scaled_lat + scaled_yr +
             (1 + scaled_tmean || spp) + (1 | gr(species_name, cov = A)),
@@ -723,7 +728,7 @@ brm_climate <- brm(conc.wing.length ~ 1 + Sex + scaled_tmean + scaled_lat + scal
             iter = 2000, warmup = 1000, chains = 4, cores = 4,
             control = list(max_treedepth = 12, adapt_delta = 0.95))
 
-save(brm_climate, file = "brm_climate.rda")
+save(brm_climate, file = "output/models/brm_climate.rda")
 summary(brm_climate)
 ```
 
@@ -749,13 +754,13 @@ brm0.gape <- brm(Bill_width.mm. ~ 1 + scaled_yr + scaled_lat + (1 + scaled_yr ||
             )
 end_time <- Sys.time();end_time - start_time
 
-save(brm0.gape, file = "brm0.gape.model.rda")
+save(brm0.gape, file = "../archive/legacy_models/brm0.gape.model.rda")
 ```
 
 ### Bill-width results (reported): 50-tree, Rubin-pooled fit
 Loads the output of `atlantic_parallel_bill.R`.
 ```{r bill_results_multiphylo, cache=TRUE}
-load("brm_bill_multiphylo.rda")   # provides: bill_fits, bill_rubin_summary, bill_sig
+load("output/models/brm_bill_multiphylo.rda")   # provides: bill_fits, bill_rubin_summary, bill_sig
 
 bill_rubin_summary                # pooled fixed effects (Wald–Rubin 95% CI)
 # pooled phylogenetic signal across the 50 trees:
@@ -769,7 +774,7 @@ I asked Ari to run the multilevel model of **Wing length** on the server so that
 ```{r model_summary_multi_phylo, cache=TRUE}
 # Output of atlantic_parallel.R: fits (50 per-tree brmsfit objects),
 # rubin_summary (Wald–Rubin pooled fixed effects), and clootl_version.
-load("brm0_multiphylo.rda")
+load("output/models/brm0_multiphylo.rda")
 
 rubin_summary                     # REPORTED wing-length fixed effects (pooled across trees)
 
@@ -845,7 +850,7 @@ NOTE: the original analysis used the 2016 release only; predictsr now returns
 2016 + 2022 combined (more data), so re-running may shift the estimates
 slightly. To reproduce the 2016-only result, filter on the release/source year.
 ```{r load_predicts_main, cache=TRUE, eval=REFRESH_PREDICTS}
-dat <- LoadPredictsData("predicts_extract.rds")  # downloads + caches to this file; reused on later runs
+dat <- LoadPredictsData("data/raw/predicts_extract.rds")  # downloads + caches to this file; reused on later runs
 ```
 
 Subsetting PREDICTS dataset to Brazil and Insecta + Arachnida classes only:
@@ -861,12 +866,12 @@ dat_test <- dat %>%
 ) # I logged the abundance divided by sampling effort in order to normalize the data
 
 rm("dat")
-save(dat_test, file = "dat_test.rds")
+save(dat_test, file = "data/derived/dat_test.rds")
 ```
 
 Loading the subset of South America data that I had already saved as a .rds file
 ```{r load_predicts_brasil, cache=TRUE}
-load("dat_test.rds")
+load("data/derived/dat_test.rds")
 
 dat_test <- dat_test %>%
       mutate(
@@ -902,12 +907,12 @@ brm1 <-
       iter = 1000) 
 end_time <- Sys.time();end_time - start_time
 
-save(brm1, file = "brm_arthro_abund.rda")
+save(brm1, file = "output/models/brm_arthro_abund.rda")
 ```
 
 Loading arthropod abundance model to check summary and convergence.
 ```{r arthro_model_summary, cache=TRUE}
-load("brm_arthro_abund.rda")
+load("output/models/brm_arthro_abund.rda")
 
 summary(brm1)
 plot(brm1)
@@ -925,7 +930,7 @@ dat_no_ants <- dat_test %>%
         filter(Family != "Formicidae"
                )
 
-save(dat_no_ants, file = "dat_no_ants.rds")
+save(dat_no_ants, file = "data/derived/dat_no_ants.rds")
 ```
 
 Model with no ant abundance:
@@ -943,12 +948,12 @@ brm_no_ants <-
       iter = 1000) 
 end_time <- Sys.time();end_time - start_time
 
-save(brm_no_ants, file = "brm_arthro_abund_no_ants.rda")
+save(brm_no_ants, file = "output/models/brm_arthro_abund_no_ants.rda")
 ```
 
 Loading arthropod abundance model (without ants) to check summary and convergence.
 ```{r arthro_model_no_ants_summary, cache=TRUE}
-load("brm_arthro_abund_no_ants.rda")
+load("output/models/brm_arthro_abund_no_ants.rda")
 
 summary(brm_no_ants)
 plot(brm_no_ants)
@@ -966,13 +971,13 @@ dat_no_grassland <- dat_test %>%
         filter(Biome %in% c("Mangroves", "Mediterranean Forests, Woodlands & Scrub","Temperate Broadleaf & Mixed Forests","Tropical & Subtropical Dry Broadleaf Forests","Tropical & Subtropical Moist Broadleaf Forests")
                )
 
-save(dat_no_grassland, file = "dat_no_grassland.rds")
+save(dat_no_grassland, file = "data/derived/dat_no_grassland.rds")
 ```
 
 ## Arthropod abundance model excluding open biomes (ants included)
 Main model — forest biomes only, all arthropods including ants:
 ```{r brm_arthro_abund_no_grass, cache=TRUE, eval=REFIT_ARTHROPODS}
-load("dat_no_grassland.rds")
+load("data/derived/dat_no_grassland.rds")
 
 start_time <- Sys.time()
 brm_no_grass <-
@@ -987,12 +992,12 @@ brm_no_grass <-
       iter = 1000)
 end_time <- Sys.time();end_time - start_time
 
-save(brm_no_grass, file = "brm_no_grass.rda")
+save(brm_no_grass, file = "output/models/brm_no_grass.rda")
 ```
 
 Loading arthropod abundance model (forest biomes, ants included) to check summary and convergence.
 ```{r arthro_model_no_grass_summary, cache=TRUE}
-load("brm_no_grass.rda")
+load("output/models/brm_no_grass.rda")
 
 summary(brm_no_grass)
 plot(brm_no_grass)
@@ -1008,9 +1013,9 @@ pp_check(brm_no_grass)
 Extracts key estimates from both models and writes `arthropod_estimates.rds`
 so that `index.qmd` can reference them via inline R without hardcoding numbers.
 ```{r save_arthropod_estimates, cache=FALSE}
-load("brm_no_grass.rda")           # main:  ants included + forest biomes
-load("brm_no_ants_no_grass.rda")   # sensitivity: ants excluded + forest biomes
-load("dat_no_grassland.rds")
+load("output/models/brm_no_grass.rda")           # main:  ants included + forest biomes
+load("output/models/brm_no_ants_no_grass.rda")   # sensitivity: ants excluded + forest biomes
+load("data/derived/dat_no_grassland.rds")
 
 # helper: extract slope + 95% CrI + exponentiated versions from a brms fit
 arth_coefs <- function(fit, dat) {
@@ -1035,7 +1040,7 @@ arth_est <- list(
   sens = arth_coefs(brm_no_ants_no_grass,  dat_no_ants_forest)
 )
 
-saveRDS(arth_est, file = "arthropod_estimates.rds")
+saveRDS(arth_est, file = "output/arthropod_estimates.rds")
 message("Saved arthropod_estimates.rds — main N = ", arth_est$main$n,
         ", β = ", arth_est$main$b,
         "  |  sens N = ", arth_est$sens$n,
@@ -1047,8 +1052,8 @@ Compares the `scaled_yr` slope between the main model (ants included, forest
 biomes) and the sensitivity model (ants excluded, forest biomes) to assess how
 much the ant-inclusion assumption changes the estimated arthropod decline.
 ```{r compare_ant_models, cache=TRUE}
-load("brm_no_grass.rda")
-load("brm_arthro_abund_no_ants.rda")
+load("output/models/brm_no_grass.rda")
+load("output/models/brm_arthro_abund_no_ants.rda")
 
 # scaled_yr slope on the log-count scale (exp = multiplicative change per SD year)
 slope_main <- fixef(brm_no_grass)["scaled_yr", c("Estimate", "Q2.5", "Q97.5")]
@@ -1088,8 +1093,8 @@ ggplot(overlap_df, aes(x = value, fill = model)) +
 Saves the fitted abundance decline (forest biomes, ants included) to the
 manuscript's images folder as `fig-arthropods.png`, replacing the placeholder.
 ```{r export_fig_arthropods, cache=FALSE}
-load("brm_no_grass.rda")
-load("dat_no_grassland.rds")
+load("output/models/brm_no_grass.rda")
+load("data/derived/dat_no_grassland.rds")
 
 ce <- conditional_effects(brm_no_grass, effects = "scaled_yr")[[1]]
 # put the x-axis back on the calendar-year scale for readability

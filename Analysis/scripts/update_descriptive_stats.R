@@ -20,14 +20,31 @@ suppressMessages({
   library(brms)
 })
 
-setwd("/Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis")
-source("functions.R")               # s2.lnCVR()
-load("passer90.rda")                # canonical analytical sample
+# --- robust path resolution (repo layout: Analysis/{scripts,data,output,figures}) ---
+.find_analysis_dir <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in 1:10) {
+    if (dir.exists(file.path(d, "data", "derived")) && dir.exists(file.path(d, "scripts")))
+      return(d)
+    if (dir.exists(file.path(d, "Analysis", "data", "derived")))
+      return(normalizePath(file.path(d, "Analysis"), winslash = "/"))
+    parent <- dirname(d); if (identical(parent, d)) break; d <- parent
+  }
+  stop("Could not locate Analysis/ (need Analysis/data/derived and Analysis/scripts).")
+}
+ANALYSIS_DIR <- .find_analysis_dir()
+raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
+derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
+out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+script_path  <- function(...) file.path(ANALYSIS_DIR, "scripts", ...)
+
+source(script_path("functions.R"))   # s2.lnCVR()
+load(derived_path("passer90.rda"))    # canonical analytical sample
 
 out <- list()
 
 # --- raw, pre-threshold counts (Methods sentence) --------------------------
-raw <- fread("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv")
+raw <- fread(raw_path("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv"))
 out$raw_total       <- nrow(raw)
 out$raw_passerine   <- sum(raw$Order == "Passeriformes", na.rm = TRUE)
 out$raw_pass_pct    <- round(100 * out$raw_passerine / out$raw_total)
@@ -119,7 +136,7 @@ out$lncvr_bill_k  <- m.bill$k
 out$lncvr_bill_I2 <- round(m.bill$I2, 1)
 
 # --- WING model: pooled fixed effects + phylogenetic signal ----------------
-load("brm0_multiphylo.rda")          # fits, rubin_summary, clootl_version
+load(out_path("models", "brm0_multiphylo.rda"))          # fits, rubin_summary, clootl_version
 pe <- function(df, par, col) round(df[[col]][df$par == par], 2)
 out$wing_yr      <- pe(rubin_summary, "b_scaled_yr",  "estimate")
 out$wing_yr_lo   <- pe(rubin_summary, "b_scaled_yr",  "lower")
@@ -141,7 +158,7 @@ out$wing_phylo_lo <- round(quantile(wing_sig, .025), 2)
 out$wing_phylo_hi <- round(quantile(wing_sig, .975), 2)
 
 # --- BILL model: pooled fixed effects + phylogenetic signal ----------------
-load("brm_bill_multiphylo.rda")      # bill_fits, bill_rubin_summary, bill_sig
+load(out_path("models", "brm_bill_multiphylo.rda"))      # bill_fits, bill_rubin_summary, bill_sig
 out$bill_yr      <- pe(bill_rubin_summary, "b_scaled_yr",  "estimate")
 out$bill_yr_lo   <- pe(bill_rubin_summary, "b_scaled_yr",  "lower")
 out$bill_yr_hi   <- pe(bill_rubin_summary, "b_scaled_yr",  "upper")
@@ -154,7 +171,7 @@ out$bill_phylo_lo <- round(quantile(bill_sig, .025), 2)
 out$bill_phylo_hi <- round(quantile(bill_sig, .975), 2)
 out$bill_yr_excl_zero <- (out$bill_yr_lo > 0) || (out$bill_yr_hi < 0)
 
-saveRDS(out, "descriptive_summary.rds")
+saveRDS(out, out_path("descriptive_summary.rds"))
 
 # --- export analytical sample for make_figures.py --------------------------
 exp_cols <- passer90 %>%
@@ -162,7 +179,7 @@ exp_cols <- passer90 %>%
             cwl = conc.wing.length,
             Bill_width.mm.,
             Longitude_decimal_degrees, Latitude_decimal_degrees)
-data.table::fwrite(exp_cols, "passer90_export.csv")
+data.table::fwrite(exp_cols, derived_path("passer90_export.csv"))
 
 # --- print everything ------------------------------------------------------
 cat("\n================ DESCRIPTIVE SUMMARY ================\n")
