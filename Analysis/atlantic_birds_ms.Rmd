@@ -299,8 +299,10 @@ wing.by.spp <- passer.quart.years %>%
 elton$Scientific = gsub(" ", "_", elton$Scientific)
 wing.by.spp$Diet <- elton$`Diet-5Cat`[match(wing.by.spp$spp, elton$Scientific)]
 
-# remove Antilophia (only present in 1st quartile):
-wing.by.spp <- wing.by.spp[-1,]
+# Drop species present in only one quartile (no early-vs-late contrast; e.g.
+# Antilophia in the earlier build). Generic filter so it stays correct as the
+# sample changes, rather than hard-removing a fixed row.
+wing.by.spp <- wing.by.spp %>% group_by(spp) %>% filter(n() == 2) %>% ungroup()
 
 # Creating color scheme for the slopes of the plot:
 trend.wing.length <- ggplot(data = wing.by.spp, aes(x=period,y=mean.wing, group = spp, colour = size.trend2 > 0)) +
@@ -327,9 +329,9 @@ trend.bill.width
 ```
 
 
-I plotted the average wing length for each species in the dataset for the 1^st^ quartile (1990-2006), and the 3^rd^ quartile (2013-2018). Each species is plotted as a trend line estimated as the difference between the average wing length in each period. Species that suffered a reduction in body size are in red and species that increase in body size between the quartiles are in blue. The number of species that decreased in body size is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend < 0]))` and the number of species in which body size increased is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend > 0]))`.
+I plotted the average wing length for each species in the dataset for the 1^st^ quartile (1990-2006), and the 3^rd^ quartile (2013-2018). Each species is plotted as a trend line estimated as the difference between the average wing length in each period. Species that suffered a reduction in body size are in red and species that increase in body size between the quartiles are in blue. The number of species that decreased in body size is `r sum(wing.by.spp$size.trend < 0, na.rm = TRUE)` and the number of species in which body size increased is `r sum(wing.by.spp$size.trend > 0, na.rm = TRUE)`.
 
-I then investigated the trend in bill width during the same period as for wing length (described above). Species that suffered a reduction in bill width are in red and species that increase in bill width between the quartiles are in blue. The number of species that decreased in bill width is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend.bill < 0]))` and the number of species in which bill width increased is `r length(unique(wing.by.spp$spp[wing.by.spp$size.trend.bill > 0]))`.
+I then investigated the trend in bill width during the same period as for wing length (described above). Species that suffered a reduction in bill width are in red and species that increase in bill width between the quartiles are in blue. The number of species that decreased in bill width is `r sum(wing.by.spp$size.trend.bill < 0, na.rm = TRUE)` and the number of species in which bill width increased is `r sum(wing.by.spp$size.trend.bill > 0, na.rm = TRUE)`.
 
 # Trend in variation of body size and gape width
 

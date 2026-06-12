@@ -71,7 +71,13 @@ ebird_synonyms <- c(
   "Pyriglena pernambucensis" = "Pyriglena leuconota",
   "Tangara sayaca"           = "Thraupis sayaca",
   "Tangara cayana"           = "Stilpnia cayana",
-  "Tiaris fuliginosus"       = "Asemospiza fuliginosa"
+  "Tiaris fuliginosus"       = "Asemospiza fuliginosa",
+  "Tangara palmarum"         = "Thraupis palmarum",    # Palm Tanager stays in Thraupis
+  "Tangara peruviana"        = "Stilpnia peruviana",   # Black-backed Tanager (eBird Stilpnia split)
+  "Dixiphia pipra"           = "Pseudopipra pipra"     # White-crowned Manakin (SACC 876)
+  # Herpsilochmus sellowi (Caatinga Antwren) left unmapped on purpose: absent
+  # from the clootl eBird/Clements taxonomy used by the phylo step; relabelling
+  # it here would only desync the grouping label from that decision.
 )
 hit <- passer90$species_name %in% names(ebird_synonyms)
 passer90$species_name[hit] <- ebird_synonyms[passer90$species_name[hit]]

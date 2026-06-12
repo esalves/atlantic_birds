@@ -25,29 +25,23 @@ from matplotlib.lines import Line2D
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT  = os.path.join(HERE, "images")
 DATA = os.path.join(HERE, "data", "south_america.geojson")
-CSV  = os.path.join(HERE, "..", "Analysis", "ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv")
+# Canonical analytical sample (89 species / 15,332 records), exported from
+# passer90.rda by Analysis/update_descriptive_stats.R so the figures use the
+# exact same build as the models and the quoted text.
+CSV  = os.path.join(HERE, "..", "Analysis", "passer90_export.csv")
 
 # --- model-estimated wing~year effect (Rubin-pooled; atlantic_parallel.R) ---
-WING_YR_BETA, WING_YR_LO, WING_YR_HI = -0.6648, -1.0470, -0.2827   # mm per SD-year
-# --- canonical lnCVR meta-analytic means (metafor::rma REML, from the Rmd) ---
+WING_YR_BETA, WING_YR_LO, WING_YR_HI = -0.7294, -1.0854, -0.3733   # mm per SD-year
+# --- canonical lnCVR meta-analytic means (metafor::rma REML; descriptive_summary.rds) ---
 # Used for the summary line so the figure matches the values quoted in the text.
-LNCVR = {"cwl": (0.247, 0.102, 0.392), "Bill_width.mm.": (-0.043, -0.241, 0.156)}
+LNCVR = {"cwl": (0.241, 0.104, 0.378), "Bill_width.mm.": (-0.073, -0.276, 0.131)}
 
 plt.rcParams.update({"font.size": 9, "axes.spines.top": False,
                      "axes.spines.right": False, "figure.dpi": 150})
 DEC, INC = "#CC6666", "#5B7FB5"
 
-# --- load only the columns we need (fast on the 40 MB file) ----------------
-usecols = ["Year", "Age", "Sex", "Order", "AtlanticForests_20km_Buffer", "Binomial",
-           "Wing_length_right.mm.", "Wing_length_left.mm.", "Wing_length.mm.",
-           "Bill_width.mm.", "Longitude_decimal_degrees", "Latitude_decimal_degrees"]
-df = pd.read_csv(CSV, usecols=usecols, low_memory=False)
-f = df[(df.Year >= 1990) & (df.Age == "Adult") & (df.Sex != "Unknown") &
-       (df.Order == "Passeriformes") &
-       (df.AtlanticForests_20km_Buffer == "inside the 20 km polygon")].copy()
-f["cwl"] = f["Wing_length_right.mm."].combine_first(f["Wing_length_left.mm."]).combine_first(f["Wing_length.mm."])
-vc = f.groupby("Binomial").size(); f = f[f.Binomial.isin(vc[vc >= 50].index)]
-rng = f.groupby("Binomial").Year.agg(lambda s: s.max() - s.min()); f = f[f.Binomial.isin(rng[rng >= 10].index)]
+# --- canonical analytical sample (already filtered and name-reconciled) -----
+f = pd.read_csv(CSV, low_memory=False)
 f["Binomial"] = f["Binomial"].str.replace(" ", "_")
 print("species", f.Binomial.nunique(), "records", len(f))
 
@@ -89,7 +83,7 @@ for i, p in enumerate(["1990–2006", "2013–2018"]):
     if i == 0: ax.set_ylabel("Latitude (°)")
     ax.set_xlim(-60, -32); ax.set_ylim(-34, -3); ax.set_aspect("equal", "box")
 cb = fig.colorbar(sc, ax=fig.axes, fraction=0.025, pad=0.02); cb.set_label("Wing length (mm)")
-fig.suptitle("Sampling localities of 68 Atlantic Forest passerine species", fontsize=11, y=0.99)
+fig.suptitle(f"Sampling localities of {f.Binomial.nunique()} Atlantic Forest passerine species", fontsize=11, y=0.99)
 fig.savefig(f"{OUT}/fig-map.png", bbox_inches="tight"); plt.close(fig)
 
 # ---------------------------------------------------------------------------
@@ -111,7 +105,8 @@ ax.plot(yr_grid, fit, color="#2E5090", lw=2, zorder=3, label="Model-estimated tr
 ax.set_xlabel("Year"); ax.set_ylabel("Wing length (mm)")
 ax.set_ylim(w.cwl.quantile(.005), w.cwl.quantile(.995))
 ax.set_title("Wing length decline, 1990–2018\n"
-             "year effect β = −0.66 mm per SD-year [−1.05, −0.28]", fontsize=10)
+             f"year effect β = {WING_YR_BETA:.2f} mm per SD-year "
+             f"[{WING_YR_LO:.2f}, {WING_YR_HI:.2f}]".replace("-", "−"), fontsize=10)
 ax.legend(loc="upper right", frameon=False, fontsize=8)
 fig.tight_layout(); fig.savefig(f"{OUT}/fig-wingtrend.png", bbox_inches="tight"); plt.close(fig)
 

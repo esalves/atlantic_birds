@@ -625,7 +625,14 @@ if (isTRUE(RUN_PHYLO) &&
     "Pyriglena pernambucensis" = "Pyriglena leuconota",
     "Tangara sayaca"           = "Thraupis sayaca",
     "Tangara cayana"           = "Stilpnia cayana",
-    "Tiaris fuliginosus"       = "Asemospiza fuliginosa"
+    "Tiaris fuliginosus"       = "Asemospiza fuliginosa",
+    "Tangara palmarum"         = "Thraupis palmarum",    # Palm Tanager stays in Thraupis
+    "Tangara peruviana"        = "Stilpnia peruviana",   # Black-backed Tanager (eBird Stilpnia split)
+    "Dixiphia pipra"           = "Pseudopipra pipra"     # White-crowned Manakin (SACC 876)
+    # NB: Herpsilochmus sellowi (Caatinga Antwren) is intentionally NOT mapped —
+    # it is absent from the clootl eBird/Clements 2025 taxonomy under both that
+    # name and its current Radinopsyche sellowi reclassification, so it is dropped
+    # below (same decision as atlantic_parallel.R).
   )
 
   if (!RECOMPUTE_PHYLO && file.exists(PHYLO_PREP_CACHE) &&
@@ -655,8 +662,22 @@ if (isTRUE(RUN_PHYLO) &&
         !dir.exists(Sys.getenv("AVESDATA_PATH"))) {
       clootl::get_avesdata_repo(path = ANALYSIS_DIR)
     }
-    stopifnot(length(pr_get_tree(spp_data, source = "clootl",
-                                 n_tree = 1)$unmatched) == 0)
+    # Sanity check before the expensive 100-tree pull: n_tree = 1 REPORTS the
+    # names absent from the clootl eBird/Clements taxonomy instead of erroring.
+    # Strip them from spp_data so the 100-tree call doesn't error hard, and let
+    # reconcile_apply(drop_unresolved = TRUE) below also drop any tree-absent
+    # species from the model. Herpsilochmus sellowi is the one known, expected
+    # miss (see the synonym note above); stopifnot(<= 1) keeps that tolerance
+    # but halts if a NEW unmatched name appears, so additions aren't dropped
+    # silently — add a synonym above and re-run. Mirrors atlantic_parallel.R.
+    .check <- pr_get_tree(spp_data, source = "clootl", n_tree = 1)
+    if (length(.check$unmatched) > 0) {
+      message("Removing ", length(.check$unmatched),
+              " species absent from eBird taxonomy: ",
+              paste(.check$unmatched, collapse = ", "))
+      spp_data <- setdiff(spp_data, .check$unmatched)
+    }
+    stopifnot(length(.check$unmatched) <= 1)
     got    <- pr_get_tree(spp_data, source = "clootl", n_tree = 100, cache = TRUE)
     trees  <- got$tree
     clootl_ver_p <- pr_cite_tree(got, format = "text")
