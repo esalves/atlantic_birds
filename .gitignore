@@ -17,8 +17,13 @@ Analysis/worldclim/
 # Generated intermediate files (re-run climate_extraction.R / atlantic_drmsem.R)
 Analysis/passer90_climate.rds
 Analysis/drmsem_effects_cache.rds
+Analysis/drmsem_effects_cache_arthro.rds
 Analysis/drmsem_phylo_prep.rds
+Analysis/drmsem_phylo_prep_arthro.rds
 Analysis/drmsem_phylo_results.rds
+Analysis/drmsem_phylo_results_arthro.rds
+Analysis/drmsem_results_arthro.rds
+
 
 # Scratch outputs
 Rplots.pdf

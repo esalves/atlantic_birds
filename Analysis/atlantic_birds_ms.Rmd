@@ -12,7 +12,7 @@ output:
 bibliography: atlantic_bird_bibliography.bib  
 ---
 
-# Introductory paragraph
+# Introduction
 Guidelines^[The paper should then start with an introductory paragraph (not abstract) of no more than 200 words, summarizing the background, rationale, main results (introduced by ‘Here we show’ or some equivalent phrase) and implications of the study. This paragraph should be fully referenced. Check other guidelines to **Nature Climate Change** here: https://www.nature.com/nclimate/about/content]
 
 Two of the main responses of organisms to climate change are phenological changes and geographical range shifts [@parmesan_globally_2003]. Yet, a third response of organisms to global warming is increasingly being observed, the shrinkage of bodies [@teplitsky_climate_2014; @sheridan_shrinking_2011; @gardner_declining_2011]. Body shrinkage due to climate change has been hypothesized to be a consequence of ecological or evolutionary processes [@ozgul_dynamics_2009]. The ecological hypothesis posits that climate change influences trophic interactions, thus leading to a reduction in body size. Here we show that Atlantic Forest passerine birds decreased in body size over the last 28 years. The body size shrinkage is associated with both an increase in temperatures over the period as well as a large reduction in the abundance of invertebrates that serve as food resource to passerine birds. Our findings thus highlight the rapid and widespread consequences of climatic change on the availability of prey items, consequently influencing the phenotype of avian predators.
@@ -33,9 +33,9 @@ pre-computed objects from `atlantic_parallel.R` (wing), `atlantic_parallel_bill.
 to `TRUE` to regenerate that piece during the knit (slower; needs the extra packages).
 ```{r config, include=FALSE}
 REFRESH_PREDICTS <- FALSE   # re-download PREDICTS via predictsr and rebuild dat_test.rds
-REFIT_ARTHROPODS <- FALSE   # refit the three negative-binomial arthropod models
+REFIT_ARTHROPODS <- TRUE   # refit the three negative-binomial arthropod models
                             # (set TRUE together with REFRESH_PREDICTS to refit on the fresh data)
-RUN_CLIMATE      <- FALSE   # fit the in-document time-resolved climate model.
+RUN_CLIMATE      <- TRUE   # fit the in-document time-resolved climate model.
 # RUN_CLIMATE = TRUE requires passer90_climate.rds (run climate_extraction.R
 # first) and triggers the phylogeny chunk to build the covariance matrix A
 # (downloads the clootl tree). The reported wing/bill results are ALWAYS loaded
@@ -61,25 +61,25 @@ if (REFRESH_PREDICTS) library("predictsr")   # only needed when refreshing PREDI
 ```
 
 ## Load data
-# This chunk loads the primary dataset for the analysis.
-# The `birds` dataframe is created by reading the `ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv` file.
-# This dataset contains morphological measurements and other data for Atlantic Forest birds.
+This chunk loads the primary dataset for the analysis.
+The `birds` dataframe is created by reading the `ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv` file.
+This dataset contains morphological measurements and other data for Atlantic Forest birds.
 ```{r data,echo=TRUE, cache=TRUE, message=FALSE, eval=TRUE}
 birds <- read_csv("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv", guess_max = 70000)
 ```
 
-# This chunk loads the Elton Traits dataset, which provides functional trait data for birds, including diet information.
-# The `elton` dataframe is created by reading the `BirdFuncDat.txt` file.
+This chunk loads the Elton Traits dataset, which provides functional trait data for birds, including diet information.
+The `elton` dataframe is created by reading the `BirdFuncDat.txt` file.
 ```{r import_elton_traits, cache=TRUE, eval=TRUE}
 elton <- read_tsv("BirdFuncDat.txt")
 ```
 
 ## Data wrangling and new variables
-# This chunk performs the main data wrangling and cleaning operations.
-# It filters the `birds` dataset to include only adult passerine birds recorded after 1990 within the Atlantic Forest.
-# New variables are created, including a consolidated wing length, scaled year and latitude, and cleaned species names.
-# The data is then filtered to include only species with at least 50 records and a temporal range of at least 10 years.
-# Finally, it selects the relevant columns, adds diet information from the Elton Traits dataset, and saves the cleaned data to `passer90.rda`.
+This chunk performs the main data wrangling and cleaning operations.
+It filters the `birds` dataset to include only adult passerine birds recorded after 1990 within the Atlantic Forest.
+New variables are created, including a consolidated wing length, scaled year and latitude, and cleaned species names.
+The data is then filtered to include only species with at least 50 records and a temporal range of at least 10 years.
+Finally, it selects the relevant columns, adds diet information from the Elton Traits dataset, and saves the cleaned data to `passer90.rda`.
 ```{r newdataframes,cache=TRUE, eval=TRUE}
 passer90 <- birds %>%
           filter(Year >= 1990, Age == "Adult", Sex != "Unknown", Order == "Passeriformes", AtlanticForests_20km_Buffer == "inside the 20 km polygon") %>%
@@ -435,12 +435,12 @@ summary(metareg1)
 
 # Models
 ## lmer (quick) models
-# This chunk fits two linear mixed-effects models (`lmer`) as a preliminary check of the trends.
-# These models are not the final models used in the analysis but provide a quick assessment of the relationships
-# between wing length, bill width, and other predictors.
-# `m0` models wing length as a function of year, sex, latitude, and diet.
-# `m1` models bill width as a function of year, latitude, and diet.
-# The `eval = FALSE` option prevents this chunk from being executed when the document is knitted.
+This chunk fits two linear mixed-effects models (`lmer`) as a preliminary check of the trends.
+These models are not the final models used in the analysis but provide a quick assessment of the relationships
+between wing length, bill width, and other predictors.
+`m0` models wing length as a function of year, sex, latitude, and diet.
+`m1` models bill width as a function of year, latitude, and diet.
+The `eval = FALSE` option prevents this chunk from being executed when the document is knitted.
 ```{r models, cache=TRUE, eval = FALSE}
 m0 <- lmer(Wing_length_right.mm. ~ scaled_yr + Sex + scaled_lat + scaled_yr*Diet + (1 + scaled_yr | Binomial),
            data = passer90,
@@ -460,10 +460,10 @@ summary(m1)
 ```
 
 ## Loading the phylogeny
-# This chunk loads the phylogenetic trees from a NEXUS file.
-# These trees represent the evolutionary relationships among the bird species and are used to account for phylogenetic non-independence in the models.
-# The `eval = FALSE` option prevents this chunk from being executed when the document is knitted, as it is time-consuming.
-# The full set of trees is large, so a smaller sample will be processed in the next chunk.
+This chunk loads the phylogenetic trees from a NEXUS file.
+These trees represent the evolutionary relationships among the bird species and are used to account for phylogenetic non-independence in the models.
+The `eval = FALSE` option prevents this chunk from being executed when the document is knitted, as it is time-consuming.
+The full set of trees is large, so a smaller sample will be processed in the next chunk.
 ```{r phylo, cache=TRUE, eval= RUN_CLIMATE}
 # Builds the analysis frame `dat` and covariance matrix `A`. At knit this runs
 # only when RUN_CLIMATE = TRUE (the in-document climate model needs A); run it
@@ -817,18 +817,19 @@ hyp <- "sd_species_name__Intercept^2 / (sd_species_name__Intercept^2 + sd_spp__I
 
 
 # Arthropod abundance over time analysis
-# This section of the analysis investigates the temporal trend in arthropod abundance, which is a potential driver of the observed changes in bird body size.
-# The data for this analysis comes from the PREDICTS project, a large database of biodiversity records.
+This section of the analysis investigates the temporal trend in arthropod abundance, which is a potential driver of the observed changes in bird body size.
+The data for this analysis comes from the PREDICTS project, a large database of biodiversity records.
 
-# This chunk loads the full PREDICTS dataset via the official `predictsr` package
-# (Duffin, Biodiversity Futures Lab), which downloads the open-access extract
-# (2016 + 2022 releases) straight from the NHM Data Portal API and caches it —
-# no manual CSV download or local path needed. install.packages("predictsr").
-# eval = FALSE because the first call downloads a large file; run it once and the
-# cached copy (and chunk cache) are reused thereafter.
-# NOTE: the original analysis used the 2016 release only; predictsr now returns
-# 2016 + 2022 combined (more data), so re-running may shift the estimates
-# slightly. To reproduce the 2016-only result, filter on the release/source year.
+This chunk loads the full PREDICTS dataset via the official `predictsr` package
+(Duffin, Biodiversity Futures Lab), which downloads the open-access extract
+(2016 + 2022 releases) straight from the NHM Data Portal API and caches it —
+no manual CSV download or local path needed. install.packages("predictsr").
+`eval = FALSE` because the first call downloads a large file; run it once and the
+cached copy (and chunk cache) are reused thereafter.
+
+NOTE: the original analysis used the 2016 release only; predictsr now returns
+2016 + 2022 combined (more data), so re-running may shift the estimates
+slightly. To reproduce the 2016-only result, filter on the release/source year.
 ```{r load_predicts_main, cache=TRUE, eval=REFRESH_PREDICTS}
 dat <- LoadPredictsData("predicts_extract.rds")  # downloads + caches to this file; reused on later runs
 ```
@@ -904,7 +905,7 @@ plot(conditional_effects(brm1))
 pp_check(brm1)
 ```
 
-Glauco has rightfully suggested that I removed ants from the abundance dataset to see how sensitive it is to these arthropods. Birds are not known to predate ants, thus it makes sense to run the analyses without ants. Negative binomial model with offset to investigate the relationship between the predictor **year** and the response (count) abundance of arthropods in Brazil.
+Glauco has rightfully suggested that I removed ants from the abundance dataset to see how sensitive it is to these arthropods. While most passerines rarely consume ant workers, some species opportunistically take flying ant reproductives (alates) during nuptial flights [@helms_are_2016], so complete exclusion of Formicidae is a conservative assumption. We retain this ant-exclusion model as a sensitivity check. Negative binomial model with offset to investigate the relationship between the predictor **year** and the response (count) abundance of arthropods in Brazil.
 ```{r abundance_dat_no_ants, cache=TRUE}
 dat_no_ants <- dat_test %>%
         filter(Family != "Formicidae"
@@ -945,58 +946,58 @@ plot(conditional_effects(brm_no_ants))
 pp_check(brm_no_ants)
 ```
 
-Another idea that Glauco gave me was to use only invertebrate abundances from forest biomes and avoid the grasslands and savannas. So here is the analysis using a subset excluding open biomes. I will also keep the ants out of this analysis.
-```{r abundance_dat_no_ants_no_grassland, cache=TRUE}
-dat_no_grassland <- dat_no_ants %>%
+Another idea that Glauco gave me was to use only invertebrate abundances from forest biomes and avoid the grasslands and savannas. So here is the **main** analysis using a subset restricted to forest biomes. Ants are now included because some passerines opportunistically predate alates during nuptial flights [@helms_are_2016]; the ant-exclusion variant above serves as the sensitivity check.
+```{r abundance_dat_no_grassland, cache=TRUE}
+dat_no_grassland <- dat_test %>%
         filter(Biome %in% c("Mangroves", "Mediterranean Forests, Woodlands & Scrub","Temperate Broadleaf & Mixed Forests","Tropical & Subtropical Dry Broadleaf Forests","Tropical & Subtropical Moist Broadleaf Forests")
                )
 
 save(dat_no_grassland, file = "dat_no_grassland.rds")
 ```
 
-## Arthropod abundance model without ants and excluding open biomes
-Model with no ant abundance and excluding grasslands/open biomes:
-```{r brm_arthro_abund_no_ants_no_grass, cache=TRUE, eval=REFIT_ARTHROPODS}
+## Arthropod abundance model excluding open biomes (ants included)
+Main model — forest biomes only, all arthropods including ants:
+```{r brm_arthro_abund_no_grass, cache=TRUE, eval=REFIT_ARTHROPODS}
 load("dat_no_grassland.rds")
 
 start_time <- Sys.time()
-brm_no_ants_no_grass <-
+brm_no_grass <-
   brm(data = dat_no_grassland, family = negbinomial,
       Measurement ~ 1 + offset(log_sampling) + scaled_yr,
       prior = c(prior(normal(0, 10), class = Intercept),
                 prior(normal(0, 1), class = b),
                 prior(gamma(0.01, 0.01), class = shape) # the brms default
-                ), 
+                ),
       cores = 2,
       chains = 2,
-      iter = 1000) 
+      iter = 1000)
 end_time <- Sys.time();end_time - start_time
 
-save(brm_no_ants_no_grass, file = "brm_no_ants_no_grass.rda")
+save(brm_no_grass, file = "brm_no_grass.rda")
 ```
 
-Loading arthropod abundance model (without ants and no grasslands) to check summary and convergence.
-```{r arthro_model_no_ants_no_grass_summary, cache=TRUE}
-load("brm_no_ants_no_grass.rda")
+Loading arthropod abundance model (forest biomes, ants included) to check summary and convergence.
+```{r arthro_model_no_grass_summary, cache=TRUE}
+load("brm_no_grass.rda")
 
-summary(brm_no_ants_no_grass)
-plot(brm_no_ants_no_grass)
+summary(brm_no_grass)
+plot(brm_no_grass)
 
-fixef(brm_no_ants_no_grass)[1:2, ] %>%
+fixef(brm_no_grass)[1:2, ] %>%
   exp()
 
-plot(conditional_effects(brm_no_ants_no_grass))
-pp_check(brm_no_ants_no_grass)
+plot(conditional_effects(brm_no_grass))
+pp_check(brm_no_grass)
 ```
 
 ## Export Figure 4 (arthropod decline) for the manuscript
-Saves the fitted abundance decline (ants and open biomes excluded) to the
+Saves the fitted abundance decline (forest biomes, ants included) to the
 manuscript's images folder as `fig-arthropods.png`, replacing the placeholder.
 ```{r export_fig_arthropods, cache=FALSE}
-load("brm_no_ants_no_grass.rda")
+load("brm_no_grass.rda")
 load("dat_no_grassland.rds")
 
-ce <- conditional_effects(brm_no_ants_no_grass, effects = "scaled_yr")[[1]]
+ce <- conditional_effects(brm_no_grass, effects = "scaled_yr")[[1]]
 # put the x-axis back on the calendar-year scale for readability
 yr_mu <- mean(dat_no_grassland$Sample_midpoint, na.rm = TRUE)
 yr_sd <- sd(dat_no_grassland$Sample_midpoint,  na.rm = TRUE)
@@ -1012,7 +1013,7 @@ fig4 <- ggplot() +
   geom_line(data = ce, aes(x = year, y = estimate__), colour = "#2E5090", linewidth = 1) +
   scale_y_continuous(trans = "log1p") +
   labs(x = "Year", y = "Arthropod abundance per unit sampling effort",
-       title = "Forest arthropod decline (ants and open biomes excluded)") +
+       title = "Forest arthropod decline (open biomes excluded)") +
   theme_classic()
 
 ggsave(file.path("..", "Manuscript", "images", "fig-arthropods.png"),
