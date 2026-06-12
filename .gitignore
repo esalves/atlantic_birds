@@ -38,6 +38,7 @@ archive/biotime/cache/
 # as referenced in the manuscript's Data & code availability section.
 brm0_multiphylo.rda
 brm_bill_multiphylo.rda
+brm_mass_multiphylo.rda
 clootl_trees.rds
 
 # Zip files/archives
