@@ -58,6 +58,7 @@ ANALYSIS_DIR <- .find_analysis_dir()
 raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
 derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
 out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+source(file.path(ANALYSIS_DIR, "scripts", "_sampling_config.R"))  # SAMPLING settings
 fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
 
 # ── load data ────────────────────────────────────────────────────────────────
@@ -190,13 +191,13 @@ fit_A <- function(tree) {
       (1 + scaled_yr || spp) + (1 | gr(species_name, cov = A)),
     data = dat, data2 = list(A = A),
     family  = gaussian(), prior = priors,
-    iter    = 2000, warmup = 1000, chains = 1, cores = 1,
-    control = list(max_treedepth = 12, adapt_delta = 0.95),
+    iter = SAMPLING$iter, warmup = SAMPLING$warmup, chains = SAMPLING$chains, cores = SAMPLING$cores, backend = SAMPLING$backend,
+    control = SAMPLING_CONTROL,
     seed    = SEED, silent = 2, refresh = 0
   )
 }
 
-plan(multisession)
+plan(multisession, workers = SAMPLING$workers)
 fits_A <- future_lapply(tree_samp, fit_A, future.seed = TRUE)
 
 pars_A <- c("b_Intercept", "b_SexMale", "b_scaled_yr",
@@ -217,8 +218,8 @@ fit_B <- function(tree) {
       (1 + scaled_yr || spp) + (1 | gr(species_name, cov = A)),
     data = dat, data2 = list(A = A),
     family  = gaussian(), prior = priors,
-    iter    = 2000, warmup = 1000, chains = 1, cores = 1,
-    control = list(max_treedepth = 12, adapt_delta = 0.95),
+    iter = SAMPLING$iter, warmup = SAMPLING$warmup, chains = SAMPLING$chains, cores = SAMPLING$cores, backend = SAMPLING$backend,
+    control = SAMPLING_CONTROL,
     seed    = SEED, silent = 2, refresh = 0
   )
 }

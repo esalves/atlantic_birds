@@ -52,6 +52,7 @@ ANALYSIS_DIR <- .find_analysis_dir()
 raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
 derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
 out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+source(file.path(ANALYSIS_DIR, "scripts", "_sampling_config.R"))  # SAMPLING settings
 
 # --- build the analytical frame WITH body mass (mirrors the Rmd's filter) ---
 # Same operations and order as atlantic_birds_ms.Rmd's `newdataframes` chunk, so
@@ -160,12 +161,12 @@ fit_mass <- function(tree) {
         (1 + scaled_yr || spp) + (1 | gr(species_name, cov = A)),
       data = dat, data2 = list(A = A),
       family = gaussian(), prior = priors_mass,
-      iter = 1500, warmup = 1000, chains = 1, cores = 1,
-      control = list(max_treedepth = 12, adapt_delta = 0.95),
+      iter = SAMPLING$iter, warmup = SAMPLING$warmup, chains = SAMPLING$chains, cores = SAMPLING$cores, backend = SAMPLING$backend,
+      control = SAMPLING_CONTROL,
       seed = 20240101)
 }
 
-plan(multisession)
+plan(multisession, workers = SAMPLING$workers)
 mass_fits <- future_lapply(tree_samp, fit_mass, future.seed = TRUE)
 
 # --- Rubin's rules pooling across trees (identical to atlantic_parallel.R) ----

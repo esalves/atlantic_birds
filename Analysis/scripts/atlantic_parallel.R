@@ -57,6 +57,7 @@ ANALYSIS_DIR <- .find_analysis_dir()                 # = .../atlantic_birds/Anal
 raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
 derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
 out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+source(file.path(ANALYSIS_DIR, "scripts", "_sampling_config.R"))  # SAMPLING settings
 fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
 script_path  <- function(...) file.path(ANALYSIS_DIR, "scripts", ...)
 
@@ -180,12 +181,12 @@ fit_one <- function(tree) {
         (1 + scaled_yr || spp) + (1 | gr(species_name, cov = A)),
       data = dat, data2 = list(A = A),
       family = gaussian(), prior = priors,
-      iter = 1500, warmup = 1000, chains = 1, cores = 1,
-      control = list(max_treedepth = 12, adapt_delta = 0.95),
+      iter = SAMPLING$iter, warmup = SAMPLING$warmup, chains = SAMPLING$chains, cores = SAMPLING$cores, backend = SAMPLING$backend,
+      control = SAMPLING_CONTROL,
       seed = 20240101)
 }
 
-plan(multisession)
+plan(multisession, workers = SAMPLING$workers)
 fits <- future_lapply(tree_samp, fit_one, future.seed = TRUE)
 
 # --- (2) Rubin's rules pooling across trees -------------------------------
