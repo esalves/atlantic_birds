@@ -1,0 +1,935 @@
+---
+title: "Structural body size over time in Atlantic Forest passerines"
+subtitle: "A descriptive inquiry into four size proxies — wing, tail, tarsus, body mass"
+author: "Atlantic Birds project"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+    code-tools: true
+    embed-resources: true
+    theme: cosmo
+    fig-width: 8
+    fig-height: 5
+    df-print: kable
+engine: jupyter
+execute:
+  warning: false
+  message: false
+---
+
+```{python}
+#| label: setup
+#| echo: false
+import pandas as pd, numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import statsmodels.formula.api as smf
+from statsmodels.nonparametric.smoothers_lowess import lowess
+from scipy import stats
+import warnings
+warnings.filterwarnings("ignore")
+
+mpl.rcParams.update({
+    "figure.dpi": 120, "axes.grid": True,
+    "grid.alpha": 0.25, "axes.spines.top": False, "axes.spines.right": False,
+    "font.size": 11, "axes.titlesize": 12,
+})
+WING = "#2c7fb8"   # blue
+TAIL = "#756bb1"   # purple
+TARS = "#31a354"   # green
+MASS = "#d95f0e"   # orange
+
+# trait registry — feather traits (wing, tail), skeletal (tarsus), soft tissue (mass)
+ORDER = ["lnwing", "lntail", "lntar", "lnmass"]
+COL = {"lnwing": WING, "lntail": TAIL, "lntar": TARS, "lnmass": MASS}
+LAB = {"lnwing": "wing length", "lntail": "tail length",
+       "lntar": "tarsus length", "lnmass": "body mass"}
+SRC = {"lnwing": "cwl", "lntail": "ctail", "lntar": "ctar", "lnmass": "mass"}
+
+def fmt(x, d=4): return f"{x:+.{d}f}"
+```
+
+## The puzzle, widened
+
+The main analysis of this project found that **wing length declined** across 89
+Atlantic Forest passerine species between 1990 and 2018 (Bayesian phylogenetic
+multilevel model, standardized year effect **β = −0.73 mm** per SD-year,
+95 % CI −1.09 to −0.37, excluding zero), while a parallel model for **log body
+mass** found essentially **no trend** (β = −0.001 log-g per SD-year, 95 % CI
+−0.008 to +0.006). If birds are getting structurally smaller, why does their mass
+not shrink too?
+
+This report explores that question descriptively across **four proxies of body
+size**: two flight-feather traits — **wing length** and **tail length** — a
+leg/skeletal trait, **tarsus length**, and the soft-tissue measure, **body
+mass**. Tarsus is conceptually the cleanest index of structural size; mass the
+crudest (it fluctuates with gut content, fat, hydration); the feather traits sit
+in between and additionally carry molt/wear signals. Throughout, we also track
+whether each bird was measured **live or as a museum specimen**, since
+preservation can bias measurements and could confound a temporal trend (developed
+in the descriptive section below and tested formally in @sec-status). The result
+is richer than the original two-trait puzzle:
+
+> The four proxies **do not move together**. Within species, wing length
+> declines, tarsus length *increases*, and tail length and body mass show no net
+> change — so the wing decline is not a coordinated whole-body shrinkage. But the
+> *shape* of the trends matters: wing length and tail length (the two feather
+> traits) both fall sharply in the most recently sampled years, a recent signal a
+> single linear slope hides.
+
+## Reproducing the analytical sample
+
+We rebuild the exact analytical frame used by the project's models directly from
+the raw ATLANTIC BIRD TRAITS csv (filters: `Year ≥ 1990`, adult, known sex,
+Passeriformes, inside the 20-km Atlantic Forest buffer; then species with ≥ 30
+records and a ≥ 5-year span). This reproduces the canonical sample of **15,332
+records / 89 species** exactly. Wing, tail and tarsus each coalesce
+right/left/unspecified measurements the way the project's wing variable is built.
+
+```{python}
+#| label: load
+RAW = "../data/raw/ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv"
+b = pd.read_csv(RAW, low_memory=False)
+
+mask = (
+    (b.Year >= 1990) & (b.Age == "Adult") &
+    (b.Sex.isin(["Male", "Female"])) &          # R's filter drops NA sex too
+    (b.Order == "Passeriformes") &
+    (b.AtlanticForests_20km_Buffer == "inside the 20 km polygon")
+)
+d = b[mask].copy()
+d["cwl"]  = (d["Wing_length_right.mm."].combine_first(d["Wing_length_left.mm."])
+             .combine_first(d["Wing_length.mm."]))
+d["ctail"] = (d["Tail_length_right.mm."].combine_first(d["Tail_length_left.mm."])
+              .combine_first(d["Tail_length.mm."]))
+d["ctar"] = (d["Tarsus_length_right.mm."].combine_first(d["Tarsus_length_left.mm."])
+             .combine_first(d["Tarsus_length.mm."]))
+d["Binomial"] = d["Binomial"].str.replace(" ", "_")
+d = d[d.groupby("Binomial")["Binomial"].transform("size") >= 30].copy()
+d = d[d.groupby("Binomial")["Year"].transform(lambda x: x.max() - x.min()) >= 5].copy()
+
+d["scaled_yr"]  = (d.Year - d.Year.mean()) / d.Year.std()
+d["scaled_lat"] = ((-d.Latitude_decimal_degrees) - (-d.Latitude_decimal_degrees).mean()) \
+                   / (-d.Latitude_decimal_degrees).std()
+d["mass"] = d["Body_mass.g."]
+for resp, src in SRC.items():
+    d[resp] = np.log(d[src])
+YR_SD = d.Year.std()
+
+print(f"Records: {len(d):,}   Species: {d.Binomial.nunique()}   (expect 15,332 / 89)\n")
+print("Trait coverage within the sample (and species with ≥30 records of the trait):")
+for resp in ORDER:
+    src = SRC[resp]; sub = d.dropna(subset=[src])
+    n30 = (sub.groupby("Binomial").size() >= 30).sum()
+    print(f"  {LAB[resp]:14s}: {sub[src].notna().sum():>6,} records, "
+          f"{sub.Binomial.nunique():>2} species ({n30} with ≥30)")
+print(f"\nYear SD (for per-SD ↔ per-year conversion): {YR_SD:.2f} years")
+```
+
+All four traits are well sampled (~10,000–14,000 records). Body mass is actually
+the *best* sampled, so nothing here is limited by data volume.
+
+## A first note on data quality (tarsus)
+
+Tarsus length contains some physically impossible values — passerine tarsi run
+roughly 10–35 mm, yet a handful exceed 50 mm (e.g. a 192 mm tarsus on a
+*Herpsilochmus* antwren, ~18 mm in life). These are data-entry errors. We keep all
+records in the main analysis for consistency with the project's pipeline (which
+likewise keeps a 480 g mass outlier), but flag the issue here and show the tarsus
+trend is **robust to removing implausible values** — it even strengthens. A
+systematic, four-trait outlier analysis follows in @sec-outliers.
+
+```{python}
+#| label: tarsus-qc
+def mixed_yr(df, resp):
+    sub = df.dropna(subset=[resp]).copy()
+    f = smf.mixedlm(f"{resp} ~ C(Sex) + scaled_yr + scaled_lat", sub,
+                    groups=sub["Binomial"], re_formula="~scaled_yr").fit(method="lbfgs")
+    b1, se = f.params["scaled_yr"], f.bse["scaled_yr"]
+    return b1, se, f.pvalues["scaled_yr"], len(sub)
+
+imp = d.ctar.notna() & ((d.ctar < 5) | (d.ctar > 40))
+print(f"Implausible tarsus records (<5 or >40 mm): {imp.sum()} of {d.ctar.notna().sum()}")
+for name, df in [("all records", d), ("plausible 5–40 mm only", d[~imp])]:
+    b1, se, p, n = mixed_yr(df, "lntar")
+    print(f"tarsus, {name:24s}: β_yr = {b1:+.4f} "
+          f"[{b1-1.96*se:+.4f}, {b1+1.96*se:+.4f}], p = {p:.3f}, N = {n:,}")
+```
+
+## What the four traits look like
+
+Each bird was measured either **live** (mist-netting) or as a **museum** specimen,
+and we carry that distinction through from here. The colours below are fixed:
+<span style="color:#3182bd"><b>live</b></span> and
+<span style="color:#e6550d"><b>museum</b></span>.
+
+```{python}
+#| label: dist-counts
+#| echo: false
+LIVE_C, MUS_C = "#3182bd", "#e6550d"
+ds = d[d.Status.isin(["live", "museum"])].copy()
+print(f"Sample by measurement status: live {int((ds.Status=='live').sum()):,} | "
+      f"museum {int((ds.Status=='museum').sum()):,} | unknown {int((~d.Status.isin(['live','museum'])).sum())}")
+```
+
+```{python}
+#| label: fig-dist
+#| fig-cap: "Distributions on the modelled log scale, overlaid by measurement status (density-normalised so the two groups are comparable despite very different sample sizes). The live and museum distributions broadly overlap for every trait — at the whole-sample scale, between-species variation dwarfs any status effect."
+fig, ax = plt.subplots(2, 2, figsize=(11, 6.5))
+for a, resp in zip(ax.ravel(), ORDER):
+    for st, c in [("live", LIVE_C), ("museum", MUS_C)]:
+        x = ds.loc[ds.Status == st, resp].dropna()
+        a.hist(x, bins=40, density=True, color=c, alpha=.5, label=st)
+    a.set_title(f"log {LAB[resp]}"); a.set_xlabel(f"log({SRC[resp]})")
+    a.set_ylabel("density"); a.legend()
+plt.tight_layout(); plt.show()
+
+print(d[[SRC[r] for r in ORDER]].describe().round(2).to_string())
+```
+
+At the whole-sample scale the live and museum curves sit almost on top of each
+other, because between-species variation is enormous (and exactly why pooling
+across species, next, is the wrong tool). But that overlap *hides* the status
+effect: a 5 % shift in tail is invisible against a trait that varies several-fold
+across species. To expose it we re-plot the same data as **within-species
+deviations** (each record minus its species mean), which removes the
+between-species spread:
+
+```{python}
+#| label: fig-dist-status
+#| fig-cap: "Within-species deviations (% from each species' mean) by status. Once between-species spread is removed, the systematic museum bias is clear: museum tail length reads longer and museum body mass lighter, while wing is essentially unaffected. Dashed lines = group means. This is the same effect quantified in @sec-status."
+fig, ax = plt.subplots(2, 2, figsize=(11, 6.5))
+for a, resp in zip(ax.ravel(), ORDER):
+    sub = ds.dropna(subset=[resp]).copy()
+    sub["dev"] = (sub[resp] - sub.groupby("Binomial")[resp].transform("mean")) * 100
+    for st, c in [("live", LIVE_C), ("museum", MUS_C)]:
+        x = np.clip(sub.loc[sub.Status == st, "dev"], -25, 25)
+        a.hist(x, bins=45, density=True, color=c, alpha=.5, label=st)
+        a.axvline(sub.loc[sub.Status == st, "dev"].mean(), color=c, ls="--", lw=2)
+    a.set_title(f"log {LAB[resp]}"); a.set_xlabel("within-species deviation (%)")
+    a.set_ylabel("density"); a.legend()
+plt.tight_layout(); plt.show()
+```
+
+```{python}
+#| label: tbl-status-desc
+#| fig-cap: "Descriptive statistics by measurement status."
+rows = []
+for resp in ORDER:
+    src = SRC[resp]
+    for st in ["live", "museum"]:
+        x = ds.loc[(ds.Status == st), src].dropna()
+        dev = (ds.loc[ds.Status == st, resp] -
+               ds.groupby("Binomial")[resp].transform("mean")).dropna()
+        rows.append([LAB[resp], st, f"{len(x):,}", f"{x.mean():.2f}", f"{x.median():.2f}",
+                     f"{x.std()/x.mean():.3f}", f"{dev.mean()*100:+.2f}%"])
+pd.DataFrame(rows, columns=["trait","status","n","mean","median","CV","mean within-spp dev"])
+```
+
+The descriptive table makes the point numerically: museum specimens read longer in
+tail (and slightly in tarsus) and lighter in mass, with wing barely touched. Since
+museum specimens are not evenly spread over time, we test whether this biases the
+*trends* in @sec-status — it does not for wing, tarsus or mass, and only matters
+for tail.
+
+## The trap: pooling across species reverses the sign
+
+A naïve approach regresses each trait on year across *all* records at once, with
+the covariates the models use (sex, latitude).
+
+```{python}
+#| label: naive
+rows = []
+for resp in ORDER:
+    sub = d.dropna(subset=[resp])
+    f = smf.ols(f"{resp} ~ scaled_yr + C(Sex) + scaled_lat", data=sub).fit()
+    b1 = f.params["scaled_yr"]; lo, hi = f.conf_int().loc["scaled_yr"]
+    rows.append([f"log {LAB[resp]}", len(sub), fmt(b1), f"[{fmt(lo)}, {fmt(hi)}]"])
+pd.DataFrame(rows, columns=["trait", "N", "β (per SD-yr, log)", "95% CI"])
+```
+
+Several naïve pooled slopes come out **positive** — including wing length, which
+we *know* declines within species. This is Simpson's paradox: the pooled slope
+mixes genuine within-species change with shifts in *which* species were sampled
+over time, and between-species variation is so large that composition dominates.
+**The pooled trend is uninformative.** The right question is within-species, which
+the random-slope structure of the project's models isolates — reproduced next.
+
+## Within-species trends: the four traits diverge
+
+### Per-species slopes
+
+For each species we fit a within-species regression of the log trait on
+standardized year — the model-free analogue of a random year slope.
+
+```{python}
+#| label: perspp
+def per_species(resp):
+    out = []
+    for sp, g in d.dropna(subset=[resp]).groupby("Binomial"):
+        if g.Year.nunique() < 3 or g[resp].nunique() < 2:
+            continue
+        out.append(smf.ols(f"{resp} ~ scaled_yr", data=g).fit().params["scaled_yr"])
+    return np.array(out)
+
+slopes = {r: per_species(r) for r in ORDER}
+rows = []
+for resp in ORDER:
+    s = slopes[resp]; neg, pos = int((s < 0).sum()), int((s > 0).sum())
+    sign_p = stats.binomtest(min(neg, pos), neg + pos).pvalue
+    rows.append([f"log {LAB[resp]}", len(s), fmt(np.median(s)), fmt(s.mean()),
+                 f"{pos}/{neg+pos}", f"{sign_p:.3f}"])
+pd.DataFrame(rows, columns=["trait", "species", "median slope", "mean slope",
+                            "increased", "sign-test p"])
+```
+
+```{python}
+#| label: fig-slopes
+#| fig-cap: "Within-species year slopes (log scale, per SD-year), one panel per trait. Dashed = median, solid black = zero. Wing slopes sit left of zero (most decline); tarsus right of zero (most increase); tail and body mass straddle zero."
+fig, ax = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
+bins = np.linspace(-0.06, 0.06, 31)
+for a, resp in zip(ax.ravel(), ORDER):
+    s = np.clip(slopes[resp], bins[0], bins[-1])
+    a.hist(s, bins=bins, color=COL[resp], alpha=.8, edgecolor="white")
+    a.axvline(np.median(slopes[resp]), color=COL[resp], ls="--", lw=2,
+              label=f"median {np.median(slopes[resp]):+.4f}")
+    a.axvline(0, color="black", lw=1)
+    a.set_title(f"log {LAB[resp]}", loc="left"); a.set_ylabel("species"); a.legend(loc="upper right")
+for a in ax[-1]: a.set_xlabel("within-species slope of log(trait) on standardized year")
+plt.tight_layout(); plt.show()
+```
+
+The four traits point different ways. Wing declines in most species (sign-test
+p = 0.001); tarsus *increases* in most (p = 0.001); tail and body mass are near
+coin-flips (p ≈ 0.4 and 0.2).
+
+### A like-for-like mixed model
+
+Matching the project's models without the phylogeny: a random-intercept /
+random-year-slope mixed model per trait
+(`trait ~ sex + scaled_yr + scaled_lat + (1 + scaled_yr | species)`).
+
+```{python}
+#| label: mixed
+rows = []
+for resp in ORDER:
+    b1, se, p, n = mixed_yr(d, resp)
+    rows.append([f"log {LAB[resp]}", fmt(b1), f"[{fmt(b1-1.96*se)}, {fmt(b1+1.96*se)}]",
+                 f"{p:.3f}", f"{n:,}"])
+pd.DataFrame(rows, columns=["trait", "β year (per SD-yr, log)", "95% CI", "p", "N"])
+```
+
+Without any phylogenetic machinery this reproduces and extends the headline:
+**wing length declines** (CI excludes zero, p < 0.001), **tarsus length increases**
+(p ≈ 0.03; p = 0.001 once impossible values are dropped), and **tail length and
+body mass show no net trend** (CIs span zero). Three of the four proxies fail to
+show the wing decline; one moves the opposite way. The flat mass result is not a
+quirk of the Bayesian model, and the wing decline is clearly *not* a uniform
+skeletal shrinkage.
+
+## Putting all four traits on a common scale
+
+The original "−0.73 vs −0.001" headline mixes units (mm vs log-grams). Expressing
+every within-species slope as a **percentage change per decade** (a log slope `β`
+≈ a fractional change `expm1(β)`) makes them directly comparable.
+
+```{python}
+#| label: fig-commonscale
+#| fig-cap: "Within-species change per decade (%) with 95% CI (mixed models). Wing length declines ~2%/decade (CI below zero); tarsus rises ~2%/decade (CI above zero); tail length and body mass sit on zero. The proxies diverge in direction and in statistical support."
+res = {}
+for resp in ORDER:
+    b1, se, p, n = mixed_yr(d, resp); f = 10 / YR_SD
+    res[resp] = (np.expm1(b1*f)*100, np.expm1((b1-1.96*se)*f)*100, np.expm1((b1+1.96*se)*f)*100)
+
+fig, ax = plt.subplots(figsize=(7.5, 3.3))
+order = ["lnmass", "lntail", "lnwing", "lntar"]
+for i, resp in enumerate(order):
+    est, lo, hi = res[resp]
+    ax.errorbar(est, i, xerr=[[est-lo],[hi-est]], fmt="o", color=COL[resp], ms=11, capsize=5, lw=2)
+    ax.text(est, i+0.22, f"{est:+.2f}%/decade", ha="center", color=COL[resp], fontsize=10)
+ax.axvline(0, color="black", lw=1)
+ax.set_yticks(range(len(order))); ax.set_yticklabels([LAB[r] for r in order])
+ax.set_ylim(-0.6, len(order)-0.3); ax.set_xlabel("within-species change per decade (%)")
+plt.tight_layout(); plt.show()
+for resp in ORDER:
+    e, l, h = res[resp]; print(f"  {LAB[resp]:14s}: {e:+.2f}%/dec  [{l:+.2f}, {h:+.2f}]")
+```
+
+On a common footing, wing and tarsus change at *similar magnitudes in opposite
+directions* (~±2 %/decade), while tail length and body mass barely move. Body mass
+being flat is therefore corroborated by *two* other proxies, not explained away.
+
+## The shape of the trends over time (non-linearity within 1990–2018) {#sec-time}
+
+A single linear slope can hide acceleration, plateaus or reversals. We probe the
+*shape* of each trend two ways, both on **within-species deviations** (each record
+minus its species mean, so between-species composition is removed): (1) mean
+deviation in five time bins, and (2) a LOWESS smoother across years. We do **not**
+extend before 1990 — only ~1,250 records exist earlier, with essentially no body
+mass (one record before 1970) and likely different collection methods, so it would
+add high-leverage noise rather than signal.
+
+```{python}
+#| label: fig-nonlinear
+#| fig-cap: "Within-species deviation (%) of each trait over time: dots = mean ± SE in five period bins, line = LOWESS smoother. Wing length (blue) and tail length (purple) — the two feather traits — both fall steeply in the most recently sampled years; tarsus (green) rises steadily; body mass (orange) hugs zero throughout. Note sampling is sparse in the 1990s and densest after 2005."
+BINS = [(1990,1999),(2000,2004),(2005,2009),(2010,2014),(2015,2018)]
+centers = [np.mean(x) for x in BINS]
+fig, ax = plt.subplots(2, 2, figsize=(12, 7.5), sharex=True)
+for a, resp in zip(ax.ravel(), ORDER):
+    sub = d.dropna(subset=[resp]).copy()
+    sub["dev"] = (sub[resp] - sub.groupby("Binomial")[resp].transform("mean")) * 100
+    lo = lowess(sub["dev"], sub["Year"], frac=0.6, return_sorted=True)
+    a.plot(lo[:,0], lo[:,1], color=COL[resp], lw=2.5, zorder=3)
+    for (lo_y, hi_y), c in zip(BINS, centers):
+        v = sub[(sub.Year>=lo_y)&(sub.Year<=hi_y)]["dev"]
+        a.errorbar(c, v.mean(), yerr=v.sem(), fmt="o", color=COL[resp], ms=7,
+                   capsize=4, mec="white", zorder=4)
+    a.axhline(0, color="black", lw=1)
+    a.set_title(f"log {LAB[resp]}", loc="left"); a.set_ylabel("within-species deviation (%)")
+for a in ax[-1]: a.set_xlabel("year")
+plt.tight_layout(); plt.show()
+```
+
+```{python}
+#| label: quad
+rows = []
+for resp in ORDER:
+    sub = d.dropna(subset=[resp]).copy()
+    sub["dev"] = sub[resp] - sub.groupby("Binomial")[resp].transform("mean")
+    sub["yr2"] = sub["scaled_yr"]**2
+    f = smf.ols("dev ~ scaled_yr + yr2", data=sub).fit()
+    rows.append([LAB[resp], fmt(f.params["scaled_yr"]), f"{f.pvalues['scaled_yr']:.3f}",
+                 fmt(f.params["yr2"], 5), f"{f.pvalues['yr2']:.3f}"])
+pd.DataFrame(rows, columns=["trait", "linear β", "linear p", "quadratic β", "quadratic p"])
+```
+
+The temporal shape is itself informative:
+
+- **Wing length** declines *non-linearly and recently*: it sits slightly above the
+  species mean through the 2000s and then drops sharply in 2015–2018 (~−1.7 %); the
+  quadratic term is strongly negative (p < 0.001). The decline is concentrated in
+  the most recent years rather than spread evenly across 28 years.
+- **Tail length**, though *net* flat, shows the **same recent fall** (~−1.7 % in
+  2015–2018; significant negative quadratic) — so the two feather traits move
+  together in the recent window even though only wing has a significant linear
+  trend. This hints at a shared recent flight-feather signal (true size change, or
+  molt/wear/measurement shifts) that the linear model misses.
+- **Tarsus length** rises steadily and essentially *linearly* (quadratic n.s.,
+  p ≈ 0.49) — a monotone increase across the whole window.
+- **Body mass** stays on zero in every bin and shows no linear *or* quadratic term
+  (both p > 0.3). There is no hidden non-linear mass change at any timescale.
+
+### Controlling for measurement status
+
+Because the museum:live mix changes over time (@sec-status), we re-draw each
+trajectory **separately by status**, centering within species *and* status so that
+each curve shows only the temporal *shape* within its own measurement type (the
+constant museum offset is removed).
+
+```{python}
+#| label: fig-nonlinear-status
+#| fig-cap: "Within-(species×status) deviation (%) over time, split by measurement status — live (blue) and museum (orange); line = LOWESS, dots = period means ± SE (shown where n ≥ 15). The live series (the bulk of the data) reproduces every shape: wing's recent fall, tarsus's steady rise, tail's hump-then-recent-fall, and mass's flatness. Museum records are sparse — especially after 2010 (≈37–150 records in 2015–2018) — and erratic, but show no systematic opposing pattern. The recent feather-trait drop is clearly a live-data phenomenon, not a preservation artifact."
+fig, ax = plt.subplots(2, 2, figsize=(12, 7.5), sharex=True)
+for a, resp in zip(ax.ravel(), ORDER):
+    sub = ds.dropna(subset=[resp]).copy()
+    sub["dev"] = (sub[resp] - sub.groupby(["Binomial", "Status"])[resp].transform("mean")) * 100
+    for st, c in [("live", LIVE_C), ("museum", MUS_C)]:
+        g = sub[sub.Status == st]
+        if len(g) > 30:
+            lo = lowess(g["dev"], g["Year"], frac=0.6, return_sorted=True)
+            a.plot(lo[:, 0], lo[:, 1], color=c, lw=2.5, label=st, zorder=3)
+        for lo_y, hi_y in BINS:
+            v = g[(g.Year >= lo_y) & (g.Year <= hi_y)]["dev"]
+            if len(v) >= 15:
+                a.errorbar(np.mean([lo_y, hi_y]), v.mean(), yerr=v.sem(), fmt="o",
+                           color=c, ms=6, capsize=3, mec="white", zorder=4)
+    a.axhline(0, color="black", lw=1)
+    a.set_title(f"log {LAB[resp]}", loc="left")
+    a.set_ylabel("within-(species×status) dev (%)"); a.legend(fontsize=9)
+for a in ax[-1]: a.set_xlabel("year")
+plt.tight_layout(); plt.show()
+```
+
+```{python}
+#| label: nonlinear-status-tbl
+rows = []
+for resp in ORDER:
+    sub = ds.dropna(subset=[resp]).copy()
+    sub["dev"] = (sub[resp] - sub.groupby(["Binomial", "Status"])[resp].transform("mean")) * 100
+    for st in ["live", "museum"]:
+        g = sub[sub.Status == st]
+        cells = []
+        for lo_y, hi_y in BINS:
+            v = g[(g.Year >= lo_y) & (g.Year <= hi_y)]["dev"]
+            cells.append(f"{v.mean():+.2f}% (n{len(v)})" if len(v) else "—")
+        rows.append([LAB[resp], st] + cells)
+pd.DataFrame(rows, columns=["trait", "status", "1990–99", "2000–04", "2005–09", "2010–14", "2015–18"])
+```
+
+Read trait by trait, controlled by status:
+
+- **Wing** — the **live** series carries the whole story: gently above the species
+  mean through the 2000s, then a sharp drop in 2015–2018 (−1.7 %). Museum wing is
+  flat/noisy on a small sample and does not reproduce (or oppose) the decline.
+- **Tarsus** — the steady increase is clear in the **live** series (−1.6 % → +2.1 %);
+  museum tarsus is erratic but ends positive too.
+- **Tail** — the hump-then-recent-fall holds in the **live** series; museum tail
+  swings wildly (a function of ~200–440 records spread thinly across years) and is
+  best disregarded for shape.
+- **Body mass** — flat in **both** status groups across every period; the only
+  notable museum point is a 2015–2018 dip on just ~150 records, well within noise.
+
+So the temporal shapes are **properties of the live data**, not of the changing
+museum fraction. Museum specimens are too few — and too unevenly spread across
+years — to define a trajectory, but where they appear they do not contradict the
+live series.
+
+So "deeper time changes" exist — but as **non-linearity within 1990–2018**, not
+something recoverable by extending the record backward. The most striking is that
+the wing (and tail) decline is a recent phenomenon, robust to measurement status,
+which the project's linear slope understates.
+
+## Signal-to-noise: how blunt is each instrument?
+
+Part of why body mass is uninformative is that it is a much noisier index of size.
+We quantify this with the within-species coefficient of variation (CV) per trait
+(each on the species with ≥ 30 records of it).
+
+```{python}
+#| label: fig-cv
+#| fig-cap: "Within-species coefficient of variation by trait (one point per species; black bar = median). Wing length is the cleanest (~0.06), tail and tarsus intermediate, body mass the noisiest (~0.14). High individual-level noise lowers power to resolve a small temporal shift — but tarsus, though noisier than wing, still resolves a clear (opposite) trend, so noise alone cannot explain the flat traits."
+cvrows = []
+for resp in ORDER:
+    src = SRC[resp]; sub = d.dropna(subset=[src])
+    cvs = sub.groupby("Binomial").apply(lambda g: g[src].std()/g[src].mean()
+                                        if len(g) >= 30 else np.nan).dropna()
+    for v in cvs: cvrows.append((LAB[resp], v))
+cv = pd.DataFrame(cvrows, columns=["trait", "cv"])
+
+fig, ax = plt.subplots(figsize=(7.5, 4.3))
+for j, resp in enumerate(ORDER):
+    vals = cv.loc[cv.trait == LAB[resp], "cv"].values
+    jit = np.random.RandomState(j).normal(0, .05, len(vals))
+    ax.scatter(np.full(len(vals), j)+jit, vals, color=COL[resp], alpha=.65, edgecolor="white")
+    ax.scatter(j, np.median(vals), color="black", marker="_", s=700, lw=2.5, zorder=3)
+ax.set_xticks(range(len(ORDER))); ax.set_xticklabels([LAB[r] for r in ORDER])
+ax.set_ylabel("within-species CV"); plt.tight_layout(); plt.show()
+
+print("Median within-species CV:")
+for resp in ORDER:
+    print(f"  {LAB[resp]:14s}: {cv.loc[cv.trait==LAB[resp],'cv'].median():.3f}")
+```
+
+Body mass carries ~2.4× the within-species noise of wing length; tail and tarsus
+are intermediate. Noise is part of why mass is uninformative — but **not** the
+whole story: tarsus is noisier than wing yet still resolves a clear opposite
+trend, proving the flat traits cannot be blamed on noise alone.
+
+## Does the mass–wing relationship shift? (allometry / condition)
+
+If wing shrinks while mass holds, are birds heavier *for their wing*? We regress
+log mass on log wing within species and test whether the residual
+("mass-for-wing" condition index) trends over time.
+
+```{python}
+#| label: allometry
+bw = d.dropna(subset=["lnmass", "lnwing"]).copy()
+allo = smf.mixedlm("lnmass ~ lnwing", bw, groups=bw["Binomial"],
+                   re_formula="~lnwing").fit(method="lbfgs")
+bw["cond"] = bw["lnmass"] - (allo.params["Intercept"] + allo.params["lnwing"]*bw["lnwing"])
+ct = smf.mixedlm("cond ~ scaled_yr", bw, groups=bw["Binomial"],
+                 re_formula="~scaled_yr").fit(method="lbfgs")
+b1, se = ct.params["scaled_yr"], ct.bse["scaled_yr"]
+print(f"Within-species allometric slope (log mass ~ log wing): {allo.params['lnwing']:.2f}")
+print(f"Mass-for-wing (condition) trend: {b1:+.4f} [{b1-1.96*se:+.4f}, {b1+1.96*se:+.4f}] "
+      f"per SD-yr, p = {ct.pvalues['scaled_yr']:.3f}")
+```
+
+The within-species allometric slope is shallow (~0.4): wing explains only a modest
+fraction of individual mass variation, so the two are partly decoupled. The
+mass-for-wing residual shows **no significant temporal trend** (p ≈ 0.20). The
+size proxies are loosely yoked — a change in one need not appear in the others.
+
+## Sanity check: early-vs-late quartile comparison
+
+The model-free comparison the project reports for each trait — mean log trait in
+the early (≤ 2006) vs late (≥ 2013) period, per species.
+
+```{python}
+#| label: fig-quartile
+#| fig-cap: "Per-species change in mean log trait, late (≥2013) minus early (≤2006). Wing: most species decrease. Tarsus: most increase. Tail and body mass: roughly even."
+pq = d[(d.Year <= 2006) | (d.Year >= 2013)].copy()
+pq["period"] = np.where(pq.Year <= 2006, "early", "late")
+def quartile(resp):
+    t = (pq.dropna(subset=[resp]).groupby(["Binomial","period"])[resp].mean().unstack().dropna())
+    return (t["late"] - t["early"]).sort_values()
+
+fig, ax = plt.subplots(1, 4, figsize=(14, 3.2))
+for a, resp in zip(ax, ORDER):
+    dd = quartile(resp)
+    a.bar(range(len(dd)), dd.values, color=[COL[resp] if v>0 else "#9e9e9e" for v in dd.values])
+    a.axhline(0, color="black", lw=1); a.set_xticks([])
+    a.set_title(f"{LAB[resp]}\n{(dd>0).sum()}↑ / {(dd<0).sum()}↓ (n={len(dd)})", loc="left", fontsize=10)
+    a.set_xlabel("species, sorted")
+ax[0].set_ylabel("Δ mean log trait (late − early)")
+plt.tight_layout(); plt.show()
+```
+
+The quartile picture matches the slopes: wing down, tarsus up, tail and mass split.
+
+## Within-species outliers and their influence on the trends {#sec-outliers}
+
+How far do the results depend on a few aberrant records *within species*? We
+detect within-species outliers with a robust rule, cross-check them against an
+independent signal (left vs right measurements), and re-estimate every trend with
+the outliers removed or tamed.
+
+### Detecting within-species outliers (robust MAD rule)
+
+For each species and trait we compute a **robust z-score** on the log scale,
+`z = (log x − median) / (1.4826 · MAD)`. Median/MAD are themselves resistant to
+outliers, so a single aberrant value cannot define the threshold. We flag
+`|z| > 3.5`.
+
+```{python}
+#| label: mad-detect
+def mad_z(df, resp):
+    g = df.groupby("Binomial")[resp]
+    med = g.transform("median")
+    mad = g.transform(lambda x: (x - x.median()).abs().median()) * 1.4826
+    return (df[resp] - med) / mad.replace(0, np.nan)
+
+rows = []
+for resp in ORDER:
+    z = mad_z(d, resp); n = d[resp].notna().sum()
+    rows.append([LAB[resp], f"{n:,}"] +
+                [f"{(z.abs()>t).sum()} ({(z.abs()>t).mean()*100:.2f}%)" for t in (3.5, 4, 5)])
+pd.DataFrame(rows, columns=["trait", "N", "|z|>3.5", "|z|>4", "|z|>5"])
+```
+
+Outliers are uncommon in every trait (most frequent in tarsus, ~3.4 %; least in
+wing, ~1.7 %). The most extreme records are unambiguous data errors — decimal
+shifts, dropped digits, unit confusion:
+
+```{python}
+#| label: worst-records
+worst = []
+for resp in ORDER:
+    src = SRC[resp]; z = mad_z(d, resp)
+    tmp = d.assign(absz=z.abs()).nlargest(3, "absz")
+    for _, r in tmp.iterrows():
+        med = d.loc[d.Binomial == r.Binomial, src].median()
+        worst.append([LAB[resp], r.Binomial.replace("_"," "), f"{r[src]:.1f}",
+                      f"{med:.1f}", f"{r.absz:.0f}", int(r.Year)])
+pd.DataFrame(worst, columns=["trait","species","value","species median","MAD-z","year"])
+```
+
+A 192 mm tarsus where the species sits at 19 mm, a 6.8 g thrush where it sits at
+69 g (a dropped digit) — clerical, not biological. Do they move the trends?
+
+### Cross-check: left vs right measurements
+
+Where both sides were measured, the two should agree to within a couple of
+percent; large asymmetries flag error independently of the MAD rule. (Tail and
+mass have too few paired-side records to assess.)
+
+```{python}
+#| label: fig-lr
+#| fig-cap: "Relative left–right difference |L−R|/mean for records measured on both sides. Tarsus is highly self-consistent; wing shows a heavier tail of large asymmetries (impossible for paired wings), an independent sign of clerical error in some wing records. Dashed = 5%."
+fig, ax = plt.subplots(1, 2, figsize=(10, 3.8))
+for a, (L, R, nm, c) in zip(ax, [
+        ("Wing_length_left.mm.","Wing_length_right.mm.","wing", WING),
+        ("Tarsus_length_left.mm.","Tarsus_length_right.mm.","tarsus", TARS)]):
+    sub = d.dropna(subset=[L, R])
+    rel = (sub[R]-sub[L]).abs()/((sub[R]+sub[L])/2)*100
+    a.hist(np.clip(rel, 0, 20), bins=40, color=c, alpha=.85)
+    a.axvline(5, color="black", ls="--", lw=1)
+    a.set_title(f"{nm}  (N={len(sub)} measured both sides)")
+    a.set_xlabel("|left − right| / mean (%)"); a.set_ylabel("records")
+    print(f"{nm}: median {rel.median():.2f}% | >5%: {(rel>5).sum()} | >10%: {(rel>10).sum()}")
+plt.tight_layout(); plt.show()
+```
+
+Tarsus is internally very consistent (median 1.1 %, one record above 10 %) — its
+errors are isolated gross values, not pervasive sloppiness. Wing, despite being
+*least* outlier-prone overall, carries more large left–right discrepancies: no
+trait is error-free.
+
+### Do the outliers change the trends?
+
+We re-estimate each trait's year trend under four treatments: **all** records,
+**dropping** `|z|>4` and `|z|>3.5`, and **winsorizing** each species to its
+1st–99th percentile. To avoid the random-slope mixed model's numerical instability
+on trimmed subsets (its SEs inflate erratically when a few records are removed), we
+use a transparent, convergence-free estimator: the **mean of within-species
+slopes, with a species-bootstrap 95 % CI**.
+
+```{python}
+#| label: fig-sensitivity
+#| fig-cap: "Year trend (% per decade, 95% species-bootstrap CI) for each trait under four outlier treatments. Body mass and tail length stay on/near zero; tarsus stays positive and strengthens as errors are removed; wing stays negative and excludes zero throughout, attenuating from ~−1.9% to ~−1.1%/decade. No trend is created, reversed or destroyed by outlier handling."
+def spp_slopes(df, resp):
+    out = {}
+    for sp, g in df.dropna(subset=[resp]).groupby("Binomial"):
+        if g.Year.nunique() < 3 or g[resp].nunique() < 2: continue
+        out[sp] = smf.ols(f"{resp} ~ scaled_yr", data=g).fit().params["scaled_yr"]
+    return pd.Series(out)
+def boot_ci(s, n=2000, seed=1):
+    rng = np.random.RandomState(seed); v = s.values
+    return np.percentile([rng.choice(v, len(v), replace=True).mean() for _ in range(n)], [2.5, 97.5])
+def winsor(df, resp, lo=.01, hi=.99):
+    df = df.copy()
+    df[resp] = df.groupby("Binomial")[resp].transform(lambda x: x.clip(x.quantile(lo), x.quantile(hi)))
+    return df
+
+pd_ = lambda x: np.expm1(x * 10 / YR_SD) * 100
+rules = ["all", "drop |z|>4", "drop |z|>3.5", "winsor 1–99%"]
+sens = {}
+for resp in ORDER:
+    z = mad_z(d, resp)
+    dsets = [d, d[~(z.abs()>4)], d[~(z.abs()>3.5)], winsor(d, resp)]
+    sens[resp] = [tuple(pd_(np.r_[s.mean(), boot_ci(s)]))
+                  for s in (spp_slopes(df, resp) for df in dsets)]
+
+fig, ax = plt.subplots(figsize=(8.5, 4.7))
+off = {"lnwing": .24, "lntail": .08, "lntar": -.08, "lnmass": -.24}
+for resp in ORDER:
+    for i, (est, lo, hi) in enumerate(sens[resp]):
+        ax.errorbar(est, i+off[resp], xerr=[[est-lo],[hi-est]], fmt="o", color=COL[resp],
+                    ms=7, capsize=4, lw=1.7, label=LAB[resp] if i == 0 else None)
+ax.axvline(0, color="black", lw=1)
+ax.set_yticks(range(len(rules))); ax.set_yticklabels(rules)
+ax.set_xlabel("year trend (% per decade, 95% bootstrap CI)")
+ax.legend(loc="lower right", fontsize=9); ax.set_ylim(-0.6, len(rules)-0.4)
+plt.tight_layout(); plt.show()
+
+print("Year trend (%/decade, species-bootstrap CI) by trait × rule:")
+for resp in ORDER:
+    print(f"  {LAB[resp]}:")
+    for rule, (e, l, h) in zip(rules, sens[resp]):
+        print(f"     {rule:14s}: {e:+.2f}% [{l:+.2f}, {h:+.2f}]")
+```
+
+The verdict is clean and trait-specific:
+
+- **Body mass** and **tail length** sit on/near zero under every treatment — no
+  trend created or concealed by outliers.
+- **Tarsus length** stays positive and *strengthens* as errors are removed
+  (~+2.2 % → ~+2.9 %/decade) — the opposite of outlier-driven.
+- **Wing length** stays negative with CI excluding zero under all four rules,
+  attenuating modestly (~−1.9 % → ~−1.1 %/decade). Some *magnitude* rode on extreme
+  records; **direction and significance do not**. (The mixed model loses
+  significance for wing at one trimming threshold, but that is its SE inflating on
+  the trimmed subset, not a reversal — the bootstrap above keeps wing firmly
+  negative, which is why we prefer it here.)
+
+Intra-species outliers **do not drive any conclusion**. If anything, cleaning the
+data sharpens the picture: tarsus up, wing down, tail and mass flat.
+
+## Does museum vs live measurement confound the trends? {#sec-status}
+
+The dataset's `Status` field records whether each bird was measured **live**
+(mist-netting; 13,102 records here) or as a **museum** specimen (skin; 2,202
+records). Museum skins can differ systematically from live birds — soft tissue
+desiccates, feathers can shrink or shift — so if the museum:live mix changed over
+time, a measurement artifact could masquerade as a temporal trend. We test this
+directly.
+
+### Museum specimens are concentrated in the early years
+
+```{python}
+#| label: status-composition
+ds = d[d.Status.isin(["live", "museum"])].copy()
+PER = [(1990,1999),(2000,2004),(2005,2009),(2010,2014),(2015,2018)]
+print("Museum fraction of records by period:")
+for lo, hi in PER:
+    s = ds[(ds.Year >= lo) & (ds.Year <= hi)]
+    print(f"  {lo}–{hi}: {100*(s.Status=='museum').mean():5.1f}% museum   (n = {len(s):,})")
+print(f"\n  corr(museum indicator, year) = {np.corrcoef((ds.Status=='museum').astype(int), ds.Year)[0,1]:+.3f}")
+```
+
+This is exactly the setup for a confound: the museum share falls from ~41 % in the
+1990s to ~6 % in 2015–2018. If museum specimens measure differently, that
+composition shift alone could induce an apparent trend.
+
+### Status shifts the measurements — strongly for tail and mass
+
+We estimate the within-species museum-vs-live difference for each trait
+(`trait ~ status + sex + latitude`, species random intercept).
+
+```{python}
+#| label: status-effect
+rows = []
+for resp in ORDER:
+    sub = ds.dropna(subset=[resp]).copy()
+    f = smf.mixedlm(f"{resp} ~ C(Status) + C(Sex) + scaled_lat", sub,
+                    groups=sub["Binomial"]).fit(method="lbfgs")
+    c = f.params["C(Status)[T.museum]"]; se = f.bse["C(Status)[T.museum]"]
+    rows.append([LAB[resp], f"{np.expm1(c)*100:+.2f}%",
+                 f"[{np.expm1(c-1.96*se)*100:+.2f}, {np.expm1(c+1.96*se)*100:+.2f}]",
+                 f"{f.pvalues['C(Status)[T.museum]']:.3f}", int((sub.Status=='museum').sum())])
+pd.DataFrame(rows, columns=["trait", "museum vs live", "95% CI", "p", "n museum"])
+```
+
+Status genuinely affects the measurements: museum **tail length** reads ~5 % longer
+and museum **body mass** ~1.8 % lighter (both p < 0.001), museum tarsus ~1 % longer
+(p = 0.02), while **wing length is essentially unaffected** (+0.35 %, n.s.). Because
+museum specimens dominate the early years, these biases could in principle distort
+the temporal trends — so we re-estimate every trend four ways.
+
+### The trends are robust to status — with one caveat (tail)
+
+```{python}
+#| label: fig-status
+#| fig-cap: "Year trend (% per decade, 95% CI) for each trait under four status treatments: all records, adding Status as a covariate, live-only, and museum-only. Wing's decline and tarsus's increase are robust (and strengthen once status is accounted for); body mass stays flat throughout. Tail length is the exception — flat-to-negative on live records but positive on the (early, sparse) museum records — so tail trends are entangled with status."
+def yreff(df, resp, extra=""):
+    sub = df.dropna(subset=[resp]).copy()
+    f = smf.mixedlm(f"{resp} ~ C(Sex)+scaled_yr+scaled_lat{extra}", sub,
+                    groups=sub["Binomial"], re_formula="~scaled_yr").fit(method="lbfgs")
+    b1, se = f.params["scaled_yr"], f.bse["scaled_yr"]; g = 10/YR_SD
+    return (np.expm1(b1*g)*100, np.expm1((b1-1.96*se)*g)*100, np.expm1((b1+1.96*se)*g)*100,
+            f.pvalues["scaled_yr"])
+
+treat = ["all records", "+ Status covariate", "live-only", "museum-only"]
+stat = {}
+for resp in ORDER:
+    stat[resp] = [yreff(ds, resp), yreff(ds, resp, "+C(Status)"),
+                  yreff(ds[ds.Status=="live"], resp), yreff(ds[ds.Status=="museum"], resp)]
+
+fig, ax = plt.subplots(figsize=(8.5, 4.9))
+off = {"lnwing": .24, "lntail": .08, "lntar": -.08, "lnmass": -.24}
+for resp in ORDER:
+    for i, (est, lo, hi, p) in enumerate(stat[resp]):
+        ax.errorbar(est, i+off[resp], xerr=[[est-lo],[hi-est]], fmt="o", color=COL[resp],
+                    ms=7, capsize=4, lw=1.7, label=LAB[resp] if i == 0 else None)
+ax.axvline(0, color="black", lw=1)
+ax.set_yticks(range(len(treat))); ax.set_yticklabels(treat)
+ax.set_xlabel("year trend (% per decade, 95% CI)")
+ax.legend(loc="lower right", fontsize=9); ax.set_ylim(-0.6, len(treat)-0.4)
+plt.tight_layout(); plt.show()
+
+for resp in ORDER:
+    print(f"{LAB[resp]}:")
+    for t, (e, l, h, p) in zip(treat, stat[resp]):
+        print(f"   {t:20s}: {e:+.2f}%/dec [{l:+.2f}, {h:+.2f}] p={p:.3f}")
+```
+
+The picture is reassuring for three of four traits:
+
+- **Wing length** — decline robust everywhere: ~−1.9 %/decade at baseline, *stronger*
+  once Status is controlled (−2.1 %) and on **live-only** records (−2.9 %, p < 0.001).
+  Museum-only is the same direction (−1.1 %) but n.s. on its small, early sample.
+  Since museum wing is barely different and museum records sit early, the confound
+  if anything *suppresses* the decline slightly — the real signal is cleaner.
+- **Tarsus length** — increase robust and *strengthens* once status is controlled
+  (+2.7 %) and on live-only (+3.2 %). Museum tarsus reads larger and sits early, so
+  the confound partly *masks* the increase; removing it sharpens the signal.
+- **Body mass** — flat under every treatment (CI always spans zero). No status
+  artifact creates or hides a mass trend.
+- **Tail length** — the **caveat**. Tail is the most status-sensitive trait (+5 %
+  museum bias) and its weak signal flips with treatment: flat-to-negative on
+  live-only (−0.4 %/decade) but strongly positive on the early, sparse museum
+  records (+4.6 %). Any tail trend is therefore entangled with status and should be
+  read from the **live-only** estimate.
+
+Finally, the recent (2015–2018) feather-trait drop from @sec-time survives
+restricting to live birds — so it is not a museum artifact (the recent bins are
+~94 % live anyway):
+
+```{python}
+#| label: status-recent
+for resp, lab in [("lnwing","wing"), ("lntail","tail")]:
+    for tag, sub0 in [("all ", ds), ("live", ds[ds.Status=="live"])]:
+        sub = sub0.dropna(subset=[resp]).copy()
+        sub["dev"] = (sub[resp] - sub.groupby("Binomial")[resp].transform("mean")) * 100
+        v = sub[(sub.Year >= 2015) & (sub.Year <= 2018)]["dev"]
+        print(f"  {lab} {tag}: 2015–2018 within-species deviation = {v.mean():+.2f}% (n {len(v)})")
+```
+
+**Bottom line:** museum-vs-live status is a real measurement effect and is
+confounded with time (museum early), but it does **not** drive the core
+inferences. Controlling for it leaves the wing decline and tarsus increase intact
+(both *strengthen*), and body mass flat. The only trait whose trend is genuinely
+status-dependent is tail length, whose net signal is weak and best taken from
+live-only records.
+
+## Conclusions
+
+1. **The near-zero body-mass slope is real, not an artifact.** It is reproduced by
+   a plain within-species mixed model with no phylogeny (β ≈ −0.002 log/SD-yr, CI
+   through zero), rests on *more* data than the wing analysis, and is precisely
+   estimated rather than merely uncertain.
+
+2. **Four size proxies, four behaviours — they do not move together.** Within
+   species: **wing length declines (~−2 %/decade), tarsus length increases
+   (~+2 %/decade), and tail length and body mass show no net change.** Both
+   directional results have sign-test p = 0.001, and tarsus strengthens when
+   impossible values are removed.
+
+3. **So this is not a uniform body-size reduction.** A whole-body Bergmann-style
+   shrinkage would pull tarsus, tail and mass down with wing; instead tarsus rises
+   and tail and mass are flat. The net change is **trait-specific to wing length**,
+   cautioning against reading the wing decline as general "shrinking body size."
+
+4. **But the temporal shape adds nuance (@sec-time).** The wing decline is
+   *non-linear and recent* — concentrated in 2015–2018 (significant negative
+   quadratic) — and **tail length, the other feather trait, falls in the same
+   recent window** despite a flat net trend. At fine temporal resolution the two
+   flight-feather traits align recently, which a single linear slope hides and
+   which is worth following up (true recent size change vs molt/wear/measurement).
+
+5. **"Deeper time" means non-linearity, not a longer record.** Extending before
+   1990 is not advisable: only ~1,250 records exist earlier, with essentially no
+   body mass (one record before 1970) and likely different methods. Sampling is
+   itself back-loaded (the 1990s contribute < 1,000 records vs > 16,000 after
+   2000), so the trends are anchored by recent decades — all the more reason to
+   read them through the non-linear lens above.
+
+6. **Body mass being flat is corroborated, not just unresolved.** Mass is the
+   noisiest proxy (~2.4× the within-species CV of wing), lowering its power — but
+   tarsus, though noisier than wing, resolves a clear opposite trend, so noise
+   alone cannot explain the flat traits. Shallow mass–wing allometry (~0.4) and a
+   non-trending condition index confirm the proxies are loosely coupled.
+
+7. **The trends survive intra-species outlier handling (@sec-outliers).** Outliers
+   are uncommon (1.7–3.4 %) and, where extreme, clearly clerical. Dropping or
+   winsorizing them changes nothing essential: mass and tail stay flat, tarsus
+   stays positive (strengthening), wing stays negative (attenuating).
+
+8. **The trends survive the museum-vs-live confound (@sec-status).** Status is a
+   real measurement effect (museum tail +5 %, mass −1.8 %, tarsus +1 %, wing
+   negligible) and is confounded with time (museum specimens are concentrated in
+   the early years), but it does not drive the inferences: controlling for status
+   or restricting to live birds leaves the wing decline and tarsus increase intact
+   (both *strengthen*) and mass flat. The recent feather-trait drop holds on
+   live-only data. The one trait whose trend is genuinely status-dependent is
+   **tail length** — weak and best read from live-only records.
+
+9. **Methodological cautions.** Naïve pooling across species reverses the sign of
+   the trends (Simpson's paradox). Tarsus carries the most measurement
+   heterogeneity, so its *direction* is trustworthy but its magnitude approximate;
+   tail/body-length-type feather and axial traits are noisier still. The
+   random-slope mixed model can give unstable SEs on trimmed subsets, so robustness
+   is best read from the species-bootstrap estimator. New trait results (tail,
+   tarsus) and the recent-decline signal should be confirmed with the project's
+   phylogenetic model before being reported alongside wing.
+
+In short: bringing in tail length and tarsus shows the wing-length decline is
+**specific**, not a coordinated body-size reduction — body mass does not decline
+because there is no whole-body shrinkage to detect. Yet the two feather traits
+fall together in the most recent years, a non-linear signal that deserves a closer
+look.
+
+---
+
+*Reproduce this report:*
+
+```bash
+# from Analysis/scripts/, with a Python env that has
+# pandas numpy matplotlib scipy statsmodels jupyter ipykernel
+QUARTO_PYTHON=../../.venv-massreport/bin/python \
+  quarto render body_mass_descriptive.qmd
+```
