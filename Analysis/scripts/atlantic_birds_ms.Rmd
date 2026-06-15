@@ -87,7 +87,16 @@ The data is then filtered to include only species with at least 30 records and a
 Finally, it selects the relevant columns, adds diet information from the Elton Traits dataset, and saves the cleaned data to `passer90.rda`.
 ```{r newdataframes,cache=TRUE, eval=TRUE}
 passer90 <- birds %>%
-          filter(Year >= 1990, Age == "Adult", Sex != "Unknown", Order == "Passeriformes", AtlanticForests_20km_Buffer == "inside the 20 km polygon") %>%
+          # LIVE-ONLY ROBUSTNESS (2026-06): restrict to live-measured birds.
+          # Museum specimens shrink/shift on preservation (museum tail reads ~+5%,
+          # mass ~-1.8%) and are concentrated in early years, so they can confound
+          # the temporal trend (see body_mass_descriptive.qmd §"museum vs live").
+          # Status == "live" is applied BEFORE the n>=30 / range>=5 species filter,
+          # so the sample is internally consistent (every species has >=30 live
+          # records). This drops 16 museum-dominated species: 89 -> 73 species,
+          # 15,332 -> 12,571 records. scaled_yr/scaled_lat are re-standardised on
+          # the live-only sample.
+          filter(Year >= 1990, Age == "Adult", Sex != "Unknown", Order == "Passeriformes", AtlanticForests_20km_Buffer == "inside the 20 km polygon", Status == "live") %>%
           mutate(
             conc.wing.length = coalesce(Wing_length_right.mm., Wing_length_left.mm., Wing_length.mm.), # combining all wing lengths to minimize number of NAs in dataset
             ln_conc_wing_length = log(conc.wing.length),
@@ -115,7 +124,7 @@ passer90 <- birds %>%
 
 # keeping only variables that I will use in the models:
 passer90 <- passer90 %>%
-              dplyr::select(spp, Binomial, Sex, Year, scaled_yr, Annual_mean_temperature, Latitude_decimal_degrees, scaled_lat, Longitude_decimal_degrees, Wing_length_right.mm.,ln_wing_length,conc.wing.length,ln_conc_wing_length,Bill_width.mm.)
+              dplyr::select(spp, Binomial, Sex, Status, Year, scaled_yr, Annual_mean_temperature, Latitude_decimal_degrees, scaled_lat, Longitude_decimal_degrees, Wing_length_right.mm.,ln_wing_length,conc.wing.length,ln_conc_wing_length,Bill_width.mm.)
 
 passer90 <- as.data.frame(passer90)
 

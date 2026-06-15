@@ -61,9 +61,13 @@ source(file.path(ANALYSIS_DIR, "scripts", "_sampling_config.R"))  # SAMPLING set
 birds <- read_csv(raw_path("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv"),
                   guess_max = 70000, show_col_types = FALSE)
 passer90 <- birds %>%
+  # LIVE-ONLY ROBUSTNESS (2026-06): keep only live-measured birds (drop museum
+  # skins, which shrink on preservation and cluster in early years). Applied
+  # before the n>=30 / range>=5 species filter — matches atlantic_birds_ms.Rmd.
   filter(Year >= 1990, Age == "Adult", Sex != "Unknown",
          Order == "Passeriformes",
-         AtlanticForests_20km_Buffer == "inside the 20 km polygon") %>%
+         AtlanticForests_20km_Buffer == "inside the 20 km polygon",
+         Status == "live") %>%
   mutate(
     conc.wing.length = coalesce(Wing_length_right.mm., Wing_length_left.mm., Wing_length.mm.),
     ln_body_mass     = log(Body_mass.g.),
@@ -79,8 +83,8 @@ passer90 <- birds %>%
   ungroup() %>%
   as.data.frame()
 
-# Sanity: this must reproduce the main sample (89 species / 15,332 records).
-cat(sprintf("Sample: %d records, %d species (expect 15332 / 89).\n",
+# Sanity: live-only sample mirrors atlantic_birds_ms.Rmd (expect 12,571 / 73).
+cat(sprintf("Sample: %d records, %d species (live-only; expect 12571 / 73).\n",
             nrow(passer90), length(unique(passer90$Binomial))))
 cat(sprintf("Body-mass records (non-NA): %d (%.0f%%); log-mass mean %.2f, sd %.2f\n",
             sum(!is.na(passer90$ln_body_mass)),

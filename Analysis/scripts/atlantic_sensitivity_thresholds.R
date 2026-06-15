@@ -65,10 +65,13 @@ birds_raw <- read.csv(raw_path("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv")
 
 base_filter <- function(df) {
   df %>%
+    # LIVE-ONLY ROBUSTNESS (2026-06): keep only live-measured birds (drop museum
+    # skins). Matches atlantic_birds_ms.Rmd; applied before the threshold grid.
     filter(Year >= 1990,
            Age  == "Adult",
            Order == "Passeriformes",
-           AtlanticForests_20km_Buffer == "inside the 20 km polygon") %>%
+           AtlanticForests_20km_Buffer == "inside the 20 km polygon",
+           Status == "live") %>%
     mutate(
       conc.wing.length  = coalesce(Wing_length_right.mm., Wing_length_left.mm., Wing_length.mm.),
       scaled_yr  = as.numeric(scale(Year)),
