@@ -25,16 +25,16 @@ from matplotlib.lines import Line2D
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT  = os.path.join(HERE, "images")
 DATA = os.path.join(HERE, "data", "south_america.geojson")
-# Canonical analytical sample (89 species / 15,332 records), exported from
+# Canonical analytical sample (live-only: 73 species / 12,571 records), exported from
 # passer90.rda by Analysis/update_descriptive_stats.R so the figures use the
 # exact same build as the models and the quoted text.
 CSV  = os.path.join(HERE, "..", "Analysis", "data", "derived", "passer90_export.csv")
 
 # --- model-estimated wing~year effect (Rubin-pooled; atlantic_parallel.R) ---
-WING_YR_BETA, WING_YR_LO, WING_YR_HI = -0.7294, -1.0854, -0.3733   # mm per SD-year
+WING_YR_BETA, WING_YR_LO, WING_YR_HI = -0.9216, -1.4033, -0.4398   # mm per SD-year
 # --- canonical lnCVR meta-analytic means (metafor::rma REML; descriptive_summary.rds) ---
 # Used for the summary line so the figure matches the values quoted in the text.
-LNCVR = {"cwl": (0.241, 0.104, 0.378), "Bill_width.mm.": (-0.073, -0.276, 0.131)}
+LNCVR = {"cwl": (0.183, 0.033, 0.334), "Bill_width.mm.": (0.107, -0.196, 0.411)}
 
 plt.rcParams.update({"font.size": 9, "axes.spines.top": False,
                      "axes.spines.right": False, "figure.dpi": 150})
@@ -46,7 +46,7 @@ f["Binomial"] = f["Binomial"].str.replace(" ", "_")
 print("species", f.Binomial.nunique(), "records", len(f))
 
 q = f[(f.Year <= 2006) | (f.Year >= 2013)].copy()
-q["period"] = np.where(q.Year <= 2006, "1990–2006", "2013–2018")
+q["period"] = np.where(q.Year <= 2006, "1995–2006", "2013–2018")
 
 # ---------------------------------------------------------------------------
 # Basemap helper: draw South America polygons from the committed GeoJSON.
@@ -74,7 +74,7 @@ def draw_basemap(ax):
 fig = plt.figure(figsize=(8, 4.4))
 gs = gridspec.GridSpec(1, 2, wspace=0.18)
 vmin, vmax = q.cwl.quantile(.02), q.cwl.quantile(.98)
-for i, p in enumerate(["1990–2006", "2013–2018"]):
+for i, p in enumerate(["1995–2006", "2013–2018"]):
     ax = fig.add_subplot(gs[0, i]); d = q[q.period == p].dropna(subset=["cwl"])
     draw_basemap(ax)
     sc = ax.scatter(d.Longitude_decimal_degrees, d.Latitude_decimal_degrees, c=d.cwl,
@@ -104,7 +104,7 @@ ax.fill_between(yr_grid, lo, hi, color="#5B7FB5", alpha=0.35, zorder=2, label="9
 ax.plot(yr_grid, fit, color="#2E5090", lw=2, zorder=3, label="Model-estimated trend")
 ax.set_xlabel("Year"); ax.set_ylabel("Wing length (mm)")
 ax.set_ylim(w.cwl.quantile(.005), w.cwl.quantile(.995))
-ax.set_title("Wing length decline, 1990–2018\n"
+ax.set_title("Wing length decline, 1995–2018\n"
              f"year effect β = {WING_YR_BETA:.2f} mm per SD-year "
              f"[{WING_YR_LO:.2f}, {WING_YR_HI:.2f}]".replace("-", "−"), fontsize=10)
 ax.legend(loc="upper right", frameon=False, fontsize=8)
@@ -120,9 +120,9 @@ fig, axes = plt.subplots(1, 2, figsize=(8, 4.3))
 for ax, (metric, lab) in zip(axes, [("cwl", "Wing length"), ("Bill_width.mm.", "Bill width")]):
     wmat = per_species(metric)
     for sp, row in wmat.iterrows():
-        e, l = row["1990–2006"], row["2013–2018"]
+        e, l = row["1995–2006"], row["2013–2018"]
         ax.plot([0, 1], [e, l], color=(DEC if l < e else INC), alpha=0.6, lw=1)
-    ax.set_xticks([0, 1]); ax.set_xticklabels(["1990–2006", "2013–2018"])
+    ax.set_xticks([0, 1]); ax.set_xticklabels(["1995–2006", "2013–2018"])
     ax.set_ylabel(f"{lab} (mm)"); ax.set_title(lab, fontsize=10)
 fig.legend([Line2D([0], [0], color=DEC), Line2D([0], [0], color=INC)],
            ["Decrease", "Increase"], loc="lower center", ncol=2, frameon=False,
@@ -135,13 +135,13 @@ fig.tight_layout(); fig.savefig(f"{OUT}/fig-trends.png", bbox_inches="tight"); p
 def lncvr_table(metric):
     g = q.dropna(subset=[metric]).groupby(["Binomial", "period"])[metric].agg(m="mean", s="std", n="count").reset_index()
     piv = g.pivot(index="Binomial", columns="period").dropna()
-    me, mc = piv[("m", "2013–2018")], piv[("m", "1990–2006")]
-    se, sc = piv[("s", "2013–2018")], piv[("s", "1990–2006")]
-    ne, nc = piv[("n", "2013–2018")], piv[("n", "1990–2006")]
+    me, mc = piv[("m", "2013–2018")], piv[("m", "1995–2006")]
+    se, sc = piv[("s", "2013–2018")], piv[("s", "1995–2006")]
+    ne, nc = piv[("n", "2013–2018")], piv[("n", "1995–2006")]
     def corr(period):
         mm = np.log(g[g.period == period]["m"]); ss = np.log(g[g.period == period]["s"])
         ok = np.isfinite(mm) & np.isfinite(ss); return np.corrcoef(mm[ok], ss[ok])[0, 1]
-    ce, cc = corr("2013–2018"), corr("1990–2006")
+    ce, cc = corr("2013–2018"), corr("1995–2006")
     lncvr = np.log((se / me) / (sc / mc)) + 1 / (2 * (ne - 1)) - 1 / (2 * (nc - 1))
     def s2(mc, sc, nc, corc, me, se, ne, core):
         ac = sc**2 / (nc * mc**2); bc = 1 / (2 * (nc - 1)); cc_ = 2 * corc * np.sqrt(ac * bc)

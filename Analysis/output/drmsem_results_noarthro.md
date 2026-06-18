@@ -1,97 +1,109 @@
 # drmSEM results — v3-noarthro
-_generated 2026-06-12 08:52:31.508181 · N = 9180 records, 86 species, years 1990–2018_
+_generated 2026-06-15 17:50:34.128904 · N = 7810 records, 72 species, years 1995–2018_
 
 ## Fisher's C (global DAG fit)
 ```
-    fisher_c df n_claims   p.value
-1 0.02112463  2        1 0.9894933
+   fisher_c df n_claims   p.value
+1 0.5076503  2        1 0.7758275
 ```
 
 ## d-separation claims
 ```
-                                            claim   x            y                 given df
-1 Sex _||_ scaled_tmean | {scaled_yr, scaled_lat} Sex scaled_tmean scaled_yr, scaled_lat  1
-            LR   p.value status
-1 0.0001734124 0.9894933     ok
+                                            claim   x            y
+1 Sex _||_ scaled_tmean | {scaled_yr, scaled_lat} Sex scaled_tmean
+                  given df         LR   p.value status
+1 scaled_yr, scaled_lat  1 0.08108868 0.7758275     ok
 ```
 
 ## Path coefficients (raw)
 ```
-          from           to component     link         term    estimate   std.error   statistic
-1    scaled_yr scaled_tmean        mu identity    scaled_yr  0.02437741 0.005578465   4.3699141
-2   scaled_lat scaled_tmean        mu identity   scaled_lat -0.45461494 0.009746521 -46.6438155
-3 scaled_tmean  wing_length        mu identity scaled_tmean  0.12717097 0.109691547   1.1593507
-4          Sex  wing_length        mu identity      SexMale  2.52283590 0.107263571  23.5199694
-5   scaled_lat  wing_length        mu identity   scaled_lat -0.09784440 0.102811653  -0.9516859
-6    scaled_yr  wing_length     sigma      log    scaled_yr  0.06842805 0.007620114   8.9799244
-7 scaled_tmean  wing_length     sigma      log scaled_tmean -0.17441174 0.009029188 -19.3164357
-        p.value endogenous
-1  1.242954e-05      FALSE
-2  0.000000e+00      FALSE
-3  2.463133e-01       TRUE
-4 2.548389e-122      FALSE
-5  3.412563e-01      FALSE
-6  2.709528e-19      FALSE
-7  3.907154e-83       TRUE
+          from           to component     link         term     estimate
+1    scaled_yr scaled_tmean        mu identity    scaled_yr -0.005244378
+2   scaled_lat scaled_tmean        mu identity   scaled_lat -0.502278924
+3 scaled_tmean  wing_length        mu identity scaled_tmean -0.215544939
+4          Sex  wing_length        mu identity      SexMale  2.611727755
+5   scaled_lat  wing_length        mu identity   scaled_lat -0.432180828
+6    scaled_yr  wing_length     sigma      log    scaled_yr  0.034775356
+7 scaled_tmean  wing_length     sigma      log scaled_tmean -0.192686715
+    std.error   statistic       p.value endogenous
+1 0.005896568  -0.8893949  3.737909e-01      FALSE
+2 0.012006749 -41.8330490  0.000000e+00      FALSE
+3 0.113904646  -1.8923279  5.844731e-02       TRUE
+4 0.105435775  24.7707929 1.851169e-135      FALSE
+5 0.118099416  -3.6594663  2.527411e-04      FALSE
+6 0.007827440   4.4427498  8.881642e-06      FALSE
+7 0.009129557 -21.1058112  7.033735e-99       TRUE
 ```
 
 ## Path coefficients (standardised, sd_x)
 ```
-          from           to component     link         term    estimate   std.error   statistic
-1    scaled_yr scaled_tmean        mu identity    scaled_yr  0.02437741 0.005578465   4.3699141
-2   scaled_lat scaled_tmean        mu identity   scaled_lat -0.45461494 0.009746521 -46.6438155
-3 scaled_tmean  wing_length        mu identity scaled_tmean  0.12717097 0.109691547   1.1593507
-4          Sex  wing_length        mu identity      SexMale  2.52283590 0.107263571  23.5199694
-5   scaled_lat  wing_length        mu identity   scaled_lat -0.09784440 0.102811653  -0.9516859
-6    scaled_yr  wing_length     sigma      log    scaled_yr  0.06842805 0.007620114   8.9799244
-7 scaled_tmean  wing_length     sigma      log scaled_tmean -0.17441174 0.009029188 -19.3164357
-        p.value endogenous std.estimate
-1  1.242954e-05      FALSE   0.02533853
-2  0.000000e+00      FALSE  -0.45381627
-3  2.463133e-01       TRUE   0.11403803
-4 2.548389e-122      FALSE   2.52283590
-5  3.412563e-01      FALSE  -0.09767251
-6  2.709528e-19      FALSE   0.07112592
-7  3.907154e-83       TRUE  -0.15640024
+          from           to component     link         term     estimate
+1    scaled_yr scaled_tmean        mu identity    scaled_yr -0.005244378
+2   scaled_lat scaled_tmean        mu identity   scaled_lat -0.502278924
+3 scaled_tmean  wing_length        mu identity scaled_tmean -0.215544939
+4          Sex  wing_length        mu identity      SexMale  2.611727755
+5   scaled_lat  wing_length        mu identity   scaled_lat -0.432180828
+6    scaled_yr  wing_length     sigma      log    scaled_yr  0.034775356
+7 scaled_tmean  wing_length     sigma      log scaled_tmean -0.192686715
+    std.error   statistic       p.value endogenous std.estimate
+1 0.005896568  -0.8893949  3.737909e-01      FALSE -0.005461886
+2 0.012006749 -41.8330490  0.000000e+00      FALSE -0.477137498
+3 0.113904646  -1.8923279  5.844731e-02       TRUE -0.193091757
+4 0.105435775  24.7707929 1.851169e-135      FALSE  2.611727755
+5 0.118099416  -3.6594663  2.527411e-04      FALSE -0.410548142
+6 0.007827440   4.4427498  8.881642e-06      FALSE  0.036217650
+7 0.009129557 -21.1058112  7.033735e-99       TRUE -0.172614660
 ```
 
 ## Phylogeny-corrected paths (Rubin-pooled across 50 trees)
 Pagel's lambda (AIC-selected per tree), range: 1–1
 ```
-                                               path    estimate          se       lower       upper
-1         scaled_yr | scaled_tmean | mu | scaled_yr  0.02436719 0.005578865  0.01343261  0.03530176
-2       scaled_lat | scaled_tmean | mu | scaled_lat -0.45418279 0.009747513 -0.47328792 -0.43507766
-3    scaled_tmean | wing_length | mu | scaled_tmean  0.13073074 0.109669601 -0.08422167  0.34568316
-4                  Sex | wing_length | mu | SexMale  2.52190021 0.107276598  2.31163807  2.73216234
-5        scaled_lat | wing_length | mu | scaled_lat -0.09680337 0.102681925 -0.29805994  0.10445320
-6       scaled_yr | wing_length | sigma | scaled_yr  0.06822036 0.007620490  0.05328420  0.08315652
-7 scaled_tmean | wing_length | sigma | scaled_tmean -0.17430558 0.009028425 -0.19200129 -0.15660987
-            z       p.value
-1   4.3677680  1.255227e-05
-2 -46.5947339  0.000000e+00
-3   1.1920417  2.332449e-01
-4  23.5083909 3.347485e-122
-5  -0.9427499  3.458089e-01
-6   8.9522276  3.483796e-19
-7 -19.3063108  4.753380e-83
+                                               path     estimate          se
+1         scaled_yr | scaled_tmean | mu | scaled_yr -0.005244378 0.005896568
+2       scaled_lat | scaled_tmean | mu | scaled_lat -0.502278924 0.012006749
+3    scaled_tmean | wing_length | mu | scaled_tmean -0.212251213 0.113863746
+4                  Sex | wing_length | mu | SexMale  2.610330026 0.105430835
+5        scaled_lat | wing_length | mu | scaled_lat -0.431312699 0.117853679
+6       scaled_yr | wing_length | sigma | scaled_yr  0.034702393 0.007825895
+7 scaled_tmean | wing_length | sigma | scaled_tmean -0.192724539 0.009127798
+        lower        upper           z       p.value
+1 -0.01680165  0.006312896  -0.8893949  3.737909e-01
+2 -0.52581215 -0.478745696 -41.8330490  0.000000e+00
+3 -0.43542415  0.010921728  -1.8640807  6.231037e-02
+4  2.40368559  2.816974462  24.7586963 2.498954e-135
+5 -0.66230591 -0.200319489  -3.6597305  2.524807e-04
+6  0.01936364  0.050041147   4.4343035  9.237043e-06
+7 -0.21061502 -0.174834055 -21.1140237  5.911898e-99
 ```
 
 ## Effect: scaled_yr -> wing_length (all mediators)
 ```
-      from          to      through target              quantity estimate conf.low conf.high
- scaled_yr wing_length scaled_tmean   mean            total_path   0.0033  -0.0021    0.0115
- scaled_yr wing_length scaled_tmean   mean                direct   0.0000   0.0000    0.0000
- scaled_yr wing_length scaled_tmean   mean              indirect   0.0033  -0.0021    0.0115
- scaled_yr wing_length scaled_tmean   mean         mean_mediated   0.0033  -0.0020    0.0114
- scaled_yr wing_length scaled_tmean   mean distribution_mediated   0.0000  -0.0002    0.0002
+      from          to      through target              quantity estimate
+ scaled_yr wing_length scaled_tmean   mean            total_path   0.0013
+ scaled_yr wing_length scaled_tmean   mean                direct   0.0000
+ scaled_yr wing_length scaled_tmean   mean              indirect   0.0013
+ scaled_yr wing_length scaled_tmean   mean         mean_mediated   0.0013
+ scaled_yr wing_length scaled_tmean   mean distribution_mediated   0.0000
+ conf.low conf.high
+  -0.0012    0.0049
+   0.0000    0.0000
+  -0.0012    0.0049
+  -0.0010    0.0047
+  -0.0003    0.0002
 ```
 
 ## Effect: scaled_tmean -> wing_length
 ```
-         from          to through target              quantity estimate conf.low conf.high
- scaled_tmean wing_length           mean            total_path   0.1128  -0.0832    0.3348
- scaled_tmean wing_length           mean                direct   0.1128  -0.0832    0.3348
- scaled_tmean wing_length           mean              indirect   0.0000   0.0000    0.0000
- scaled_tmean wing_length           mean         mean_mediated   0.0000   0.0000    0.0000
- scaled_tmean wing_length           mean distribution_mediated   0.0000   0.0000    0.0000
+         from          to through target              quantity estimate
+ scaled_tmean wing_length           mean            total_path  -0.1939
+ scaled_tmean wing_length           mean                direct  -0.1939
+ scaled_tmean wing_length           mean              indirect   0.0000
+ scaled_tmean wing_length           mean         mean_mediated   0.0000
+ scaled_tmean wing_length           mean distribution_mediated   0.0000
+ conf.low conf.high
+  -0.3999    0.0463
+  -0.3999    0.0463
+   0.0000    0.0000
+   0.0000    0.0000
+   0.0000    0.0000
 ```

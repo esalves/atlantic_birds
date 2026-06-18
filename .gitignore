@@ -52,3 +52,6 @@ Analysis/*.zip
 # Downloaded PREDICTS data cache
 *predicts_extract.rds*
 .venv-massreport/
+
+/.quarto/
+**/*.quarto_ipynb
