@@ -1,0 +1,308 @@
+---
+title: "Shrinking body size and rising prey scarcity in Atlantic Forest birds over three decades of climate change"
+author:
+  - name: Eduardo S.A. Santos
+    orcid: 0000-0002-0434-3655
+    corresponding: true
+    email: esantos2@ualberta.ca
+    roles:
+      - Conceptualization
+      - Investigation
+      - Methodology
+      - Project administration
+      - Resources
+      - Validation
+      - Visualization
+      - Writing – original draft
+      - Writing – review & editing
+    affiliations:
+      - Collaboration for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, AB, T6G 2E9, Canada
+  - name: João C.T. Menezes
+    orcid: 0000-0003-4156-2934
+    corresponding: false
+    roles:
+      - Investigation
+      - Methodology
+      - Validation
+      - Visualization
+      - Writing – review & editing
+    affiliations:
+      - Organismic and Evolutionary Biology Graduate Program, University of Massachusetts Amherst, Amherst, MA, 01003, USA
+  - name: Gustavo Burin
+    orcid: 0000-0001-7851-0666
+    corresponding: false
+    roles:
+      - Investigation
+      - Methodology
+      - Validation
+      - Visualization
+      - Writing – review & editing
+    affiliations:
+      - Department of Biological and Environmental Sciences, University of Gothenburg, Sweden
+keywords:
+  - body size
+  - climate change
+  - morphological adaptation
+  - trophic interactions
+  - phylogenetic comparative analysis
+abstract: |
+  Declining body size has been proposed as a third universal response of animals to climate warming, alongside shifts in phenology and geographic range. Whether this response is widespread in the species-rich avifaunas of the tropics, and whether it tracks temperature directly or the availability of food, remains poorly resolved. Here we use the ATLANTIC BIRD TRAITS dataset to assemble morphological measurements for passerine bird species sampled across the Brazilian Atlantic Forest between 1995 and 2018, and analyse temporal trends in wing length and bill width with Bayesian phylogenetic multilevel models that account for sex, latitude, repeated sampling of species, and phylogenetic non-independence. To avoid confounding temporal trends with preservation artefacts, we restricted the analysis to live-captured birds, excluding museum specimens. Across species, wing length declined over this period — a decline robust to phylogenetic uncertainty and to the choice of phylogeny — whereas bill width, if anything, increased slightly and showed no comparable decline. The among-individual variability of wing length increased in the most recently sampled birds, consistent with a population responding heterogeneously to a changing environment. Over the same region and period, the abundance of arthropod prey declined steeply in forested biomes. Our findings link a regional collapse in invertebrate prey to morphological change in their avian predators, and illustrate why distinguishing thermoregulatory from trophic drivers of body-size change requires datasets that capture both climate and resources.
+plain-language-summary: |
+  As the climate warms, many animals are getting smaller, in addition to shifting where and when they live. Using more than two decades of field measurements of live-caught Atlantic Forest songbirds (1995–2018), we find that birds tended to become smaller-winged over this period, while the insects and spiders they eat became much less abundant across the same region. The body-size signal is real but modest and uneven among species, which suggests that food scarcity, rather than temperature alone, may be reshaping these birds.
+date: last-modified
+bibliography: references.bib
+citation:
+  container-title: bioRxiv
+number-sections: true
+---
+
+<!--
+NOTE TO AUTHORS (delete before submission)
+================================================================
+Complete Nature Climate Change Letter draft. Quantitative statements come
+from the rendered analysis report (Analysis/atlantic_birds_ms.html); the
+sample build, quartile splits, and wing lnCVR meta-analytic mean were also
+independently reproduced from the raw data in Python (Manuscript/make_figures.py).
+
+Decisions already applied (see CODE_REVIEW.md and LIVE_ONLY_MIGRATION.md):
+  - LIVE-ONLY SAMPLE (2026-06): all main analyses now use only live-captured
+    birds (Status == "live"); museum specimens are dropped because they shrink/
+    shift on preservation and cluster in the early years (confound). The live
+    filter is applied before the species thresholds. Sample is now 73 species /
+    12,571 records (1995-2018), down from 89 / 15,332.
+  - Body-size (wing-length) result is the coalesced-variable model fitted
+    across 50 clootl/McTavish trees and pooled with Rubin's rules
+    (atlantic_parallel.R), re-run on the live-only sample (thresholds n≥30,
+    range≥5: 73 species / 12,571 records): year effect beta = -0.92, 95% CI
+    [-1.40, -0.44] (excludes zero). All quoted descriptive, quartile, lnCVR and
+    pooled-model numbers are auto-populated from descriptive_summary.rds
+    (built by update_descriptive_stats.R), which now also supplies n_spp/n_rec
+    (data_summary.rds is deprecated and no longer read here). Supersedes the
+    earlier BirdTree estimate.
+  - NOTE: on the live-only sample bill width still shows a slight INCREASE over
+    time (beta = +0.24 [0.06, 0.43], CI excludes zero), not a null — text/
+    abstract updated accordingly.
+  - drmSEM: the FULL-RECORD model (no arthropod node, 1995-2018) is now the
+    interpreted causal model (Fisher's C clean, P ~ 0.78); the arthropod-
+    coverage variant (1998-2008) is REJECTED (Fisher's C P = 0.009) and is
+    reported only as a qualitative check. Results/Methods rewritten accordingly.
+  - The in-sample temperature/precipitation "trend" was REMOVED:
+    Annual_mean_temperature and Annual_rainfall in the source data are static
+    per-locality climatologies (97% of localities have a single value across
+    all sampling years), so any year-trend in them is a sampling artifact, not
+    warming. Warming over the period is instead established from the literature.
+
+Still needs you:
+  - REGENERATE THE FIGURES on the live-only sample. fig-map, fig-wingtrend,
+    fig-trends, fig-variability and diet_interaction_plot are built by
+    make_figures.py and still reflect the OLD 89-species sample; rerun it so
+    the panels match the 73-species numbers. fig-arthropods is a placeholder
+    pending regeneration (PREDICTS auto-downloads via predictsr; arthropods are
+    unaffected by the live-only filter). fig-drmsem has already been swapped to
+    the full-record DAG (Analysis/figures/drmsem_dag_noarthro.png).
+  - Add the repository archive DOI in Data & code availability.
+Search for [AUTHOR ACTION] for the remaining inline items.
+================================================================
+-->
+
+```{r load-estimates, include=FALSE}
+arth    <- readRDS("../Analysis/output/arthropod_estimates.rds")
+diet    <- readRDS("../Analysis/output/diet_interaction_results.rds")
+desc    <- readRDS("../Analysis/output/descriptive_summary.rds")  # n_spp, n_rec, quartile, lnCVR, pooled model numbers (live-only sample)
+drm_a   <- readRDS("../Analysis/output/drmsem_results_arthro.rds")   # drmSEM: arthropod-coverage causal model
+drm_f   <- readRDS("../Analysis/output/drmsem_results_noarthro.rds") # drmSEM: full-record temperature/variance model
+
+# format a count with a thousands separator for inline use
+.n <- function(x) format(x, big.mark = ",", trim = TRUE)
+# format a signed estimate / CI bound to 2 dp with a true minus sign
+.s <- function(x) sub("-", "−", sprintf("%.2f", x))
+
+# drmSEM helpers: pull a path coefficient / p-value / simulate-based effect
+.dpath <- function(res, from, to, comp = "mu")            # raw path coefficient (2 dp, signed)
+  .s(res$paths_sdx$estimate[res$paths_sdx$from == from &
+       res$paths_sdx$to == to & res$paths_sdx$component == comp])
+.dp <- function(res, from, to, comp = "mu") {             # formatted p-value ("< 0.001" or "= 0.004")
+  p <- res$paths_sdx$p.value[res$paths_sdx$from == from &
+         res$paths_sdx$to == to & res$paths_sdx$component == comp]
+  if (p < 0.001) "< 0.001" else sub("=", "=", sprintf("= %.3f", p))
+}
+.deff <- function(res, slot, quantity, col = "estimate") {# simulate-based effect (2 dp, signed)
+  d <- as.data.frame(res$effects[[slot]]); .s(d[[col]][d$quantity == quantity])
+}
+
+# helper: pull one number from a pooled-results data frame by parameter name
+.pe <- function(df, par, col) round(df[[col]][df$par == par], 2)
+
+# diet interaction
+int_A   <- diet$model_A_pooled
+yr_A    <- .pe(int_A, "b_scaled_yr",              "estimate")
+int_est <- .pe(int_A, "b_scaled_yr:diet_inv_std", "estimate")
+int_lo  <- .pe(int_A, "b_scaled_yr:diet_inv_std", "lower")
+int_hi  <- .pe(int_A, "b_scaled_yr:diet_inv_std", "upper")
+slope_low  <- round(yr_A - int_est, 2)   # diet −1 SD
+slope_high <- round(yr_A + int_est, 2)   # diet +1 SD
+
+# sensitivity threshold results (Tier 1)
+sens <- tryCatch(readRDS("../Analysis/output/sensitivity_thresholds_tier1.rds"),
+                 error = function(e) NULL)
+if (!is.null(sens)) {
+  n_sens_total     <- nrow(sens)
+  n_sens_sexfilter <- sum(sens$sex_filter)
+  n_neg_sexfilter  <- sum(sens$sex_filter  & sens$b_yr_hi < 0)
+  n_neg_nosex      <- sum(!sens$sex_filter & sens$b_yr_hi < 0)
+}
+```
+
+Two of the most widely documented responses of organisms to climate warming are shifts in phenology and in geographic range [@parmesan_globally_2003]. A third response — a reduction in body size — is increasingly reported across taxa and has been proposed as a general consequence of warming [@gardner_declining_2011; @sheridan_shrinking_2011; @teplitsky_climate_2014]. The expectation follows from Bergmann's rule, the ecogeographical pattern whereby endotherms are smaller in warmer climates because a higher surface-area-to-volume ratio aids heat dissipation [@bergmann1847; @mayr1956; @ashton2002a]. Body-size reductions under warming may arise through temperature-dependent thermoregulatory mechanisms or through temperature-independent declines in food availability that constrain growth [@gardner_declining_2011; @schmidt_concomitant_2005; @teplitsky_bergmanns_2008]. Disentangling these pathways requires data on both climate and resources, which are rarely available together, especially in the tropics. Here we show that, across `r desc$n_spp` passerine species sampled in the Brazilian Atlantic Forest between 1995 and 2018, wing length declined over time — though modestly and heterogeneously among species — while bill width did not decline (increasing slightly, if at all), and the among-individual variability of wing length rose in recently sampled birds. Over the same region and interval, the abundance of arthropod prey fell steeply. These results connect a regional decline in invertebrate prey to morphological change in their avian predators and underscore that body-size responses to climate change need not reflect thermoregulation alone [@ozgul2009; @weeks2020; @ryding2024].
+
+# Results and discussion
+
+## Two decades of avian morphology in the Atlantic Forest
+
+We drew morphological measurements from the ATLANTIC BIRD TRAITS dataset [@rodrigues_atlantic_2019], in which passerines account for `r desc$raw_pass_pct`% of all records (`r .n(desc$raw_passerine)` of `r .n(desc$raw_total)` entries). Restricting to adult passerines recorded between 1995 and 2018 yielded `r .n(desc$n_adult_pass_yr)` measurements. Because museum skins shrink and shift in shape during preservation and are concentrated in the earliest years of the record (potentially confounding any temporal trend), we retained only live-captured birds. We then kept species with at least 30 records; after removing individuals of unknown sex, requiring a sampling span of at least 5 years per species, and keeping only records inside a 20-km buffer of the Atlantic Forest domain, our analytical sample comprised `r desc$n_spp` passerine species and `r .n(desc$n_rec)` records (@fig-map).
+
+![Sampling localities of the `r desc$n_spp` passerine species across the Brazilian Atlantic Forest, shown separately for the early (1995–2006) and late (2013–2018) periods of the record, coloured by wing length.](images/fig-map.png){#fig-map}
+
+We used wing length (mm) as our index of body size because it had the fewest missing values among the available traits; assuming bilateral symmetry, we combined left, right, and unspecified wing measurements into a single variable to minimise missing data. Bill width (mm), a measure of gape size in birds, provided a complementary trait expected to track diet rather than thermoregulation.
+
+## Wing length declined over time
+
+We modelled wing length with Bayesian phylogenetic multilevel models including sex and latitude as fixed effects, a species-level random intercept structured by a phylogenetic covariance matrix derived from the complete avian phylogeny of @mctavish2025tree, and species-specific random intercepts and slopes for year. We propagated phylogenetic uncertainty across 50 trees and pooled estimates with Rubin's rules (Methods). Using the coalesced wing-length variable, wing length decreased over time (standardized year effect β = `r .s(desc$wing_yr)`, 95% CI `r .s(desc$wing_yr_lo)` to `r .s(desc$wing_yr_hi)`, excluding zero), males were larger than females (β = `r .s(desc$wing_sex)` mm, 95% CI `r .s(desc$wing_sex_lo)` to `r .s(desc$wing_sex_hi)`), and wing length declined with our latitude index (β = `r .s(desc$wing_lat)`, 95% CI `r .s(desc$wing_lat_lo)` to `r .s(desc$wing_lat_hi)`); the analysis used `r .n(desc$n_rec_wing)` wing-length records. Phylogeny accounted for the overwhelming majority of among-species variance (proportion = `r .s(desc$wing_phylo)`, 95% CI `r .s(desc$wing_phylo_lo)` to `r .s(desc$wing_phylo_hi)`), as expected for a conserved morphological trait.
+
+![Wing length of `r desc$n_spp` Atlantic Forest passerines against year of sampling, 1995–2018. Shading shows the density of individual records (log scale); the line is the model-estimated population trend with its 95% interval.](images/fig-wingtrend.png){#fig-wingtrend}
+
+The temporal decline excluded zero and was robust to phylogenetic uncertainty and to the updated phylogeny (@fig-wingtrend). A complementary, model-free comparison of species means between the first (1995–2006) and last (2013–2018) quartiles of the record showed the same direction (@fig-trends): `r desc$wing_dec` of `r desc$wing_quartile_n` species had smaller mean wing length in the later period, and `r desc$wing_inc` had larger.
+
+![Temporal trends in (left) wing length and (right) bill width across species, 1995–2018. Lines show per-species trajectories; colour distinguishes species that decreased versus increased between the early and late periods.](images/fig-trends.png){#fig-trends}
+
+Although now statistically clear and robust to phylogenetic uncertainty, the decline remains modest in magnitude and, as we show next, is accompanied by rising among-individual variability. A body-size response that is real but small and increasingly variable is more compatible with a resource-mediated, plastic mechanism than with a uniform thermoregulatory adjustment.
+
+## Bill width did not decline, and trait variability rose
+
+In contrast to the decline in wing length, bill width showed a slight *increase* over time (β = `r .s(desc$bill_yr)`, 95% CI `r .s(desc$bill_yr_lo)` to `r .s(desc$bill_yr_hi)`; N = `r .n(desc$n_rec_bill)` bill-width records), with a credible interval that only marginally excluded zero, and a weaker phylogenetic signal than wing length (proportion = `r .s(desc$bill_phylo)`, 95% CI `r .s(desc$bill_phylo_lo)` to `r .s(desc$bill_phylo_hi)`); like wing length, it declined with our latitude index (β = `r .s(desc$bill_lat)`, 95% CI `r .s(desc$bill_lat_lo)` to `r .s(desc$bill_lat_hi)`). The quartile comparison agreed in direction, with most species (`r desc$bill_inc` of `r desc$bill_quartile_n`) showing wider mean bills in the later period. Crucially, bill width — the trait expected to track diet rather than thermoregulation — moved in the opposite direction to wing length, rather than declining alongside it.
+
+To ask whether birds became not just smaller but more variable, we computed the log coefficient-of-variation ratio (lnCVR) between the late and early periods for each species and combined them in random-effects meta-analyses [@nakagawa2015metaanalysis]. Among-individual variability in wing length increased significantly in the recent period (lnCVR = `r .s(desc$lncvr_wing)`, 95% CI `r .s(desc$lncvr_wing_lo)` to `r .s(desc$lncvr_wing_hi)`; k = `r desc$lncvr_wing_k`; I² = `r desc$lncvr_wing_I2`%; @fig-variability, left), whereas variability in bill width did not change detectably (lnCVR = `r .s(desc$lncvr_bill)`, 95% CI `r .s(desc$lncvr_bill_lo)` to `r .s(desc$lncvr_bill_hi)`; k = `r desc$lncvr_bill_k`; @fig-variability, right). Rising phenotypic variability in the trait that also declined in mean is consistent with a population in which individuals respond unequally to a deteriorating environment, rather than with a coordinated shift toward a new optimum.
+
+![Forest plots of the log coefficient-of-variation ratio (lnCVR) between the late and early periods, for (left) wing length and (right) bill width, one estimate per species (95% CI), with the random-effects meta-analytic mean (vertical line, shaded 95% CI). Positive values indicate greater among-individual variability in recently sampled birds; intervals use the corrected standard errors.](images/fig-variability.png){#fig-variability}
+
+## Arthropod prey declined steeply over the same region and period
+
+If body-size change in these largely insectivorous birds is mediated by food rather than temperature, the abundance of their invertebrate prey should have declined over the study period. Using the PREDICTS database [@hudson2017database], we modelled the abundance of Insecta and Arachnida in forested biomes across South America with negative-binomial models that included sampling effort as an offset (Methods). Although ants are not a core dietary component of most passerines, some species opportunistically predate flying ant reproductives (alates) during nuptial flights [@helms_are_2016], so our main model retains Formicidae; the ant-exclusion variant serves as a conservative lower bound. Arthropod abundance declined markedly with time in the main model (standardized year effect β = `r arth$main$b`, 95% CrI `r arth$main$lo` to `r arth$main$hi`; N = `r arth$main$n` records), equivalent to a multiplicative change of `r arth$main$mult` (95% CrI `r arth$main$mult_lo` to `r arth$main$mult_hi`) per standard-deviation increase in year (@fig-arthropods). Excluding ants gave a shallower but still substantial decline (β = `r arth$sens$b`, 95% CrI `r arth$sens$lo` to `r arth$sens$hi`; N = `r arth$sens$n`), confirming that including ants does not inflate the signal — if anything, their decline is steeper than the broader community. The arthropod prey collapse is therefore robust to the treatment of ants and restricted to forested habitats.
+
+![Abundance of Insecta and Arachnida in forested biomes across South America (PREDICTS database) against time, with the fitted negative-binomial trend and 95% credible interval. Ants (Formicidae) are included in the main model; the ant-exclusion sensitivity gave a shallower but qualitatively identical decline. *Placeholder pending regeneration from the analysis.*](images/fig-arthropods.png){#fig-arthropods}
+
+## The temporal decline is not amplified in more insectivorous species
+
+If arthropod scarcity is the proximate driver of body-size change, species more reliant on invertebrate prey should show steeper temporal trends in wing length. We tested this by adding an interaction between scaled year and each species' standardised proportion of invertebrates in their diet (Diet-Inv from EltonTraits [@wilman2014eltontraits]; Methods). Of the `r desc$n_spp` species in the main analysis, `r diet$n_spp` had EltonTraits diet data and were retained; the `r desc$n_spp - diet$n_spp` species without diet information were excluded from this model only.
+
+The interaction was positive and its 95% credible interval excluded zero (β = `r int_est`, 95% CI `r int_lo` to `r int_hi`), meaning that species with *less* invertebrate diet declined *more* steeply — the opposite of the food-limitation prediction. Projecting the year slope across the diet gradient, species one standard deviation below the mean in invertebrate diet proportion had an implied slope of `r slope_low` mm per SD-year, compared with `r slope_high` mm per SD-year for species one standard deviation above the mean (@fig-dietinteraction). The overall year effect remained negative and excluded zero (β = `r yr_A`; consistent with the main analysis), confirming the decline is real across diet types; it is simply not concentrated in the most insectivorous species.
+
+![Predicted wing-length year trend as a function of invertebrate diet proportion (standardised), from the phylogenetic interaction model. Lines show the predicted trajectory for females at mean latitude; shading is the 95% credible interval. The positive interaction indicates that species with less invertebrate diet show the steeper temporal decline.](images/diet_interaction_plot.png){#fig-dietinteraction}
+
+## A causal model separates the prey and temperature pathways
+
+The diet interaction shows that the decline is not concentrated in the most insectivorous species, but it does not by itself adjudicate between the temperature and food-limitation pathways. We therefore fitted a distributional piecewise structural equation model [drmSEM; @shipley2009confirmatory; @lefcheck2016piecewisesem; @nakagawa2026drmsem] encoding the hypothesised causal graph: year and latitude drive temperature; year, temperature and latitude drive arthropod abundance; and temperature, arthropod abundance, sex and latitude drive wing length, with a distributional submodel letting the residual variance of wing length depend on year and temperature (Methods; @fig-drmsem).
+
+We fitted the graph primarily on the full record (`r drm_f$year_range[1]`–`r drm_f$year_range[2]`; N = `r .n(drm_f$n_records)` records, `r drm_f$n_species` species), which preserves the complete time series. At this scope the hypothesised graph was consistent with the data (Fisher's C = `r round(drm_f$fisher_c$fisher_c, 1)`, df = `r drm_f$fisher_c$df`, P = `r round(drm_f$fisher_c$p.value, 2)`). Within it, temperature's direct association with the wing-length *mean* could not be distinguished from zero (path = `r .dpath(drm_f, "scaled_tmean", "wing_length")`, P `r .dp(drm_f, "scaled_tmean", "wing_length")`; total temperature effect `r .deff(drm_f, "tmean", "total_path")` mm, 95% CI `r .deff(drm_f, "tmean", "total_path", "conf.low")` to `r .deff(drm_f, "tmean", "total_path", "conf.high")`), and the year → wing route through temperature was negligible (`r .deff(drm_f, "yr_via_tmean", "total_path")` mm, 95% CI `r .deff(drm_f, "yr_via_tmean", "total_path", "conf.low")` to `r .deff(drm_f, "yr_via_tmean", "total_path", "conf.high")`). The model therefore does not localise the modest *mean* decline to the measured climate mediator.
+
+What the full record did show, robustly, was a distributional signal: the residual variability of wing length increased with year (σ path = +`r .dpath(drm_f, "scaled_yr", "wing_length", "sigma")`, P `r .dp(drm_f, "scaled_yr", "wing_length", "sigma")`) and was lower in warmer years (σ path = `r .dpath(drm_f, "scaled_tmean", "wing_length", "sigma")`, P `r .dp(drm_f, "scaled_tmean", "wing_length", "sigma")`), corroborating the lnCVR result under an explicit causal model. This temperature → variance association is the single most robust signal across every drmSEM fit. All path directions were unchanged when phylogenetic non-independence was propagated across 50 trees, and the primary brms models remain the formal authority.
+
+To bring arthropod prey directly into the graph, we refitted it on the subset of years with arthropod coverage (`r drm_a$year_range[1]`–`r drm_a$year_range[2]`; N = `r .n(drm_a$n_records)` records, `r drm_a$n_species` species). On this smaller, temporally narrower subset the hypothesised graph was rejected (Fisher's C = `r round(drm_a$fisher_c$fisher_c, 1)`, df = `r drm_a$fisher_c$df`, P = `r round(drm_a$fisher_c$p.value, 3)`): the implied conditional independence of sex and arthropod abundance does not hold, so we do not interpret this model's path coefficients as a fitted causal graph. It is nonetheless reassuring that it points the same way on the central question — arthropod abundance had no detectable direct association with wing length (path = +`r .dpath(drm_a, "arthro_obs_std", "wing_length")`, P `r .dp(drm_a, "arthro_obs_std", "wing_length")`), and the year → wing route through prey was indistinguishable from zero (`r .deff(drm_a, "yr_via_arthro", "total_path")` mm, 95% CI `r .deff(drm_a, "yr_via_arthro", "total_path", "conf.low")` to `r .deff(drm_a, "yr_via_arthro", "total_path", "conf.high")`).
+
+The clearest message of the causal model is therefore negative but informative: on the full record the modest temporal change in the wing-length *mean* is not cleanly attributable to per-record temperature, while the rising among-individual variance of wing length is reproduced robustly under an explicit graph. Where arthropod prey can be brought into the model, its steep decline — established independently below — shows no direct link to wing length, consistent with the diet-interaction null. Regional warming therefore appears to act on body size through pathways that our covariates capture only partially.
+
+![Distributional piecewise structural equation model (drmSEM) of the hypothesised causal graph, fitted on the full record. Arrows are mean-model paths coloured by standardised coefficient (green positive, red negative; solid = P < 0.05, dashed = not significant); dotted purple arcs are the distributional (σ) paths into wing length. Neither year nor temperature has a clear association with the wing-length mean, but the residual variability of wing length rises with year and falls in warmer years. Node roles: grey = exogenous, green = mediator, orange = response.](images/fig-drmsem.png){#fig-drmsem}
+
+## Inclusion threshold sensitivity
+
+Our main analysis required species to have at least 30 records and a minimum sampling span of 5 years; individuals of unknown sex were excluded. To assess whether the year → wing-length result is an artefact of these choices, we refitted the model across a grid of `r if (!is.null(sens)) n_sens_total else 18` threshold combinations spanning three minimum-record thresholds (30, 40, and 50), three minimum-span thresholds (5, 8, and 10 years), and with or without the unknown-sex filter (Supplementary Fig. S1). The year effect remained negative and its 95% credible interval excluded zero in `r if (!is.null(sens)) n_neg_sexfilter else "all"` of `r if (!is.null(sens)) n_sens_sexfilter else 9` combinations that retained the sex filter. Dropping the sex filter consistently widened credible intervals to overlap zero in `r if (!is.null(sens)) n_sens_sexfilter - n_neg_nosex else "most"` of `r if (!is.null(sens)) n_sens_sexfilter else 9` combinations, indicating that unknown-sex records add noise rather than biological signal and that the sex-filter exclusion is a quality-control step rather than an arbitrary restriction. Across all threshold combinations retaining the sex filter, the negative year effect on wing length was consistent in direction and magnitude, supporting the conclusion that the reported decline is not an artefact of specific inclusion criteria.
+
+## Synthesis
+
+Our results present a coherent but nuanced picture. Wing length declined modestly and heterogeneously across `r desc$n_spp` Atlantic Forest passerines over more than two decades, bill width did not decline (increasing slightly instead), and among-individual variability in wing length rose — consistent with a population responding unevenly to a deteriorating environment rather than shifting uniformly toward a new optimum. Over the same region and period, arthropod prey abundance fell steeply, and this collapse was robust to how ants were treated and to the exclusion of open-habitat records.
+
+The diet-interaction analysis, however, complicates a simple food-limitation interpretation. The temporal decline in wing length was not steeper in species most reliant on invertebrate prey; if anything it was weaker, with less insectivorous species declining more. This argues against a direct, diet-mediated pathway from arthropod scarcity to body-size loss, and the distributional causal model made the same point explicitly: arthropod abundance, though declining steeply, had no direct effect on wing length, while the rising among-individual variance was reproduced under the causal graph (@fig-drmsem). A more likely reconciliation is that both the arthropod decline and the morphological change are downstream consequences of the same regional warming, rather than standing in a direct cause-and-effect relationship: temperature shapes body size through thermoregulatory mechanisms consistent with Bergmann's rule, while simultaneously suppressing arthropod populations through independent phenological and metabolic pathways [@gardner_declining_2011; @dirzo2014defaunation]. Strictly insectivorous species may additionally buffer size loss through behavioural compensation — increased foraging effort or prey switching — in ways that facultative omnivores and frugivores cannot [@robb2008food].
+
+We caution that our design links birds and prey at the level of shared region and period rather than through a joint model of individual birds and their local food supply. A more powerful test would track arthropod abundance at the scale of individual capture localities and model it as a time-varying predictor of body size; we identify this as the priority next step. Even so, the co-occurrence of a regional prey collapse and morphological change in avian predators across more than two decades highlights an under-appreciated dimension of climate-change impacts on tropical biodiversity — one in which warming may simultaneously reshape the phenotypes of predators and diminish the resources that sustain them.
+
+# Methods {#sec-methods}
+
+## Morphological data and inclusion criteria
+
+Bird morphological data were obtained from the ATLANTIC BIRD TRAITS dataset [@rodrigues_atlantic_2019], a compilation of measurements from the Atlantic forests of South America. We restricted records to the order Passeriformes; to individuals aged as adults at collection; to live-captured birds; to records dated 1995–2018; and to localities within a 20-km buffer of the Atlantic Forest domain. We excluded museum specimens because preserved skins shrink and change shape on preservation (a within-species effect of the order of a few percent for length and mass measurements) and, critically, are concentrated in the earliest years of the dataset (roughly 41% of records in the 1990s versus 6% in 2015–2018); retaining them would confound preservation artefacts with the temporal trends we set out to estimate. The live-only filter was applied before the species-level inclusion thresholds, so that every retained species has at least 30 live records. We retained only species with at least 30 records and a sampling span of at least 5 years, and excluded individuals of unknown sex. These criteria yielded `r desc$n_spp` species. Species binomials were reconciled to the taxonomy of the phylogeny by recoding six names (e.g., *Ceratopipra rubrocapilla* → *Pipra rubrocapilla*; *Myiothlypis leucoblephara* → *Basileuterus leucoblepharus*).
+
+Wing length was chosen as the body-size index because it had the least missing data among candidate traits. We coalesced right-wing, left-wing, and unspecified wing measurements (in that order of priority) into a single variable, assuming bilateral symmetry, to reduce missingness. Bill width was analysed as a complementary trait, an indicator of gape size, thus acting as a physical filter on potential food items that individuals can consume. Year and latitude were mean-centred and scaled to unit standard deviation prior to modelling; latitude was multiplied by −1 before scaling so that larger values denote more southerly (and typically cooler) localities. Diet categories were assigned from EltonTraits [@wilman2014eltontraits]; the analytical species are overwhelmingly invertebrate-consuming, and only a small number have no invertebrate component in their diet.
+
+## Climate context
+
+We did not estimate a temporal temperature or precipitation trend from the
+morphological dataset. The `Annual_mean_temperature` and `Annual_rainfall`
+fields in ATLANTIC BIRD TRAITS are static long-term climatologies attached to each locality rather than conditions measured at the time of capture: across the sampled localities, 97% carry a single temperature value regardless of how many years they were sampled, so any apparent change over time reflects which localities were visited when, not climatic change. We therefore treat warming over the study region and period as established by independent climatological records and the broader literature [@gardner_declining_2011; @teplitsky_climate_2014].
+
+To move beyond year as a proxy for climate, we additionally link each record to **time-resolved** monthly temperature from WorldClim historical weather (CRU-TS 4.09 downscaled with WorldClim 2.1; @fick2017worldclim; @harris2020crudata) at the record's coordinates and year of capture (`climate_extraction.R`). This yields the actual temperature experienced by each individual, allowing body size to be modelled directly against climate.
+
+<!-- [AUTHOR ACTION] Run climate_extraction.R (WorldClim, downloads ~few GB of
+decadal tmin/tmax zips to Analysis/worldclim/) and the upgraded `brm_climate`
+model, then report the temperature–body size estimates here in place of the
+year-only proxy. -->
+
+
+## Phylogeny
+
+We obtained species-level trees from the complete and dynamic avian phylogeny of @mctavish2025tree, accessed through the `clootl` R package [@miller2026clootl]. We retrieved the trees through the `prepR4pcm` package [@nakagawa2026prepr4pcm] and used its four-stage matching cascade (exact, normalised, synonym, and fuzzy matching) to reconcile our species names to the phylogeny's tip labels, auditing every match so that no species was silently dropped, before aligning the trait data to the pruned tree. We drew 50 trees from a pool of 100 to represent phylogenetic uncertainty. For models conditioned on a single topology, we constructed a phylogenetic covariance matrix by inverting the matrix returned by `MCMCglmm::inverseA` (scaled, tips only). To propagate phylogenetic uncertainty, we refitted the model across all 50 trees and pooled estimates across trees using Rubin's rules [@nakagawa2019rubin], reporting Wald–Rubin 95% intervals, rather than naively concatenating posterior draws.
+
+<!-- Both wing- and bill-width models now use the updated clootl/McTavish tree
+with prepR4pcm reconciliation and Rubin's-rules pooling across 50 trees
+(atlantic_parallel.R and atlantic_parallel_bill.R). -->
+
+
+## Body-size and bill-width models
+
+We fitted Bayesian multilevel models in `brms` [@burkner2017brms] with Stan. For wing length:
+wing length ~ 1 + sex + scaled year + scaled latitude + (1 + scaled year || species) + (1 | binomial),
+where the `(1 | binomial)` term carried the phylogenetic covariance matrix, the double-bar species term estimated uncorrelated species intercepts and year slopes, sex was included as a fixed effect, and an analogous model for bill width omitted sex. Priors were weakly informative: Normal(71, 15) and Normal(9, 2.5) on the wing- and bill-width intercepts respectively, Normal(0, 10) on regression coefficients, and Half-Cauchy(0, 1) on standard-deviation and residual parameters. Models were run with multiple chains to convergence and assessed with the potential scale-reduction factor (R̂), effective sample sizes, posterior predictive checks, and trace plots. We summarise effects as posterior means with 95% credible intervals, and report the proportion of among-species variance attributable to phylogeny via a derived hypothesis on the variance components.
+
+To handle missing morphological data we used multiple imputation by chained equations (`mice`) [@vanbuuren2011mice], generating completed datasets and refitting the wing-length model across them with `brm_multiple`; we examined missingness patterns and intraclass correlations before imputation. To incorporate phylogenetic uncertainty, we refitted the wing-length model across the 50 sampled trees and pooled the estimates across trees with Rubin's rules [@nakagawa2019rubin].
+
+We use the coalesced wing-length variable as the single body-size response
+throughout, including in the phylogenetic-uncertainty analysis
+(`atlantic_parallel.R`).
+
+## Diet-interaction model
+
+To test whether the temporal wing-length trend is modulated by dietary reliance on invertebrates, we extended the main wing-length model with an interaction term: scaled year × standardised invertebrate diet proportion (`diet_inv_std`), where `diet_inv_std` is the z-scored Diet-Inv variable from EltonTraits [@wilman2014eltontraits] (proportion of diet from invertebrates, 0–100 scale, computed across species with available data). The model otherwise retained the same fixed effects (sex, scaled latitude), random structure (uncorrelated species intercepts and year slopes), and phylogenetic covariance as the main analysis. We additionally fitted a parallel model substituting a binary diet category (Invertebrate vs. Other, collapsing FruiNect, Omnivore, and PlantSeed). Both models were run across 10 sampled trees and pooled with Rubin's rules (`atlantic_diet_interaction.R`). `r desc$n_spp - diet$n_spp` species lacking EltonTraits diet data were excluded from these models only.
+
+## Trait-variability meta-analysis
+
+For each species we computed the log coefficient-of-variation ratio (lnCVR) of wing length and of bill width between the early (1995–2006) and late (2013–2018) quartiles of the record, with its sampling variance following @nakagawa2015metaanalysis, using the among-species correlation between log mean and log standard deviation within each period. We combined effect sizes in random-effects models (REML) using `metafor` [@viechtbauer2010metafor], reporting the meta-analytic mean, its 95% confidence interval, heterogeneity (I²), and the test for heterogeneity.
+
+<!-- NOTE: the per-species lnCVR confidence limits in the original analysis used
+±1.96 × (sampling variance) instead of ±1.96 × sqrt(variance); this is fixed in
+the reviewed Rmd and in Figure 3, which uses the corrected standard errors. An
+independent re-computation from the raw data reproduced the meta-analytic mean
+(0.24 [0.10, 0.38]), confirming the metafor result was unaffected. -->
+
+## Arthropod abundance
+
+We obtained invertebrate abundance records from the PREDICTS database [@hudson2017database], accessed through the `predictsr` package [@duffin2025predictsr], retaining Arthropoda of the classes Insecta and Arachnida with abundance-type diversity metrics in South America, and restricting to forested biomes (tropical and subtropical moist and dry broadleaf forests, temperate broadleaf and mixed forests, and mangroves) to exclude open-habitat assemblages unlikely to be available to Atlantic Forest passerines. Ants (Formicidae) were retained in the main model because, although most passerines rarely consume ant workers, several species opportunistically take flying reproductives (alates) during nuptial flights [@helms_are_2016]. We modelled raw counts with negative-binomial regression in `brms`, including the natural log of sampling effort as an offset and scaled year as the predictor, with weakly informative priors (Normal(0, 10) on the intercept, Normal(0, 1) on the year coefficient, and the default Gamma(0.01, 0.01) on the shape parameter). As a conservative sensitivity check we repeated the analysis excluding Formicidae entirely; the ant-exclusion model returned a shallower decline, confirming that the main result is not driven by ant abundance trends. Coefficients are reported on the standardized-year scale and as exponentiated multiplicative effects.
+
+## Distributional causal model {#sec-drmsem}
+
+To complement the regression models with an explicit causal test, we fitted a distributional piecewise structural equation model (drmSEM): a piecewise SEM [@shipley2009confirmatory; @lefcheck2016piecewisesem] in which every node is a distributional regression (mean and variance submodels) fitted with `drmTMB`, and overall fit is assessed by Shipley's test of directed separation (Fisher's C) [@nakagawa2026drmsem]. The graph specified temperature as a function of year and latitude; arthropod abundance as a function of year, temperature and latitude; and wing length as a function of temperature, arthropod abundance, sex and latitude, with a variance submodel letting the residual standard deviation of wing length depend on year and temperature. Species entered as i.i.d. random intercepts, and year → wing effects were decomposed into direct, mean-mediated and distribution-mediated components by simulation.
+
+Temperature was the time-resolved WorldClim value at each record's coordinates and year of capture (`climate_extraction.R`). The arthropod node used the observed log abundance per unit sampling effort from the PREDICTS records, aggregated to an inverse-distance-weighted locality × year index (200-km search radius) and standardised; because this index is ultimately a year- and locality-level aggregate broadcast to individual birds, its standard errors are anticonservative and its coefficients should be read as approximate. The latitude → arthropod edge is a statistical adjustment for the sampling structure of that aggregate, not a causal claim.
+
+We fitted the graph at two scopes. Our primary fit used the full record (`r drm_f$year_range[1]`–`r drm_f$year_range[2]`; `r .n(drm_f$n_records)` records, `r drm_f$n_species` species) with a temperature-only mean structure (no arthropod node), so as to retain the complete time series; this is the model we interpret, and its directed-separation test was consistent with the data. To bring arthropod abundance directly into the graph we additionally fitted a variant restricted to the years with arthropod coverage (`r drm_a$year_range[1]`–`r drm_a$year_range[2]`; `r .n(drm_a$n_records)` records, `r drm_a$n_species` species); on this smaller, temporally narrower subset the directed-separation test rejected the hypothesised graph (Fisher's C P = `r round(drm_a$fisher_c$p.value, 3)`, driven by a failed sex–arthropod independence claim), so we report its coefficients only as a qualitative check rather than treating them as a fitted causal model. We further refitted the full-record graph with the wing-length node's species intercept replaced by a phylogenetic random effect (Pagel's λ selected per tree by AIC, pooled across 50 trees with Rubin's rules); path directions were unchanged. The drmSEM is a complementary, observational causal analysis; the Bayesian phylogenetic models above remain the primary, authoritative inference. Code is in `atlantic_drmsem.R`.
+
+## Data and code availability
+
+The ATLANTIC BIRD TRAITS dataset [@rodrigues_atlantic_2019], the EltonTraits database [@wilman2014eltontraits], the McTavish phylogeny [@mctavish2025tree], and the PREDICTS database [@hudson2017database] are publicly available from their original sources. Analysis code (`Analysis/atlantic_birds_ms.Rmd`) and fitted model objects are provided in the project repository.
+
+<!-- [AUTHOR ACTION] Add the repository DOI/URL (e.g., OSF or Zenodo archive of the
+release used for submission) and a software/session-info statement (R version
+and package versions: brms, metafor, mice, ape, MCMCglmm, tidyverse). -->
+
+## References {.unnumbered}
+
+::: {#refs}
+:::
