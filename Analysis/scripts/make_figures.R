@@ -43,52 +43,59 @@ save_fig <- function(name, mode, p, w = 7, h = 5) {
 # ============================================================================
 
 # --- Annotated DAG (from standardised path table) --------------------------
+# The wing-length response is drawn as TWO co-equal response nodes — mean(wing)
+# and sd(wing) — because drmSEM models the mean and the residual SD as separate
+# distributional responses (each with its own submodel). Mean-model paths point
+# into mean(wing); the variance (sigma) paths point into sd(wing). Both node
+# types share the "response" role colour and both receive ordinary directed
+# arrows, so the residual-SD channel reads as a response on equal footing with
+# the mean rather than as a secondary annotation on a single wing node.
 fig_dag <- function(ps, mode) {
   pos <- data.frame(
-    node = c("scaled_yr","scaled_lat","Sex","scaled_tmean","arthro_obs_std","wing_length"),
-    x    = c(0, 0, 0, 1.2, 1.2, 2.4),
-    y    = c(3.2, 2.0, 0.6, 3.2, 1.3, 2.1),
-    role = c("exogenous","exogenous","exogenous","mediator","mediator","response"),
+    node  = c("scaled_yr","scaled_lat","Sex","scaled_tmean","arthro_obs_std","mean_wing","sd_wing"),
+    x     = c(0, 0, 0, 1.2, 1.2, 2.6, 2.6),
+    y     = c(3.2, 2.0, 0.6, 3.2, 1.3, 2.7, 0.9),
+    role  = c("exogenous","exogenous","exogenous","mediator","mediator","response","response"),
+    label = c("scaled_yr","scaled_lat","Sex","scaled_tmean","arthro_obs_std",
+              "mean(wing)","sd(wing)"),
     stringsAsFactors = FALSE)
   xy <- function(n, col) pos[[col]][match(n, pos$node)]
-  em <- ps[ps$component == "mu", ]
-  em$fromn <- ifelse(em$term == "SexMale", "Sex", em$from)
-  em <- em[em$fromn %in% pos$node & em$to %in% pos$node, ]
-  em$x0 <- xy(em$fromn,"x"); em$y0 <- xy(em$fromn,"y")
-  em$x1 <- xy(em$to,"x");    em$y1 <- xy(em$to,"y")
-  em$linef <- ifelse(em$p.value < 0.05, "significant", "n.s.")
-  es <- ps[ps$component == "sigma", ]
-  es$x0 <- xy(es$from,"x"); es$y0 <- xy(es$from,"y")
-  es$x1 <- xy("wing_length","x"); es$y1 <- xy("wing_length","y")
-  present  <- unique(c(em$fromn, em$to, es$from, "wing_length"))
+  # Every path is a directed edge into a node. Retarget the two distributional
+  # components of wing_length onto the two response nodes.
+  e <- ps
+  e$fromn <- ifelse(e$term == "SexMale", "Sex", e$from)
+  e$ton   <- e$to
+  e$ton[e$to == "wing_length" & e$component == "mu"]    <- "mean_wing"
+  e$ton[e$to == "wing_length" & e$component == "sigma"] <- "sd_wing"
+  e <- e[e$fromn %in% pos$node & e$ton %in% pos$node, ]
+  e$x0 <- xy(e$fromn,"x"); e$y0 <- xy(e$fromn,"y")
+  e$x1 <- xy(e$ton,"x");   e$y1 <- xy(e$ton,"y")
+  e$linef <- ifelse(e$p.value < 0.05, "significant", "n.s.")
+  # Stagger label position along the edge by target node so the crossing
+  # Sex -> mean(wing) and year -> sd(wing) labels do not collide mid-plot.
+  e$lf <- ifelse(e$ton == "sd_wing", 0.74, 0.56)
+  present  <- unique(c(e$fromn, e$ton))
   pos_draw <- pos[pos$node %in% present, ]
-  .clim <- max(0.6, stats::quantile(abs(em$std.estimate[em$fromn != "Sex"]), 0.95, na.rm = TRUE))
+  .clim <- max(0.6, stats::quantile(abs(e$std.estimate[e$fromn != "Sex"]), 0.95, na.rm = TRUE))
   ggplot() +
-    geom_segment(data = em,
+    geom_segment(data = e,
       aes(x = x0, y = y0, xend = x1, yend = y1, colour = std.estimate, linetype = linef),
       arrow = grid::arrow(length = grid::unit(0.18, "cm"), type = "closed"), linewidth = 0.7) +
-    geom_text(data = em,
-      aes(x = x0 + 0.62*(x1-x0), y = y0 + 0.62*(y1-y0),
+    geom_text(data = e,
+      aes(x = x0 + lf*(x1-x0), y = y0 + lf*(y1-y0),
           label = sprintf("%.2f", std.estimate), colour = std.estimate),
       size = 2.7, fontface = "bold") +
-    geom_curve(data = es, aes(x = x0, y = y0, xend = x1, yend = y1),
-      curvature = -0.3, linetype = "dotted", colour = "#762a83", linewidth = 0.6,
-      arrow = grid::arrow(length = grid::unit(0.15, "cm"), type = "closed")) +
-    geom_text(data = es,
-      aes(x = x0 + 0.5*(x1-x0), y = y0 + 0.5*(y1-y0) + 0.18,
-          label = paste0("sigma ", sprintf("%.2f", std.estimate))),
-      colour = "#762a83", size = 2.5) +
-    geom_label(data = pos_draw, aes(x = x, y = y, label = node, fill = role),
+    geom_label(data = pos_draw, aes(x = x, y = y, label = label, fill = role),
       colour = "black", size = 3.1) +
     scale_colour_gradient2(low = "#b2182b", mid = "grey75", high = "#1b7837",
-      midpoint = 0, limits = c(-.clim, .clim), oob = scales::squish, name = "std. coef (mu)") +
+      midpoint = 0, limits = c(-.clim, .clim), oob = scales::squish, name = "std. coef") +
     scale_fill_manual(values = c(exogenous = "#ECECEC", mediator = "#CDE7DD",
       response = "#FCE3C8"), name = NULL) +
     scale_linetype_manual(values = c(significant = "solid", `n.s.` = "dashed"), name = NULL) +
-    coord_cartesian(xlim = c(-0.3, 2.8), ylim = c(0.2, 3.7)) +
+    coord_cartesian(xlim = c(-0.3, 3.1), ylim = c(0.2, 3.7)) +
     theme_void() + theme(legend.position = "bottom") +
     labs(title = paste0("drmSEM path diagram [", mode,
-                        "] — standardized coefficients (dotted = sigma)"))
+                        "] — standardized coefficients; wing mean and SD are separate responses"))
 }
 
 # --- Coefficient forest (raw paths +/- 95% CI, faceted mu vs sigma) --------

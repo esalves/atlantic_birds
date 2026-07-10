@@ -36,6 +36,11 @@ Rscript ../Analysis/scripts/atlantic_diet_interaction.R   # writes images/diet_i
 - `fig-drmsem.png` is the full-record drmSEM DAG, copied from
   `../Analysis/figures/drmsem_dag_noarthro.png`. The arthropod-coverage DAG was
   rejected (Fisher's C P = 0.009), so the full-record model is the one shown.
+  The DAG now draws wing length as two co-equal response nodes — `mean(wing)`
+  and `sd(wing)` — with the σ (variance-submodel) paths entering `sd(wing)` as
+  ordinary directed edges, since drmSEM models the mean and residual SD as
+  separate distributional responses. Regenerate with
+  `Rscript ../Analysis/scripts/make_figures.R noarthro`.
 
 ## 2. Render the document
 
