@@ -32,7 +32,7 @@ if (!dir.exists(FIG_DIR)) dir.create(FIG_DIR, recursive = TRUE)
 fpath <- function(name, mode) file.path(FIG_DIR, paste0(name, "_", mode, ".png"))
 save_fig <- function(name, mode, p, w = 7, h = 5) {
   tryCatch({
-    ggsave(fpath(name, mode), p, width = w, height = h, dpi = 300)
+    ggsave(fpath(name, mode), p, width = w, height = h, dpi = 300, bg = "white")
     message("  saved ", fpath(name, mode))
   }, error = function(e) message("  FAILED ", name, " [", mode, "]: ", conditionMessage(e)))
 }
@@ -92,8 +92,15 @@ fig_dag <- function(ps, mode) {
     scale_fill_manual(values = c(exogenous = "#ECECEC", mediator = "#CDE7DD",
       response = "#FCE3C8"), name = NULL) +
     scale_linetype_manual(values = c(significant = "solid", `n.s.` = "dashed"), name = NULL) +
-    coord_cartesian(xlim = c(-0.3, 3.1), ylim = c(0.2, 3.7)) +
-    theme_void() + theme(legend.position = "bottom") +
+    coord_cartesian(xlim = c(-0.55, 3.2), ylim = c(0.1, 3.8), clip = "off") +
+    theme_void() +
+    theme(
+      legend.position = "bottom",
+      legend.box.margin = margin(t = 10, b = 15),
+      legend.margin = margin(t = 5, b = 5),
+      plot.margin = margin(t = 20, r = 40, b = 25, l = 40),
+      plot.title = element_text(hjust = 0.5, size = 11, face = "bold", margin = margin(t = 5, b = 15))
+    ) +
     labs(title = paste0("drmSEM path diagram [", mode,
                         "] — standardized coefficients; wing mean and SD are separate responses"))
 }
@@ -167,6 +174,11 @@ for (mode in modes) {
   message("Figures for [", mode, "]  (N = ", res$n_records,
           ", generated ", res$generated, ")")
   save_fig("drmsem_dag",            mode, fig_dag(ps, mode),  9, 6.5)
+  if (mode == "noarthro") {
+    ms_dest <- file.path(.repo, "Manuscript", "images", "fig-drmsem.png")
+    file.copy(fpath("drmsem_dag", mode), ms_dest, overwrite = TRUE)
+    message("  copied drmsem_dag_noarthro.png -> Manuscript/images/fig-drmsem.png")
+  }
   save_fig("drmsem_coef_forest",    mode, fig_coef(pr, mode), 7, 6)
   save_fig("drmsem_sigma_curves",   mode, fig_sigma(pr, mode), 8, 4)
   ey <- res$effects$yr; et <- res$effects$tmean
