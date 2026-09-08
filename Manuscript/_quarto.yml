@@ -12,4 +12,7 @@ execute:
 format:
   html:
     toc: true
-  docx: default
+  docx:
+    reference-doc: custom-reference.docx
+    filters:
+      - academic_doc_format.lua
