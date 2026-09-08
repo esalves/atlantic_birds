@@ -1,8 +1,8 @@
 # update_descriptive_stats.R
 # ---------------------------------------------------------------------------
 # Recomputes every descriptive / quartile / lnCVR number quoted in the
-# manuscript from the canonical analytical sample (passer90.rda, the 89-species
-# build with thresholds n>=30 records and span>=5 years), mirroring the exact
+# manuscript from the canonical analytical sample (passer90.rda, the 73-species
+# live-only build with thresholds n>=30 records and span>=5 years), mirroring the exact
 # methodology in atlantic_birds_ms.Rmd. Reads the pooled model objects
 # (brm0_multiphylo.rda wing, brm_bill_multiphylo.rda bill) for fixed effects,
 # phylogenetic signal, and analysis N.
