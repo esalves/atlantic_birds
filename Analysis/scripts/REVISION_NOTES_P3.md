@@ -8,17 +8,26 @@ and `update_descriptive_stats.R` need. Style follows `REVISION_NOTES_P0.md`.
 Executed locally with R 4.6.0 (glmmTMB 1.1.14, lme4 2.0.1, metafor 5.0.1,
 brms 2.23.0 / rstan 2.32.7, ggplot2 4.0.3). **Parts 2–4 (glmmTMB / lme4 /
 lnCVR / heterogeneity diagnostics) ran in full (`--fast`, 18 s) and every
-number below is from the full run. Part 1 (brms distributional model with
-phylogeny) ran only as a SMOKE TEST (1 tree, 2 chains × 400 iterations) — see
-§5 and §8; nothing from it is a result.** Every number quoted here is in
-`Analysis/output/variance_results.rds` (`$index` lists the slots).
+number in §§0–4 is from that run. Part 1, the PHYLOGENETIC distributional
+model, ran in full on 2026-09-09 with the glmmTMB `propto` engine
+(`_phylo_engine.R`) across the 50 trees of the published brms wing model —
+every tier of the σ ladder, Rubin-pooled; see §9. The brms engine
+(`--engine brms`) is kept as the Bayesian cross-check for Totoro and has only
+been smoke-tested (killed before completion, §8); nothing from it is a result.**
+Every number quoted here is in `Analysis/output/variance_results.rds` (`$index`
+lists the slots; `$phylo` is the pointer/headline of the phylogenetic tier) or,
+for §9, in `Analysis/output/variance_phylo_results.rds`.
 
 History: a first P3 session (2026-09-09 10:40) wrote the script, the fast
 results, the figures and §§0–7 of these notes, and was cut off during its brms
 smoke test. A second session re-ran `--fast` end to end (all numbers
 reproduced byte-for-byte), switched `scaled_tmean` on now that P5's live-only
 `passer90_climate.rds` exists (§1), added tiers S3t/S7 and the `--no-tmean`
-flag, and ran the smoke test under a 20-minute cap (§8).
+flag, and ran the smoke test under a 20-minute cap (§8). A third session
+(E2, 2026-09-09 13:00) added `--engine glmmTMB` (now the default for the
+phylogenetic tier), ran the 50-tree phylogenetic ladder in full (§9), added
+the phylogenetic rows to `variance_summary.png` panel B, and re-ran the fast
+tier as part of the same invocation (S0–S7 reproduced to all printed digits).
 
 ---
 
@@ -42,6 +51,9 @@ structure:
 | σ model S4: S3 with year split within/between contributor | N = 8,282 | within −6.1 [−13.5, +2.0]; between −9.9 [−35.1, +25.1] | |
 | σ model S6: S3 + `(1|spp)` in σ | N = 8,282 | +3.4 %/decade | [−4.7, +12.2] |
 | σ model S7: S3 + `scaled_tmean` in σ (the plan's σ specification, minus phylogeny) | N = 7,651 | year −6.8 %/decade [−14.0, +1.0]; tmean −0.7 % per SD [−8.7, +8.1] | |
+| **σ model S7 + phylogeny** (the plan's full specification; glmmTMB propto, 50 trees, Rubin-pooled; §9) | N = 7,651 | **year −6.8 %/decade [−14.0, +1.0]**; tmean −0.7 % per SD [−8.8, +8.1] | 50/50 trees converged |
+| **σ model S3 + phylogeny** (`--no-tmean` variant, 8,282 records; §9) | N = 8,282 | **−6.3 %/decade** | [−13.4, +1.5]; 50/50 trees |
+| σ model S0 + phylogeny (no controls) | N = 8,282 | +9.6 %/decade | [+6.3, +13.1]; 45/50 trees (§9.4) |
 | two-stage log\|resid\| T1 (+contributor + site) | N = 8,282 | +6.3 %/decade | [−1.7, +14.9] |
 
 Reading: the CV rise is real *as a description of the pooled data* and it is
@@ -56,6 +68,19 @@ p = 5e-8), and the between-contributor share of within-cell variance rises from
 a median of 0.25 to 0.45. The variance result has to be presented as a
 pooled-data description that is *consistent with* measurer turnover and *not
 supported* within measurer.
+
+**Phylogeny changes none of this (§9).** With the phylogenetic species
+intercept in the mean model across the 50 published trees, every tier's σ-year
+coefficient moves by ≤ 0.0004 log units and every SE by < 1 %: the plan's full
+specification (S7 + phylogeny, N = 7,651) gives −0.0353 (SE 0.0206) on the
+log-SD scale = **−6.8 % residual SD per decade [−14.0, +1.0]**, the
+8,282-record no-tmean variant −6.3 % [−13.4, +1.5], and the uncontrolled S0 +
+phylogeny +9.6 % [+6.3, +13.1]. **Plain statement: the year → σ effect does
+not survive contributor and site controls, with or without phylogeny** — the
+pooled rise (+9.6 %/decade) becomes a non-significant, slightly negative
+estimate once contributor and municipality intercepts enter the σ sub-model,
+and the phylogenetic term does not rescue it (it does not enter σ at all, and
+in the mean model it only re-partitions the between-species variance).
 
 An unexpected by-product for P1/P7 (§4): modelling the heteroscedasticity by
 contributor/site also shrinks the **mean** year slope on the same complete-case
@@ -226,7 +251,16 @@ tmean-complete records):
   slope will move again if σ is modelled — the distributional fit (part 1) will
   give the phylogenetic version of this number.
 
-## 5. brms distributional model (part 1) — what was and was not run
+## 5. brms distributional model (part 1, `--engine brms`) — kept as the Bayesian cross-check; not run
+
+Superseded as the primary evidence by the glmmTMB phylogenetic tier (§9),
+which fits the same mean and σ structure with the phylogenetic species
+intercept on the identical 50 trees in ~3 s per fit. The Stan path below is
+unchanged and selectable with `--engine brms --trees N` (Totoro); `--smoke`
+implies it. Its purpose now is to confirm that Bayesian posterior means and
+95 % intervals match the REML/Rubin estimates of §9 (as they did for the
+published wing model: `glmmtmb_validation_wing.R`, year −0.922 [−1.400,
+−0.444] glmmTMB vs −0.922 [−1.403, −0.440] brms).
 
 - Written in full: `bf(conc.wing.length ~ 1 + Sex + scaled_yr + scaled_lat +
   scaled_lon + scaled_alt + season + (1 + scaled_yr || spp) + (1 | gr(species_name,
@@ -286,13 +320,228 @@ tmean-complete records):
 
 - `variance_summary.png` — A: lnCVR forest across aggregation levels (pooled,
   within sex, within contributor, Carrano); B: %Δ residual SD per decade for
-  tiers S0–S6, S3t, S7 and the two-stage T0–T2; C: histogram of contributors per
-  species × period cell by period; D: boxplot of the between-contributor share
-  of within-cell variance by period. Candidate replacement for the manuscript's
-  Fig. 4 (P6 may restyle from `variance_results.rds`).
+  tiers S0–S6, S3t, S7 (blue), each followed by its phylogenetic 50-tree
+  Rubin-pooled twin "+ phylogeny" (green, §9), and the two-stage T0–T2 (red);
+  C: histogram of contributors per species × period cell by period; D: boxplot
+  of the between-contributor share of within-cell variance by period.
+  Candidate replacement for the manuscript's Fig. 4 (P6 may restyle from
+  `variance_results.rds` / `variance_phylo_results.rds$table`).
 - `variance_lncvr_contributor.png` — the 15 within-contributor cells (n ≥ 5)
   with 95 % CIs, coloured by contributor.
 
-## 8. Smoke-test log (part 1)
+## 8. brms smoke-test log (`--smoke`)
 
-See the end of this file (appended after the run).
+Launched 2026-09-09 11:23:20 under the 21-minute `perl alarm` cap. The Stan
+model compiled and sampling started (2 chains × 400 iterations on 1 tree), but
+the process was killed at iteration ~201/400 of the first chain when the cap
+expired. No `output/models/variance_sigma_SMOKE.rda` and no
+`variance_results.rds$brms_smoke` exist; the brms code path has therefore
+never completed end to end locally. It is no longer needed for the primary
+result (§9) and is kept only as the optional Bayesian cross-check for Totoro
+(`--engine brms --trees 50`, optionally with `--no-tmean`).
+
+## 9. Phylogenetic tier — glmmTMB `propto` engine, 50 trees (part 1, `--engine glmmTMB`, default)
+
+Run 2026-09-09 (E2 session) with `Rscript Analysis/scripts/atlantic_variance_sigma.R
+--trees 50` (engine default glmmTMB; R 4.6.0, glmmTMB 1.1.14, TMB 1.9.21).
+Every number in this section is in `Analysis/output/variance_phylo_results.rds`
+(`$table`, `$comparison`, `$headline`, `$pooled_all`, `$varcomp`,
+`$varcomp_summary`, `$timing`, `$headline_tree1`); the headline and the
+comparison table are mirrored in `variance_results.rds$phylo`.
+
+### 9.1 What was fitted
+
+- Engine: `_phylo_engine.R` (`fit_phylo_glmmtmb`, `run_phylo_trees`,
+  `pool_rubin_df`), which appends `propto(0 + species_name | g, A)` — a
+  phylogenetic species intercept whose covariance is proportional to the
+  species correlation matrix A of one tree (Williams, McGillycuddy, Drobniak,
+  Bolker, Warton & Nakagawa 2025, bioRxiv 10.64898/2025.12.20.695312) — to the
+  mean model, and fits the σ sub-model with `dispformula`. REML. Rubin's rules
+  over trees (estimate = mean; SE² = mean within-tree SE² + (1 + 1/m) ×
+  between-tree variance of the estimates); Wald 95 % intervals.
+- Trees: the **identical 50 trees as the published brms wing model**
+  (`data/derived/phylo_A_50trees.rds`, correlation matrices cached from
+  `brm0_multiphylo.rda`; `inverseA(scale = TRUE)` on nnls-ultrametricised
+  clootl trees, seed 20240101). ABT binomials mapped to tree tips with the
+  eBird synonym map of `atlantic_parallel.R`; 72 species, all present in the
+  trees (`Herpsilochmus_sellowi`, which is absent from the trees, has no wing
+  record in the complete-case sample: 0 records dropped).
+- Data: the same records as the non-phylogenetic tiers — 8,282 complete-case
+  wing records (S0–S6) and the 7,651 tmean-complete records (S3t, S7) —
+  with `spp = species_name` for the species random slope, so every
+  phylogenetic estimate is directly comparable with §2.
+- Models: **all nine tiers of §2 (S0–S6, S3t, S7) refitted with the
+  phylogenetic species intercept in the mean model**; σ sub-models unchanged
+  (`scaled_tmean` enters σ only, as in the plan). The two headline models are
+  S7 + phylogeny (the plan's full Phase 3 specification:
+  `sigma ~ scaled_yr + scaled_tmean + Sex + (1|Main_researcher) +
+  (1|Municipality)`, N = 7,651) and S3 + phylogeny (the `--no-tmean` variant,
+  N = 8,282). Because the glmmTMB fits are cheap, both are produced in one run;
+  `--no-tmean` only removes the tmean tiers.
+- Wall time (all 50 trees, sequential, laptop): S0 20 s, S1 21 s, S2 249 s,
+  S3 365 s, S4 396 s, S5 452 s, S6 527 s, S3t 326 s, S7 350 s; **45.4 min for
+  the whole ladder** (0.4–10.5 s per fit; the S2–S6 fits were slowed by a
+  concurrent diagnostic process, the uncontended rate is ~3.5 s per S3 fit).
+  For comparison the brms path would have been 9 × 50 Stan fits of hours each.
+- Convergence (positive-definite Hessian, `sdr$pdHess`): **50/50 trees for
+  every tier except S0 (45/50)**; see §9.4. `fit$convergence == 0` on all
+  450 fits.
+
+### 9.2 Result: σ-year coefficient, phylogeny vs no phylogeny (same records)
+
+Log-SD scale; b (SE); % change in residual SD per decade
+= 100·(exp(b·10/5.0199) − 1).
+
+| Tier | σ term | no phylogeny (§2) | **+ phylogeny, 50 trees** | %/decade no phylo | **%/decade + phylo** | trees pdHess |
+|---|---|---:|---:|---|---|---:|
+| S0 | scaled_yr | +0.0461 (0.0079) | **+0.0462 (0.0079)** | +9.6 [+6.3, +13.0] | **+9.6 [+6.3, +13.1]** | 45/50 |
+| S1 | scaled_yr | +0.0468 (0.0079) | +0.0469 (0.0079) | +9.8 [+6.4, +13.2] | +9.8 [+6.5, +13.3] | 50/50 |
+| S2 | scaled_yr | +0.0123 (0.0138) | +0.0125 (0.0138) | +2.5 [−2.9, +8.2] | +2.5 [−2.9, +8.2] | 50/50 |
+| **S3** | scaled_yr | −0.0327 (0.0203) | **−0.0326 (0.0203)** | −6.3 [−13.5, +1.4] | **−6.3 [−13.4, +1.5]** | 50/50 |
+| S4 | yr_within_src | −0.0314 (0.0211) | −0.0313 (0.0211) | −6.1 [−13.5, +2.0] | −6.0 [−13.5, +2.0] | 50/50 |
+| S4 | yr_src_mean | −0.0524 (0.0841) | −0.0528 (0.0841) | −9.9 [−35.1, +25.1] | −10.0 [−35.2, +25.0] | 50/50 |
+| S5 | scaled_yr | −0.0328 (0.0204) | −0.0327 (0.0204) | −6.3 [−13.5, +1.5] | −6.3 [−13.5, +1.5] | 50/50 |
+| S6 | scaled_yr | +0.0169 (0.0209) | +0.0170 (0.0209) | +3.4 [−4.7, +12.2] | +3.5 [−4.7, +12.2] | 50/50 |
+| S3t | scaled_yr | −0.0357 (0.0205) | −0.0355 (0.0205) | −6.9 [−14.0, +0.9] | −6.8 [−14.0, +0.9] | 50/50 |
+| **S7** | scaled_yr | −0.0354 (0.0206) | **−0.0353 (0.0206)** | −6.8 [−14.0, +1.0] | **−6.8 [−14.0, +1.0]** | 50/50 |
+| S7 | scaled_tmean | −0.0067 (0.0432) | −0.0071 (0.0432) | −0.7 % per SD [−8.7, +8.1] | −0.7 % per SD [−8.8, +8.1] | 50/50 |
+
+- **Headline (plan specification, S7 + phylogeny, N = 7,651, 72 species, 50
+  trees):** b_σ(year) = −0.0353, SE 0.0206, 95 % CI [−0.0756, +0.0050],
+  z = −1.72 → **−6.8 % residual SD per decade [−14.0, +1.0]**;
+  b_σ(tmean) = −0.0071, SE 0.0432 [−0.0917, +0.0775], z = −0.16 → −0.7 % per
+  SD of record-year temperature [−8.8, +8.1]; b_σ(Sex male) = −0.027 (0.019).
+  σ intercept 1.330 (0.073) → baseline residual SD exp(1.33) = 3.78 mm.
+- **`--no-tmean` variant (S3 + phylogeny, N = 8,282):** b_σ(year) = −0.0326,
+  SE 0.0203 [−0.0725, +0.0073], z = −1.60 → **−6.3 %/decade [−13.4, +1.5]**;
+  σ intercept 1.368 (0.078) → 3.93 mm.
+- Between-tree variance of every σ coefficient is ≤ 6 × 10⁻⁸ (≤ 0.02 % of the
+  within-tree variance): tree uncertainty is irrelevant for the σ sub-model,
+  which contains no phylogenetic term. Phylogenetic uncertainty shows up only
+  in the mean-model intercept (between-tree var 0.25 on an SE of 11.8).
+- **Does phylogeny change anything?** No. Across the 11 σ-year/tmean
+  coefficients the largest shift is 0.0004 log units (S4 between-contributor,
+  a term with SE 0.084) and every SE ratio (phylo / no phylo) is 1.000 to 3
+  decimals. The ladder's shape is exactly as in §2: +9.6 %/decade with no
+  controls → +2.5 with the contributor intercept → −6.3 with contributor + site
+  → sign-unstable (−6 to +3.5) across the sensitivity tiers, every controlled
+  interval spanning zero. The uncontrolled S0/S1 estimates (+9.6/+9.8 %,
+  intervals excluding zero) are the only ones that do, with or without
+  phylogeny.
+
+### 9.3 Mean-model year slope from the same fits
+
+| Tier | no phylogeny (§2) | + phylogeny | SE ratio |
+|---|---:|---:|---:|
+| S0 | −0.920 [−1.377, −0.463] | −0.922 [−1.381, −0.463] | 1.003 |
+| S2 | −0.215 [−0.456, +0.025] | −0.216 [−0.457, +0.025] | 1.003 |
+| S3 | −0.151 [−0.353, +0.051] | −0.152 [−0.353, +0.050] | 1.000 |
+| S6 | −0.179 [−0.372, +0.014] | −0.181 [−0.374, +0.013] | 1.003 |
+| S7 | −0.182 [−0.421, +0.057] | −0.183 [−0.421, +0.056] | 0.998 |
+
+The S0 + phylogeny row reproduces the published brms wing model (−0.922
+[−1.403, −0.440]; heteroscedastic here, hence the marginally narrower
+interval) — a check that the engine, the trees and the species mapping are the
+same as in `atlantic_parallel.R`. The S3/S7 mean slope (−0.15 / −0.18 mm per
+SD-year ≈ −0.3 / −0.36 mm per decade, intervals spanning zero) is the
+heteroscedastic, phylogenetic version of the §4 side effect: the homoscedastic
+lme4 M3 fit on the same 8,282 records gives −0.32 [−0.69, +0.04]
+(`variance_results.rds$lme4_mean_M3_year`), and modelling σ by
+contributor/site halves the point estimate and the SE because records from
+noisy contributors are down-weighted. Phylogeny does not move it. P1's
+homoscedastic phylogenetic M3 (E1, `controlled_wing_phylo_results.rds`) is the
+number to quote for the mean trend; this one is its σ-weighted companion.
+
+### 9.4 Variance components and the 5 non-PD trees
+
+- Per tree (`$varcomp`): phylogenetic SD 23.7 mm (S3; 95 % range over trees
+  20.8–26.8), species-intercept SD 0.004–0.007 (i.e. zero: the phylogenetic
+  term absorbs the whole between-species intercept variance, exactly as in the
+  published model, phylogenetic signal 0.95), species year-slope SD 0.41
+  (S3–S5) / 0.60 (S3t, S7), contributor SD 3.14, municipality SD 1.36 (S3;
+  tree 1). Phylogenetic share of (between-species + contributor + site +
+  baseline residual) variance: S3 0.953 [0.941, 0.963], S7 0.960 [0.949,
+  0.968] (`$varcomp_summary`; denominator uses exp(b_σ intercept) because
+  `sigma()` is undefined under a dispformula).
+- σ random effects (tree-1 headline fits, `$headline_tree1`): S3 contributor
+  0.383, municipality 0.389 (exp(u) range across contributors 0.45–2.53); S7
+  0.334 / 0.390 (0.58–2.42) — identical to the non-phylogenetic S3/S3t values
+  in §2.
+- Species year slopes from the tree-1 S7 fit (fixed + BLUP, quadrature SE): 50
+  of 72 negative, 4 exclude zero (all negative), median −0.19 mm per SD-year —
+  reported only as a cross-reference to E1's caterpillar, which is the
+  authoritative species-slope output.
+- **S0: 45/50 trees with a positive-definite Hessian.** Diagnosed on all 50
+  trees (scratch `diag_pdhess.R`): on trees 9, 14, 19, 21 and 49 the
+  optimizer converged (nlminb code 0, "relative convergence") to the
+  *alternative* mode in which the non-phylogenetic species intercept carries
+  the between-species variance (SD 16.1) and the phylogenetic SD is 0.11–0.18,
+  instead of 0.005 and ~24; with only Sex, year and latitude in the mean model
+  the two species-level terms are weakly identified against each other and the
+  Hessian is singular along that ridge. Fixed effects are unaffected:
+  b_σ(year) = 0.04608 vs 0.04607, SE 0.007898 on every tree, mean year slope
+  −0.9199 vs −0.922. Pooling only the 45 PD trees (`$pooled_all` `*_conv`
+  columns) gives 0.046201 (0.007899) vs 0.046188 (0.007899) over all 50 — a
+  difference in the 5th decimal. The S0 phylogenetic-share summary (mean 0.863,
+  lower bound ~0) reflects those 5 trees and should not be quoted; use S1–S7
+  (0.945–0.972). Once contributor/site intercepts are in the mean model
+  (S2–S7) all 50 trees are PD.
+
+### 9.5 What this means for the manuscript and for P7
+
+1. The primary variance evidence is now a **phylogenetic distributional model
+   on the published trees**, not drmSEM and not a brms run pending on Totoro:
+   quote S7 + phylogeny (−6.8 %/decade [−14.0, +1.0], N = 7,651, 72 species,
+   50 trees) as the plan's specification and S3 + phylogeny (−6.3 % [−13.4,
+   +1.5], N = 8,282) as the no-temperature variant, alongside the uncontrolled
+   S0 (+9.6 % [+6.3, +13.1]) to show what the controls do.
+2. The referee-§2.7 σ contradiction is resolved the same way as in §2: the
+   temperature effect on σ is −0.7 % per SD [−8.8, +8.1] (z = −0.16) once
+   contributor and site are in the σ model; the drmSEM "warmer → less variable"
+   path should not be carried forward.
+3. Every σ-model result is engine-robust by construction (the glmmTMB fits are
+   REML maximum-likelihood, the brms path is the Bayesian cross-check if Totoro
+   time is available), and phylogeny-robust by direct comparison.
+4. `update_descriptive_stats.R` (§6, item 3): read the primary numbers from
+   `variance_phylo_results.rds$headline` (or `variance_results.rds$phylo$headline`)
+   instead of `$brms$rubin_summary`.
+
+### 9.6 Engine notes (for GLMMTMB_ENGINE.md; `_phylo_engine.R` not edited)
+
+- `tidy_phylo_fit()` returns `sigma = NA` and therefore a `phylo_prop` that
+  omits the residual variance whenever `dispformula != ~1` (`sigma()` is
+  undefined for glmmTMB models with a dispersion model). Scripts with a σ
+  sub-model must recompute the share with exp(b_σ intercept) as done here
+  (`phylo_share()` in `atlantic_variance_sigma.R`); a `dispformula`-aware
+  `phylo_prop` in the engine would remove the duplication.
+- `tidy_phylo_fit()` builds `varcomp` with `data.frame()`, which mangles the
+  SD names (`spp:(Intercept)` → `spp..Intercept.`, `Main_researcher:(Intercept)`
+  → `Main_researcher..Intercept.`); `check.names = FALSE` would keep them
+  stable. `varcomp` also only carries the conditional-model SDs; the
+  dispersion-model random-effect SDs (`VarCorr(fit)$disp`) are not tidied, so
+  this script refits tree 1 of the headline models to get them.
+- `run_phylo_trees()` pools all trees regardless of `pdHess`; a
+  `pooled_converged` element (pooling the PD trees only) would make the S0-type
+  sensitivity a one-liner. Implemented locally here.
+- Tiers whose mean model has different random effects produce `varcomp` tables
+  with different columns; `dplyr::bind_rows()` (not `rbind`) is needed to stack
+  them.
+
+
+## Phylogenetic tier, final (glmmTMB `propto`, 50 trees) — 2026-09-09 16:12
+
+Supersedes any 1- or 2-tree numbers in the section above. Run: `Rscript atlantic_variance_sigma.R
+--trees 50 --engine glmmTMB`, 9 σ tiers, 1,768 s; 50/50 trees converged except S0 (45/50). Output
+`variance_phylo_results.rds` (`$pooled_all`, `$headline`, `$comparison`, `$varcomp_summary`).
+
+log-residual-SD year terms (per SD-year; % change in residual SD per decade in brackets): S0 +0.046 [+0.031, +0.062] (+9.6 %/decade in residual SD); S2 (+contributor +site in mean and σ) +0.013 [−0.015, +0.040] (+2.5 % [−2.9, +8.2]); S3 full controls −0.033 [−0.073, +0.007] (−6.3 % [−13.4, +1.5]); S4 within-contributor −0.031 [−0.073, +0.010], between −0.053 [−0.218, +0.112]; S6 (species intercepts in σ) +0.017 [−0.024, +0.058]; S7 (S3t + temperature) year −0.035 [−0.076, +0.005], temperature −0.007 [−0.092, +0.078].
+Mean-model year terms in the same fits: S0 −0.922 [−1.381, −0.463]; S2 −0.216 [−0.457, +0.025];
+S3 −0.152 [−0.353, +0.050]; S7 −0.183 [−0.421, +0.056].
+
+Plain statement: the baseline rise in among-individual wing variance (+9.6 % per decade) is a
+between-contributor composition effect. With contributor and site terms in the mean and σ models it
+is +2.5 % [−2.9, +8.2]; under the full controls it is −6.3 % [−13.4, +1.5]; the within-contributor
+σ-year component is −6.0 % [−13.5, +2.0]; temperature has no detectable effect on residual variance
+(−0.7 % per SD of temperature [−9.2, +7.8]). Phylogeny changes nothing: phylogenetic and
+non-phylogenetic σ-year terms differ by ≤ 0.0006 (`$comparison`). Together with the within-contributor
+lnCVR (section above), the manuscript's variance headline does not survive provenance controls.

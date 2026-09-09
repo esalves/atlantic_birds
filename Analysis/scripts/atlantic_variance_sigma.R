@@ -4,24 +4,42 @@
 # variance" result with provenance (contributor), site, sex and season controls.
 # Four parts, each written to output/variance_results.rds:
 #
-#   (1) brms DISTRIBUTIONAL model with a phylogenetic term (the primary variance
-#       evidence, replacing drmSEM):
-#         bf(conc.wing.length ~ Sex + scaled_yr + scaled_lat + scaled_lon +
-#                               scaled_alt + season + (1 + scaled_yr || spp) +
-#                               (1 | gr(species_name, cov = A)) +
-#                               (1 | Main_researcher) + (1 | Municipality),
-#            sigma ~ scaled_yr [+ scaled_tmean] + Sex +
-#                    (1 | Main_researcher) + (1 | Municipality))
-#       fitted across N clootl trees and pooled with Rubin's rules exactly as in
-#       atlantic_parallel.R. scaled_tmean (record-year annual mean temperature at
+#   (1) PHYLOGENETIC DISTRIBUTIONAL model (the primary variance evidence, replacing
+#       drmSEM): the M3 mean structure with a phylogenetic species intercept, and the
+#       plan's sigma sub-model:
+#         conc.wing.length ~ Sex + scaled_yr + scaled_lat + scaled_lon + scaled_alt +
+#                            season + (1 + scaled_yr || spp) + <phylogenetic species
+#                            intercept> + (1 | Main_researcher) + (1 | Municipality)
+#         sigma ~ scaled_yr [+ scaled_tmean] + Sex + (1 | Main_researcher) + (1 | Municipality)
+#       Two engines, chosen with --engine (glmmTMB is the default since 2026-09-09):
+#         * glmmTMB: _phylo_engine.R fits the phylogenetic intercept with glmmTMB's
+#           propto() covariance structure (Williams, McGillycuddy, Drobniak, Bolker,
+#           Warton & Nakagawa 2025, bioRxiv 10.64898/2025.12.20.695312) and the sigma
+#           sub-model with dispformula, REML, on the IDENTICAL 50 trees as the
+#           published brms wing model (data/derived/phylo_A_50trees.rds, cached from
+#           brm0_multiphylo.rda), pooled with Rubin's rules. glmmTMB reproduces the
+#           published brms wing model to 2-3 decimals (glmmtmb_validation_wing.R).
+#           EVERY tier of the sigma ladder in part 2 (S0-S7) is refitted with the
+#           phylogenetic term across the trees (~3 s per fit), so "phylogeny vs no
+#           phylogeny" is a like-for-like comparison on the same records. Results:
+#           output/variance_phylo_results.rds (+ $phylo pointer/headline slot in
+#           variance_results.rds). Headline models: S7 (plan specification, with
+#           scaled_tmean, 7,651 records) and S3 (the --no-tmean variant, 8,282 records).
+#         * brms: the original Stan path, kept as the Bayesian cross-check for Totoro:
+#           bf(<mean with (1 | gr(species_name, cov = A))>, sigma ~ ...) across N
+#           clootl trees, priors below, Rubin-pooled exactly as in atlantic_parallel.R;
+#           output/models/variance_sigma_multiphylo.rda and variance_results.rds$brms.
+#       scaled_tmean (record-year annual mean temperature at
 #       the capture coordinates, from P5's climate_extraction.R) is included ONLY
 #       if data/derived/passer90_climate.rds carries the ID_ABT key and covers
-#       >= 90 % of the complete-case wing sample; the brms model then runs on the
+#       >= 90 % of the complete-case wing sample; the tmean model then runs on the
 #       tmean-complete subset (7,651 of 8,282 records; the 631 missing are coastal
 #       / island localities outside the WorldClim land mask, see
 #       REVISION_NOTES_P3.md s1). --no-tmean forces the 8,282-record model without
-#       the term. If the climate file is absent or stale (no ID_ABT: the pre-2026-09
-#       89-species build) the term is dropped with a message.
+#       the term (glmmTMB engine: fits both S3 and S7 whenever tmean is usable, so
+#       --no-tmean only drops the tmean tiers). If the climate file is absent or
+#       stale (no ID_ABT: the pre-2026-09 89-species build) the term is dropped
+#       with a message.
 #   (2) FAST glmmTMB proxies of the same question that run in seconds
 #       (dispformula = sigma sub-model, no phylogeny): a ladder of models from
 #       "sigma ~ year only" (the continuous analogue of the pooled lnCVR) to the
@@ -52,26 +70,35 @@
 # INPUTS:  data/derived/passer90.rda            (known sex, 73 spp, 12,571 rec)
 #          data/derived/passer90_climate.rds    (P5 live-only build with ID_ABT + scaled_tmean;
 #                                                optional - the script degrades gracefully)
-#          data/raw/AvesDataLite-main/          (clootl tree cloud, offline)
-#          scripts/functions.R (s2.lnCVR), scripts/_sampling_config.R
-# OUTPUTS: output/variance_results.rds          (every quoted number; see $index)
-#          output/models/variance_sigma_multiphylo.rda   (--trees N run)
+#          data/derived/phylo_A_50trees.rds     (50 species correlation matrices of the published
+#                                                brms wing model; built by _phylo_engine.R from
+#                                                output/models/brm0_multiphylo.rda if absent)
+#          data/raw/AvesDataLite-main/          (clootl tree cloud, offline; brms engine / fallback)
+#          scripts/_phylo_engine.R, scripts/functions.R (s2.lnCVR), scripts/_sampling_config.R
+# OUTPUTS: output/variance_results.rds          (every quoted fast-tier number; see $index;
+#                                                $phylo = pointer + headline of the phylogenetic tier)
+#          output/variance_phylo_results.rds    (glmmTMB engine: pooled, per-tree and variance
+#                                                components of every phylogenetic tier)
+#          output/models/variance_sigma_multiphylo.rda   (--engine brms --trees N run)
 #          output/models/variance_sigma_SMOKE.rda        (--smoke run; NOT a result)
 #          figures/variance_summary.png, figures/variance_lncvr_contributor.png
 #
-# RUN:  Rscript Analysis/scripts/atlantic_variance_sigma.R [--fast] [--smoke] [--trees N] [--no-tmean]
-#         --fast      parts 2-4 only (no Stan); default off-server
-#         --smoke     part 1 as a SMOKE TEST: 1 tree, chains = 2, iter = 400
-#                     (checks that the model compiles and runs; NOT a result).
+# RUN:  Rscript Analysis/scripts/atlantic_variance_sigma.R [--fast] [--trees N] [--engine glmmTMB|brms] [--smoke] [--no-tmean]
+#         (no flags)  parts 2-4 + the phylogenetic glmmTMB tier on 50 trees (~25 min on a laptop)
+#         --fast      parts 2-4 only (no phylogenetic tier)
+#         --engine    glmmTMB (default) or brms (Stan; the Bayesian cross-check, Totoro)
+#         --trees N   trees for the phylogenetic tier. Default 50 for glmmTMB; for brms
+#                     50 on the server and 0 (= skip) locally.
+#         --smoke     brms part 1 as a SMOKE TEST (implies --engine brms): 1 tree, chains = 2,
+#                     iter = 400 (checks that the model compiles and runs; NOT a result).
 #                     Locally wrap it in a ~21-min cap because there is no `timeout`
 #                     on macOS:  perl -e 'alarm shift; exec @ARGV' 1260 Rscript ... --smoke
-#         --trees N   full part 1 on N trees with _sampling_config.R settings
-#                     (Totoro: --trees 50). Default: 50 on the server, 0 (skip) locally.
 #         --no-tmean  drop scaled_tmean from the sigma sub-model even when the climate
 #                     file is usable (fits the 8,282-record complete-case sample instead)
 #       Works from the repo root, Analysis/, or Analysis/scripts/.
 #
-# Session used for development (parts 2-4 executed in full; part 1 smoke only):
+# Session used for development (parts 2-4 and the glmmTMB phylogenetic tier executed
+# in full on 50 trees, 2026-09-09; the brms engine ran only as an aborted smoke test):
 #   R 4.6.0; brms 2.23.0, rstan 2.32.7, glmmTMB 1.1.14, lme4 2.0.1,
 #   metafor 5.0.1, data.table 1.18.4, dplyr 1.2.1, tidyr 1.3.2, ggplot2 4.0.3,
 #   patchwork 1.3.2, posterior 1.7.0, ape 5.8.1, MCMCglmm 2.36, phytools 2.5.2,
@@ -107,6 +134,7 @@ fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
 script_path  <- function(...) file.path(ANALYSIS_DIR, "scripts", ...)
 source(script_path("_sampling_config.R"))            # SAMPLING, SAMPLING_CONTROL, .on_server
 source(script_path("functions.R"))                   # s2.lnCVR()
+source(script_path("_phylo_engine.R"))               # phylo_species_name, phylo_A_list, run_phylo_trees (uses the path helpers above)
 dir.create(out_path("models"), showWarnings = FALSE, recursive = TRUE)
 dir.create(fig_path(), showWarnings = FALSE, recursive = TRUE)
 
@@ -119,13 +147,18 @@ args <- commandArgs(trailingOnly = TRUE)
 FAST     <- .flag("--fast")
 SMOKE    <- .flag("--smoke")
 NO_TMEAN <- .flag("--no-tmean")
-N_TREES <- as.integer(.opt("--trees", if (.on_server) 50L else 0L))
+ENGINE   <- .opt("--engine", "glmmTMB")
+if (SMOKE && ENGINE != "brms") { message("[variance] --smoke is a Stan smoke test: engine set to brms"); ENGINE <- "brms" }
+if (!ENGINE %in% c("glmmTMB", "brms")) stop("--engine must be 'glmmTMB' (default) or 'brms'")
+N_TREES <- as.integer(.opt("--trees", if (ENGINE == "glmmTMB") 50L else if (.on_server) 50L else 0L))
 if (SMOKE) N_TREES <- 1L
 if (FAST)  N_TREES <- 0L
-RUN_BRMS <- N_TREES > 0L
-message(sprintf("[variance] mode: %s; trees = %d",
-                if (SMOKE) "SMOKE TEST" else if (RUN_BRMS) "full brms" else "fast (glmmTMB/lme4/metafor only)",
-                N_TREES))
+RUN_PHYLO_TMB <- ENGINE == "glmmTMB" && N_TREES > 0L    # part 1, glmmTMB propto engine (default)
+RUN_BRMS      <- ENGINE == "brms"    && N_TREES > 0L    # part 1, Stan engine (cross-check)
+MODE <- if (SMOKE) "smoke" else if (RUN_BRMS) "brms" else if (RUN_PHYLO_TMB) "glmmTMB-phylo" else "fast"
+message(sprintf("[variance] mode: %s; engine = %s; trees = %d",
+                c(smoke = "SMOKE TEST (brms)", brms = "full brms", `glmmTMB-phylo` = "fast tier + phylogenetic glmmTMB tier",
+                  fast = "fast (glmmTMB/lme4/metafor only, no phylogeny)")[[MODE]], ENGINE, N_TREES))
 
 res <- list(generated = format(Sys.time(), "%Y-%m-%d %H:%M"),
             session   = list(R = R.version.string,
@@ -133,7 +166,7 @@ res <- list(generated = format(Sys.time(), "%Y-%m-%d %H:%M"),
                                             "data.table","dplyr","ggplot2","posterior"),
                                           function(p) tryCatch(as.character(packageVersion(p)),
                                                                error = function(e) NA_character_))),
-            mode = if (SMOKE) "smoke" else if (RUN_BRMS) "brms" else "fast",
+            mode = MODE, engine = ENGINE,
             definitions = c(
               period = "early = Year <= 2006, late = Year >= 2013 (quartile periods of update_descriptive_stats.R)",
               wing   = "conc.wing.length (coalesced right > left > generic), known-sex live adults, 73 species",
@@ -318,7 +351,7 @@ res$glmmTMB_note <- paste(
   "Tiers S0-S6 on the same 8,282-record complete-case sample (Altitude and season non-NA); S3t and S7 on the tmean-complete subset (see $scaled_tmean). REML.",
   "sigma coefficients are on the log-SD scale; pct_decade converts scaled_yr slopes to % change in residual SD per decade.",
   "S4 splits year into within-contributor deviation (yr_within_src) and contributor mean year (yr_src_mean).",
-  "No phylogenetic term (glmmTMB cannot take a covariance-structured group); the brms model (part 1) adds it.")
+  "No phylogenetic term in these tiers; the phylogenetic tier (part 1: $phylo / variance_phylo_results.rds, glmmTMB propto engine, or $brms) refits every tier with it.")
 
 # Random-effect SDs of the sigma sub-model in S3 (how much residual SD varies between contributors)
 if (!is.null(tmb_fits$S3)) {
@@ -596,6 +629,187 @@ res$lncvr_metaregression_data <- mr_dat
 print(res$lncvr_metaregression[, c("analysis", "moderator", "k", "slope", "lower", "upper", "pval", "intercept", "R2")], digits = 3)
 
 # ===========================================================================
+# 1a. PHYLOGENETIC distributional models — glmmTMB propto engine (default)
+# ===========================================================================
+# Every tier of the sigma ladder above is refitted with a phylogenetic species
+# intercept (propto(0 + species_name | g, A), _phylo_engine.R) across the SAME 50
+# trees as the published brms wing model, sigma sub-model via dispformula, REML,
+# Rubin-pooled over trees. Same records as the non-phylogenetic tiers (8,282 /
+# 7,651), so each tier's phylogenetic vs non-phylogenetic estimate is directly
+# comparable. Headline models (REVISION_PLAN.md Phase 3): S7 = plan specification
+# (sigma ~ scaled_yr + scaled_tmean + Sex + (1|contributor) + (1|site), 7,651
+# records) and S3 = the --no-tmean variant on the 8,282-record sample.
+if (RUN_PHYLO_TMB) {
+  message(sprintf("\n[1a] phylogenetic glmmTMB distributional models across %d trees (propto + dispformula) ...", N_TREES))
+  t_phylo0 <- Sys.time()
+  # tree tip names (eBird synonyms as in atlantic_parallel.R); Herpsilochmus_sellowi is
+  # absent from the trees and must be dropped (0 wing records in this sample: checked below)
+  add_phylo_cols <- function(d) {
+    d <- d %>% mutate(species_name = phylo_species_name(Binomial), spp = species_name,
+                      scaled_lon = as.numeric(scaled_lon), scaled_alt = as.numeric(scaled_alt))
+    as.data.frame(d[d$species_name != "Herpsilochmus_sellowi", , drop = FALSE])
+  }
+  ph_cc   <- add_phylo_cols(wing_cc)
+  ph_cc_t <- if (USE_TMEAN) add_phylo_cols(wing_cc_t) else NULL
+  n_dropped_sellowi <- nrow(wing_cc) - nrow(ph_cc)
+  ph_species <- sort(unique(ph_cc$species_name))
+  A_list <- phylo_A_list(ph_species, n_trees = N_TREES)
+  A_list <- A_list[seq_len(min(N_TREES, length(A_list)))]
+  A_cache <- derived_path("phylo_A_50trees.rds")
+  message(sprintf("  %d records (%d dropped as H. sellowi), %d species, %d trees from %s",
+                  nrow(ph_cc), n_dropped_sellowi, length(ph_species), length(A_list),
+                  if (file.exists(A_cache)) basename(A_cache) else "clootl fallback"))
+
+  # baseline residual SD for the phylogenetic-share denominator: sigma() is NA under a
+  # dispformula, so use exp(b_sigma_Intercept) (female, reference season, covariates at
+  # 0, sigma random effects at 0) per tree.
+  phylo_share <- function(run) {
+    b0 <- run$per_tree_fixed %>% filter(component == "disp", par == "(Intercept)") %>% select(tree, b_sigma_int = estimate)
+    vc <- run$varcomp %>% left_join(b0, by = "tree")
+    other_cols <- setdiff(names(vc), c("tree", "sd_phylo", "sigma", "phylo_prop", "converged", "b_sigma_int"))
+    other_ss <- rowSums(as.matrix(vc[, other_cols, drop = FALSE])^2, na.rm = TRUE)
+    vc$sigma_baseline <- exp(vc$b_sigma_int)
+    vc$phylo_share_incl_resid <- vc$sd_phylo^2 / (vc$sd_phylo^2 + other_ss + vc$sigma_baseline^2)
+    # tidy_phylo_fit() passes the SD names through data.frame(), so "spp:(Intercept)" arrives as "spp..Intercept."
+    spp_int <- grep("^spp.*Intercept", names(vc), value = TRUE)[1]
+    vc$phylo_share_between_species <- vc$sd_phylo^2 / (vc$sd_phylo^2 + vc[[spp_int]]^2)
+    names(vc)[names(vc) == spp_int] <- "sd_spp_intercept"
+    names(vc)[names(vc) == "spp.scaled_yr"] <- "sd_spp_year_slope"
+    names(vc) <- sub("^Main_researcher.*Intercept.*$", "sd_contributor", names(vc))
+    names(vc) <- sub("^Municipality.*Intercept.*$", "sd_site", names(vc))
+    vc
+  }
+
+  phylo_runs <- list(); phylo_rows <- list(); phylo_pooled_all <- list(); phylo_vc <- list(); phylo_timing <- list()
+  for (nm in names(tiers)) {
+    dat_i <- if (identical(tiers[[nm]]$data, "wing_cc_t")) ph_cc_t else ph_cc
+    r <- tryCatch(run_phylo_trees(tiers[[nm]]$mean, dat_i, A_list, dispformula = tiers[[nm]]$disp, verbose = FALSE),
+                  error = function(e) e)
+    if (inherits(r, "error")) { message("  ", nm, " FAILED: ", conditionMessage(r)); next }
+    r$fits <- NULL
+    r$varcomp <- phylo_share(r)
+    r$formula <- c(mean = deparse1(tiers[[nm]]$mean), sigma = deparse1(tiers[[nm]]$disp),
+                   phylo = "+ propto(0 + species_name | g, A)  [appended by fit_phylo_glmmtmb]")
+    r$label <- tiers[[nm]]$label; r$n <- nrow(dat_i); r$n_species <- length(unique(dat_i$species_name))
+    r$n_converged <- sum(r$varcomp$converged)
+    # sensitivity: Rubin pool over the trees with a positive-definite Hessian only (the engine pools all trees).
+    # Diagnosis (2026-09-09, S0 on 5/50 trees): a non-PD Hessian here means the optimizer settled in the
+    # alternative mode where the non-phylogenetic species intercept SD (~16) absorbs the between-species
+    # variance and the phylogenetic SD is ~0.1 (instead of ~0.005 and ~24): the two species-level terms are
+    # weakly identified against each other on those trees. Fixed effects, including the sigma year term, are
+    # identical to 3-4 decimals in either mode, so the *_conv pools differ from the all-tree pools only in
+    # the 6th decimal; the per-tree varcomp table (sd_phylo vs sd_spp_intercept) shows which mode each tree hit.
+    conv_trees <- r$varcomp$tree[r$varcomp$converged]
+    r$pooled_converged <- if (length(conv_trees)) pool_rubin_df(r$per_tree_fixed %>% filter(tree %in% conv_trees)) else NULL
+    phylo_runs[[nm]] <- r
+    pooled <- r$pooled %>% mutate(component = recode(component, disp = "sigma", cond = "mu"), tier = nm, label = tiers[[nm]]$label)
+    if (!is.null(r$pooled_converged))
+      pooled <- pooled %>% left_join(r$pooled_converged %>% mutate(component = recode(component, disp = "sigma", cond = "mu")) %>%
+                                       select(component, par, estimate_conv = estimate, se_conv = se, lower_conv = lower, upper_conv = upper, m_conv = m),
+                                     by = c("component", "par"))
+    phylo_pooled_all[[nm]] <- pooled
+    rows <- pooled %>% filter(component == "sigma" | (component == "mu" & par == "scaled_yr")) %>%
+      mutate(pct_decade    = ifelse(component == "sigma" & par %in% c("scaled_yr", "yr_within_src", "yr_src_mean"), pct_decade(estimate), NA),
+             pct_decade_lo = ifelse(is.na(pct_decade), NA, pct_decade(lower)),
+             pct_decade_hi = ifelse(is.na(pct_decade), NA, pct_decade(upper)),
+             pct_per_sd_tmean    = ifelse(par == "scaled_tmean", 100 * (exp(estimate) - 1), NA),
+             pct_per_sd_tmean_lo = ifelse(par == "scaled_tmean", 100 * (exp(lower) - 1), NA),
+             pct_per_sd_tmean_hi = ifelse(par == "scaled_tmean", 100 * (exp(upper) - 1), NA),
+             n = nrow(dat_i), n_species = r$n_species, n_trees = r$n_trees, n_converged = r$n_converged,
+             secs = r$secs, engine = "glmmTMB propto + dispformula, REML, Rubin-pooled")
+    phylo_rows[[nm]] <- rows
+    phylo_vc[[nm]] <- r$varcomp %>% mutate(tier = nm, .before = 1)
+    phylo_timing[[nm]] <- data.frame(tier = nm, n = nrow(dat_i), n_trees = r$n_trees, n_converged = r$n_converged,
+                                     secs_total = r$secs, secs_per_tree = r$secs / r$n_trees)
+    yr <- rows %>% filter(component == "sigma", par %in% c("scaled_yr", "yr_within_src")) %>% slice(1)
+    message(sprintf("  %-3s sigma~year b = %+.4f (SE %.4f; between-tree var %.1e) => %+.1f %%/decade [%+.1f, %+.1f]; mu year %+.3f (SE %.3f); %d/%d trees pdHess; %.0f s",
+                    nm, yr$estimate, yr$se, yr$between_tree_var, yr$pct_decade, yr$pct_decade_lo, yr$pct_decade_hi,
+                    rows$estimate[rows$component == "mu"], rows$se[rows$component == "mu"], r$n_converged, r$n_trees, r$secs))
+  }
+  phylo_table  <- do.call(rbind, phylo_rows);  rownames(phylo_table) <- NULL
+  phylo_pooled <- do.call(rbind, phylo_pooled_all); rownames(phylo_pooled) <- NULL
+  phylo_vc_all <- bind_rows(phylo_vc); rownames(phylo_vc_all) <- NULL   # S0/S1 lack contributor/site columns
+  phylo_timing <- do.call(rbind, phylo_timing)
+
+  # --- like-for-like comparison with the non-phylogenetic tiers (same records) ------
+  phylo_cmp <- phylo_table %>%
+    select(tier, component, par, est_phylo = estimate, se_phylo = se, lo_phylo = lower, hi_phylo = upper,
+           pct_decade_phylo = pct_decade, pct_decade_lo_phylo = pct_decade_lo, pct_decade_hi_phylo = pct_decade_hi, n_trees, n_converged) %>%
+    inner_join(res$glmmTMB %>% select(tier, component, par, est_nophylo = estimate, se_nophylo = se, lo_nophylo = lower, hi_nophylo = upper,
+                                      pct_decade_nophylo = pct_decade, pct_decade_lo_nophylo = pct_decade_lo, pct_decade_hi_nophylo = pct_decade_hi, n),
+               by = c("tier", "component", "par")) %>%
+    mutate(diff_est = est_phylo - est_nophylo, se_ratio = se_phylo / se_nophylo,
+           excludes_zero_phylo = lo_phylo > 0 | hi_phylo < 0, excludes_zero_nophylo = lo_nophylo > 0 | hi_nophylo < 0)
+
+  # --- headline models: S7 (plan spec, with tmean) and S3 (--no-tmean variant) -------
+  headline_row <- function(tier, par) phylo_table %>% filter(tier == !!tier, component == "sigma", par == !!par)
+  phylo_headline <- bind_rows(
+    if (!is.null(phylo_runs$S7)) headline_row("S7", "scaled_yr") %>% mutate(role = "plan specification (with scaled_tmean), tmean-complete sample"),
+    if (!is.null(phylo_runs$S7)) headline_row("S7", "scaled_tmean") %>% mutate(role = "plan specification: temperature term on sigma"),
+    if (!is.null(phylo_runs$S3)) headline_row("S3", "scaled_yr") %>% mutate(role = "--no-tmean variant (no scaled_tmean), 8,282-record sample"))
+
+  # --- single-tree (tree 1) fits of the headline models for quantities the pooled
+  #     tables do not carry: sigma random-effect SDs, contributor SD multipliers, species slopes
+  headline_tree1 <- list()
+  for (nm in intersect(c("S3", "S7"), names(phylo_runs))) {
+    dat_i <- if (identical(tiers[[nm]]$data, "wing_cc_t")) ph_cc_t else ph_cc
+    f1 <- fit_phylo_glmmtmb(tiers[[nm]]$mean, dat_i, A_list[[1]], dispformula = tiers[[nm]]$disp)
+    vc1 <- VarCorr(f1)
+    re_src <- ranef(f1)$disp$Main_researcher[, 1]
+    headline_tree1[[nm]] <- list(
+      tree = 1L, converged = isTRUE(f1$sdr$pdHess), n = nobs(f1),
+      sigma_re_sd = sapply(vc1$disp, function(x) attr(x, "stddev")[[1]]),
+      mu_re_sd    = unlist(lapply(vc1$cond[setdiff(names(vc1$cond), "g")], function(x) attr(x, "stddev"))),
+      sd_phylo    = attr(vc1$cond$g, "stddev")[[1]],
+      contributor_sd_multiplier_range = round(range(exp(re_src)), 2),
+      species_year_slopes = tryCatch(species_slopes_phylo(f1, "scaled_yr", "spp"), error = function(e) conditionMessage(e)),
+      disp_coef = summary(f1)$coefficients$disp, cond_coef = summary(f1)$coefficients$cond)
+  }
+
+  phylo_secs_total <- as.numeric(Sys.time() - t_phylo0, units = "secs")
+  phylo_out <- list(
+    generated = format(Sys.time(), "%Y-%m-%d %H:%M"),
+    engine = "glmmTMB propto (Williams et al. 2025) + dispformula; REML; Rubin's rules over trees (_phylo_engine.R)",
+    glmmTMB_version = as.character(packageVersion("glmmTMB")), R = R.version.string,
+    n_trees = length(A_list), tree_source = if (file.exists(A_cache)) "phylo_A_50trees.rds (the 50 trees of the published brms wing model, brm0_multiphylo.rda)" else "clootl fallback (_phylo_engine.R)",
+    n_records = c(complete_case = nrow(ph_cc), tmean_complete = if (USE_TMEAN) nrow(ph_cc_t) else NA_integer_),
+    n_species = length(ph_species), species_dropped = c(Herpsilochmus_sellowi = n_dropped_sellowi),
+    scaled_tmean_used = USE_TMEAN, sd_year_scaling = SD_YR,
+    tiers = lapply(phylo_runs, function(r) r[c("label", "formula", "n", "n_species", "n_trees", "n_converged", "secs")]),
+    table = phylo_table,                 # sigma pars + mu year per tier (mirrors variance_results.rds$glmmTMB)
+    pooled_all = phylo_pooled,           # every pooled fixed effect (mu and sigma) per tier; *_conv = pooled over pdHess trees only
+    per_tree_fixed = do.call(rbind, lapply(names(phylo_runs), function(nm) cbind(tier = nm, phylo_runs[[nm]]$per_tree_fixed))),
+    varcomp = phylo_vc_all,              # per tree: sd_phylo, spp/contributor/site SDs, exp(b_sigma_int), phylo shares, pdHess
+    varcomp_summary = phylo_vc_all %>% group_by(tier) %>%
+      summarise(across(c(sd_phylo, sigma_baseline, phylo_share_incl_resid, phylo_share_between_species, sd_spp_intercept, sd_spp_year_slope),
+                       list(mean = ~mean(.x, na.rm = TRUE), lo = ~quantile(.x, .025, na.rm = TRUE), hi = ~quantile(.x, .975, na.rm = TRUE))),
+                n_converged = sum(converged), n_trees = n(), .groups = "drop"),
+    comparison = phylo_cmp,              # phylogenetic vs non-phylogenetic, same tier, same records
+    headline = phylo_headline,
+    headline_tree1 = headline_tree1,
+    timing = phylo_timing, secs_total = phylo_secs_total,
+    definitions = c(
+      sigma_pct_decade = res$definitions[["sigma_pct_decade"]],
+      pct_per_sd_tmean = "100*(exp(b_sigma_scaled_tmean) - 1): % change in residual SD per SD of record-year mean temperature",
+      phylo_share_incl_resid = "sd_phylo^2 / (sd_phylo^2 + sd_spp_int^2 + sd_spp_yr^2 + sd_contributor^2 + sd_site^2 + exp(b_sigma_Intercept)^2), per tree (comparable with atlantic_parallel.R's phylogenetic signal; the residual SD is the sigma-model baseline)",
+      phylo_share_between_species = "sd_phylo^2 / (sd_phylo^2 + sd_spp_int^2): share of the between-species intercept variance that is phylogenetic",
+      converged = "glmmTMB positive-definite Hessian (sdr$pdHess) per tree; Rubin pooling (estimate, se, lower, upper) uses all trees; *_conv columns pool the pdHess trees only (m_conv of them)",
+      intervals = "estimate +/- 1.96 * Rubin SE (within-tree variance + (1 + 1/m) * between-tree variance)"),
+    note = paste("The species random slope (1 + scaled_yr || spp) stays in the mean model alongside the phylogenetic intercept,",
+                 "as in atlantic_parallel.R; the non-phylogenetic species intercept SD collapses towards 0 because the phylogenetic",
+                 "term absorbs it (phylogenetic signal ~0.95 in the published wing model)."))
+  saveRDS(phylo_out, out_path("variance_phylo_results.rds"))
+  message(sprintf("wrote %s (%d tiers, %d trees, %.1f min)", out_path("variance_phylo_results.rds"), length(phylo_runs), length(A_list), phylo_secs_total / 60))
+  # pointer + headline in the fast-tier file (fast-tier slots untouched)
+  res$phylo <- list(file = "variance_phylo_results.rds", generated = phylo_out$generated, engine = phylo_out$engine,
+                    n_trees = phylo_out$n_trees, tree_source = phylo_out$tree_source, n_records = phylo_out$n_records,
+                    headline = phylo_headline, table = phylo_table, comparison = phylo_cmp, timing = phylo_timing, secs_total = phylo_secs_total)
+  message("phylogenetic vs non-phylogenetic sigma year effect (%/decade), same records:")
+  print(phylo_cmp %>% filter(component == "sigma", par %in% c("scaled_yr", "yr_within_src", "yr_src_mean", "scaled_tmean")) %>%
+          select(tier, par, est_nophylo, est_phylo, se_nophylo, se_phylo, pct_decade_nophylo, pct_decade_phylo, n_converged), digits = 3)
+}
+
+# ===========================================================================
 # Save fast results (before any Stan work) and draw the figures
 # ===========================================================================
 res$index <- c(
@@ -608,8 +822,9 @@ res$index <- c(
   variance_decomposition_summary = "between-contributor share of within-cell variance by period",
   cv_by_period_min5 = "median CV pooled vs within-contributor, n >= 5",
   lncvr_metaregression = "species lnCVR vs change in log contributors / sites",
-  brms = "Rubin-pooled distributional model (only after --trees N)",
-  brms_smoke = "smoke-test summary (NOT a result)")
+  phylo = "glmmTMB propto engine (default --engine): pointer to variance_phylo_results.rds + headline (S7 with tmean, S3 without) + phylo-vs-no-phylo comparison of every tier",
+  brms = "Rubin-pooled brms distributional model (only after --engine brms --trees N)",
+  brms_smoke = "brms smoke-test summary (NOT a result)")
 saveRDS(res, out_path("variance_results.rds"))
 message("wrote ", out_path("variance_results.rds"), " (fast parts)")
 
@@ -634,12 +849,28 @@ fb <- res$glmmTMB %>% filter(component == "sigma", par %in% c("scaled_yr", "yr_w
          src = "glmmTMB dispformula") %>%
   select(lab, pct_decade, pct_decade_lo, pct_decade_hi, src)
 fb2 <- res$two_stage %>% transmute(lab = tier, pct_decade, pct_decade_lo, pct_decade_hi, src = "lme4 log|residual|")
-fb <- bind_rows(fb, fb2) %>% mutate(lab = factor(lab, levels = rev(unique(lab))))
+fb <- bind_rows(fb, fb2)
+if (!is.null(res$phylo)) {   # phylogenetic tier (glmmTMB propto, Rubin-pooled over trees): same tiers, "+ phylo" rows
+  fb3 <- res$phylo$table %>% filter(component == "sigma", par %in% c("scaled_yr", "yr_within_src", "yr_src_mean")) %>%
+    mutate(lab = paste0(ifelse(par == "scaled_yr", tier, paste0(tier, ifelse(par == "yr_within_src", " within-contributor", " between-contributor"))),
+                        " + phylogeny"),
+           src = sprintf("glmmTMB dispformula + phylogeny (%d trees)", res$phylo$n_trees)) %>%
+    select(lab, pct_decade, pct_decade_lo, pct_decade_hi, src)
+  # interleave: each phylogenetic row directly under its non-phylogenetic tier
+  ord <- unlist(lapply(fb$lab[fb$src == "glmmTMB dispformula"], function(l) c(l, paste0(l, " + phylogeny"))))
+  fb <- bind_rows(fb, fb3) %>% mutate(lab = factor(lab, levels = rev(c(ord, fb2$lab))))
+} else {
+  fb <- fb %>% mutate(lab = factor(lab, levels = rev(unique(lab))))
+}
 pB <- ggplot(fb, aes(x = pct_decade, y = lab, colour = src)) +
   geom_vline(xintercept = 0, linetype = 2, colour = "grey50") +
   geom_errorbar(aes(xmin = pct_decade_lo, xmax = pct_decade_hi), width = 0.2, orientation = "y") +
   geom_point(size = 2.2) +
-  scale_colour_manual(values = c("glmmTMB dispformula" = "#1b6ca8", "lme4 log|residual|" = "#c0504d"), name = NULL) +
+  scale_colour_manual(values = setNames(c("#1b6ca8", "#c0504d", "#2e8b57"),
+                                        c("glmmTMB dispformula", "lme4 log|residual|",
+                                          sprintf("glmmTMB dispformula + phylogeny (%d trees)", if (!is.null(res$phylo)) res$phylo$n_trees else N_TREES))),
+                      name = NULL) +
+  guides(colour = guide_legend(nrow = if (!is.null(res$phylo)) 2 else 1)) +
   labs(x = "% change in residual SD of wing length per decade  [95% CI]", y = NULL,
        title = "B. Continuous sigma models: year effect on residual SD") +
   theme(legend.position = "bottom")
@@ -657,8 +888,8 @@ pD <- ggplot(decomp, aes(x = period, y = share_between, fill = period)) +
   scale_fill_manual(values = c(early = "#7fa8c9", late = "#d9822b"), guide = "none") +
   labs(x = NULL, y = "between-contributor share of within-cell variance",
        title = "D. Between-contributor share of within-cell variance")
-fig <- (pA | pB) / (pC | pD) + plot_layout(heights = c(1.2, 1))
-ggsave(fig_path("variance_summary.png"), fig, width = 15, height = 10, dpi = 200, bg = "white")
+fig <- (pA | pB) / (pC | pD) + plot_layout(heights = c(if (!is.null(res$phylo)) 1.6 else 1.2, 1))
+ggsave(fig_path("variance_summary.png"), fig, width = 15, height = if (!is.null(res$phylo)) 12 else 10, dpi = 200, bg = "white")
 
 # per-cell within-contributor lnCVR forest (n >= 5)
 wc5 <- src_tables[["5"]] %>% mutate(cell = paste(gsub("_", " ", Binomial), Sex, Main_researcher, sep = " / "),
@@ -674,10 +905,12 @@ ggsave(fig_path("variance_lncvr_contributor.png"), pE, width = 10, height = 6, d
 message("wrote figures/variance_summary.png, figures/variance_lncvr_contributor.png")
 
 # ===========================================================================
-# 1. brms distributional model with phylogeny (Totoro: --trees 50; local: --smoke)
+# 1b. brms distributional model with phylogeny — Stan engine, kept as the Bayesian
+#     cross-check (--engine brms --trees N on Totoro; --smoke locally)
 # ===========================================================================
 if (!RUN_BRMS) {
-  message("\n[1] brms distributional model SKIPPED (use --smoke locally or --trees N on the server).")
+  message("\n[1b] brms distributional model SKIPPED (engine = ", ENGINE,
+          if (RUN_PHYLO_TMB) "; the phylogenetic tier ran in glmmTMB above" else "; use --engine brms --smoke locally or --engine brms --trees N on the server", ").")
   quit(save = "no", status = 0)
 }
 
