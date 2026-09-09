@@ -69,9 +69,10 @@ wing.by.spp <- passer.quart.years %>%
   group_by(spp = Binomial, period) %>%
   summarise(mean.wing       = mean(conc.wing.length, na.rm = TRUE),
             sd.wing         = sd(conc.wing.length,   na.rm = TRUE),
-            sample.n.wing   = n(),
+            sample.n.wing   = sum(!is.na(conc.wing.length)),
             mean.bill.width = mean(Bill_width.mm.,   na.rm = TRUE),
             sd.bill         = sd(Bill_width.mm.,     na.rm = TRUE),
+            sample.n.bill   = sum(!is.na(Bill_width.mm.)),
             .groups = "drop_last") %>%
   mutate(size.trend      = mean.wing - lag(mean.wing),
          size.trend.bill = mean.bill.width - lag(mean.bill.width)) %>%
@@ -90,7 +91,7 @@ out$bill_quartile_n <- out$bill_dec + out$bill_inc
 # --- lnCVR meta-analyses (wing & bill) -------------------------------------
 dat.lnCVR <- dcast(setDT(wing.by.spp), spp ~ period,
                    value.var = c("mean.wing", "sd.wing", "mean.bill.width",
-                                 "sd.bill", "sample.n.wing"))
+                                 "sd.bill", "sample.n.wing", "sample.n.bill"))
 
 cor.wing.e <- cor(log(wing.by.spp$mean.wing[wing.by.spp$period == "1990-2006"]),
                   log(wing.by.spp$sd.wing[wing.by.spp$period == "1990-2006"]),
@@ -115,11 +116,11 @@ dat.lnCVR$s2.lnCVR.wing <- s2.lnCVR(dat.lnCVR$`mean.wing_1990-2006`, dat.lnCVR$`
 
 dat.lnCVR$lnCVR.bill <- log((dat.lnCVR$`sd.bill_2013-2018`/dat.lnCVR$`mean.bill.width_2013-2018`)/
                             (dat.lnCVR$`sd.bill_1990-2006`/dat.lnCVR$`mean.bill.width_1990-2006`)) +
-  (1/(2*(dat.lnCVR$`sample.n.wing_2013-2018`-1))) - (1/(2*(dat.lnCVR$`sample.n.wing_1990-2006`-1)))
+  (1/(2*(dat.lnCVR$`sample.n.bill_2013-2018`-1))) - (1/(2*(dat.lnCVR$`sample.n.bill_1990-2006`-1)))
 dat.lnCVR$s2.lnCVR.bill <- s2.lnCVR(dat.lnCVR$`mean.bill.width_1990-2006`, dat.lnCVR$`sd.bill_1990-2006`,
-                                    dat.lnCVR$`sample.n.wing_1990-2006`, cor.bill.e,
+                                    dat.lnCVR$`sample.n.bill_1990-2006`, cor.bill.e,
                                     dat.lnCVR$`mean.bill.width_2013-2018`, dat.lnCVR$`sd.bill_2013-2018`,
-                                    dat.lnCVR$`sample.n.wing_2013-2018`, cor.bill.l)
+                                    dat.lnCVR$`sample.n.bill_2013-2018`, cor.bill.l)
 
 m.wing <- rma(yi = lnCVR.wing, vi = s2.lnCVR.wing, method = "REML", data = dat.lnCVR)
 m.bill <- rma(yi = lnCVR.bill, vi = s2.lnCVR.bill, method = "REML", data = dat.lnCVR)
@@ -134,6 +135,32 @@ out$lncvr_bill_lo <- round(m.bill$ci.lb, 3)
 out$lncvr_bill_hi <- round(m.bill$ci.ub, 3)
 out$lncvr_bill_k  <- m.bill$k
 out$lncvr_bill_I2 <- round(m.bill$I2, 1)
+
+# Attach variance results slots if available (REVISION_NOTES_P3.md §6)
+var_file <- out_path("variance_results.rds")
+if (file.exists(var_file)) {
+  var_res <- readRDS(var_file)
+  if (!is.null(var_res$lncvr)) {
+    # within-contributor lnCVR
+    r_src <- var_res$lncvr[var_res$lncvr$analysis == "within species x sex x contributor, n >= 5" & var_res$lncvr$model == "rma", ]
+    if (nrow(r_src) > 0) {
+      out$lncvr_wing_src <- round(r_src$estimate[1], 3)
+      out$lncvr_wing_src_lo <- round(r_src$lower[1], 3)
+      out$lncvr_wing_src_hi <- round(r_src$upper[1], 3)
+      out$lncvr_wing_src_k <- r_src$k[1]
+    }
+  }
+  if (!is.null(var_res$contributors_per_cell_summary)) {
+    c_sum <- as.data.frame(var_res$contributors_per_cell_summary)
+    out$contrib_per_cell_early <- c_sum$mean_contrib[c_sum$period == "early"]
+    out$contrib_per_cell_late  <- c_sum$mean_contrib[c_sum$period == "late"]
+  }
+  if (!is.null(var_res$variance_decomposition_summary)) {
+    v_sum <- as.data.frame(var_res$variance_decomposition_summary)
+    out$var_share_early <- v_sum$median_share_between[v_sum$period == "early"]
+    out$var_share_late  <- v_sum$median_share_between[v_sum$period == "late"]
+  }
+}
 
 # --- WING model: pooled fixed effects + phylogenetic signal ----------------
 load(out_path("models", "brm0_multiphylo.rda"))          # fits, rubin_summary, clootl_version

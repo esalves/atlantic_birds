@@ -332,7 +332,7 @@ no within-study temporal information to model. The "shallower without ants"
 sentence was a logic error (no-ants β −1.22 [−1.29, −1.15] vs −1.40 [−1.46, −1.34]
 with ants: ants steepened the pooled slope). Fitted objects and data are archived
 under `../../archive/predicts/` (README there); `arthropod_estimates.rds` and
-`fig-arthropods.png` follow once `index.qmd` stops reading them. The drmSEM
+`fig-arthropods.png` have also been moved to `../../archive/predicts/` following the Phase 7 rewrite. The drmSEM
 (`atlantic_drmsem.R` v4) now refuses `INCLUDE_ARTHRO = TRUE` without an explicit
 override, adds a contributor intercept on the wing node, and is supplementary /
 exploratory with an authorship disclosure; its §3 numbers (2026-06-15 fit) are

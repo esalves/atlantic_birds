@@ -1,7 +1,7 @@
 # Manuscript
 
-Quarto source for *"Shrinking body size and rising prey scarcity in Atlantic
-Forest birds over 24 years of climate change."*
+Quarto source for *"Apparent morphological trends in Atlantic Forest birds
+attenuate under observer and spatial controls."*
 
 ## Files
 
@@ -9,17 +9,15 @@ Forest birds over 24 years of climate change."*
   analysis outputs in `../Analysis/output/` (no model fitting here); figures are
   external PNGs in `images/`.
 - `references.bib` — bibliography.
-- `make_figures.py` — regenerates Figs 1–4 (map, wing trend, per-species
-  trajectories, lnCVR forest plots) into `images/` from
-  `../Analysis/data/derived/passer90_export.csv`. The arthropod figure and the
-  drmSEM figure are produced by the R analysis (see `../Analysis/scripts/`).
+- `make_figures.py` — regenerates Figs 1–2, caterpillar, and supplementary figures
+  into `images/` from `../Analysis/output/figure_data/` and `passer90_export.csv`.
 - `data/south_america.geojson` — offline basemap for `make_figures.py`.
 - `_quarto.yml` — renders `index.qmd` to HTML + Word.
 
 ## Build
 
 ```sh
-python make_figures.py        # refresh figures (needs the packages in requirements.txt)
+python3 make_figures.py       # refresh figures (needs matplotlib, pandas, geopandas)
 quarto render index.qmd       # → _manuscript/ (HTML + docx; git-ignored, regenerated)
 ```
 

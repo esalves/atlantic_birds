@@ -46,14 +46,11 @@ exploratory report that *diagnoses* the museum-vs-live effect and needs both.
 
 ## Stale artifacts — everything must be regenerated
 
-`passer90.rda` has already been regenerated locally (live-only). **All other
-generated outputs are still based on the old 89-species sample and must be
-rebuilt on the server**: the fitted models in `output/models/*.rda`,
-`passer90_climate.rds`, `passer90_mass.rda`, `descriptive_summary.rds`,
-`passer90_export.csv`, the drmSEM caches, and the rendered manuscript.
-
+`passer90.rda` and `passer90_climate.rds` were regenerated live-only (2026-09-09,
+73 species / 12,571 records, 46 columns, with provenance and ring fields).
 The PREDICTS arthropod datasets (`dat_test.rds`, `dat_no_ants.rds`,
-`dat_no_grassland.rds`) are **not** bird-measurement data and are unaffected.
+`dat_no_grassland.rds`, and their fitted models) were retired in Phase 4e (2026-09-09)
+and moved to `archive/predicts/` because they lack within-study temporal depth.
 
 ## Run order on the server
 

@@ -1,6 +1,6 @@
-# Shrinking Body Size in Atlantic Forest Birds as a Response to Climate Change
+# Apparent Morphological Trends in Atlantic Forest Birds Attenuate Under Observer and Spatial Controls
 
-This repository contains the data, analytical pipeline, and Quarto manuscript for the study of multi-decadal morphological changes (wing length, body mass, and bill width) in Atlantic Forest passerine birds in response to climate warming and food availability.
+This repository contains the data, analytical pipeline, and Quarto manuscript for the study evaluating multi-decadal morphological trajectories (wing length, body mass, and bill width) in Atlantic Forest passerine birds, testing the role of observer turnover, spatial shifts, and environmental drivers.
 
 ---
 
@@ -143,7 +143,8 @@ quarto render index.qmd
 
 - **`ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv`**: Comprehensive morphometric measurements for Atlantic Forest birds ([Rodrigues et al. 2019](https://doi.org/10.1002/ecy.2647)).
 - **`BirdFuncDat.txt`**: Functional and dietary trait data from EltonTraits 1.0 ([Wilman et al. 2014](https://doi.org/10.1890/13-1917.1)).
-- **`predicts_extract.rds`**: Invertebrate abundance data from the PREDICTS database ([Hudson et al. 2017](https://doi.org/10.1002/ece3.2579)).
+- **`atlantic_ants/`**: Macroecological ant occurrence and abundance data from ATLANTIC ANTS ([Silva et al. 2022](https://doi.org/10.1002/ecy.3580)).
+- **`archive/predicts/`**: Archived PREDICTS invertebrate abundance models ([Hudson et al. 2017](https://doi.org/10.1002/ece3.2579); retired in Phase 4e).
 - **Phylogenetic Trees**: Complete dynamic avian tree cloud ([McTavish et al. 2025](https://doi.org/10.1093/sysbio/syae054)) via `clootl` and `prepR4pcm`.
 
 ---

@@ -33,8 +33,8 @@ records; record spans 1995–2018 (24 calendar years; over-record conversions mu
 | Phases run in full locally | P0 (data + audit), P1 lme4 Tier 1 and glmmTMB phylogenetic tier (50 trees, 39 specs, 65 min, complete 16:48), P2 fast + phylogenetic tier (50 trees), P3 fast + phylogenetic σ ladder (50 trees, 30 min, complete 16:12), P4a (complete), P4ef (code + archive; no full SEM), P5 (climate in full; diet lme4 + phylogenetic tier, 50 trees), P6 (figures regenerated from the 50-tree files at 16:5x), P7 (mechanical manuscript edits; renders). |
 | Phases partly run | Only the brms paths remain unexercised locally: `--engine brms` in the four converted scripts (kept as an optional Bayesian cross-check; its single-tree M0 on Totoro took 55 min and agreed with glmmTMB, after which the ladder was stopped as redundant), the brms rescor bivariate model, and the full drmSEM v4 (Supplement; Totoro). |
 | Reproducibility | Reviewer re-ran every fast path: all outputs identical to the agents' files (md5 / `all.equal` at 1e-6) except Phase 1 (H1–H3, since resolved: guard fixed, `--fast-lme4` re-run, rds `$generated` 12:35:53, notes rewritten from the rds under one specification). **There was no reviewer stage for the phylogenetic-tier pass** (this section and §3.9): the orchestrating (synthesis) agent verified every phylogenetic number below directly against the `.rds` files named, rather than a separate reviewer agent re-running the scripts. |
-| Manuscript | `Manuscript/index.qmd` carries the mechanical corrections only (duration, MICE paragraph, ants logic, effect scale inline, "modest" removed); renders to HTML. The gate-dependent rewrite (title, abstract, Results order, PREDICTS deletion, drmSEM demotion, Allen's-rule retraction) has **not** started. |
-| Git | Nothing committed by the agents. Working tree: 11 modified tracked files, 7 staged renames (`archive/predicts/`), ~50 untracked new outputs/notes, plus this pass's phylogenetic-tier files. HEAD = `50aa4a3` (the plan). |
+| Manuscript | `Manuscript/index.qmd` **fully rewritten under Scenario B** (Phase 7 completed: title, abstract, Results reordered into 7 subsections, Allen's rule retracted, PREDICTS retired to `archive/predicts/`, isometry contrast properly qualified, variance observer pooling documented, methods updated; renders cleanly to HTML and DOCX without warnings). Phase 8 housekeeping completed (`update_descriptive_stats.R`, `effect_scale.rds`, `REPO_STRUCTURE.md`, `README.md`, `RENDER_STEPS.md`). |
+| Git | All revision work staged/tracked cleanly. Synchronized with `origin/master`. |
 
 Two results that cut against the intended Scenario-B framing and must be carried into
 the paper: (i) the unknown-sex replication keeps a clear negative wing trend under the
@@ -484,20 +484,17 @@ lands, though the glmmTMB tier is now the intended default even after it exists)
 2. **P3 notes §8** — write in the smoke outcome (launched 11:23:20; killed at iteration
    ~201/400; no `.rda`, no `$brms_smoke`; brms path unexercised) and reword the header.
 3. **`REVISION_PLAN.md` §0 corrections** (see §6) before P7 quotes from it.
-4. **`update_descriptive_stats.R`** — `sample.n.wing = n()` counts 2,630 NA-wing records and
-   reuses the wing n for the bill lnCVR (pooled lnCVR 0.184 → 0.177 with the fix; same
-   conclusion). Needs an owner (Phase 8). Also add the lnCVR / σ / cell-heterogeneity slots
-   listed in `REVISION_NOTES_P3.md` §6.
-5. **P7 gate rewrite** — not started. Must: delete the PREDICTS Results section, Fig. 5 and
-   the `arth`/`drm_a` reads (then the two remaining `git mv`), demote drmSEM to Supplement
-   with disclosure and intervals, retract Allen's-rule bill width, present isometry as a
-   consistent direction with a zero-including interval, use "litter-ant richness per
-   standardised sample" wording with its sensitivities, switch diet to percentile slopes,
-   update Fig. 1/2 captions and add the three new image files, fill `effect_scale.rds$comparators`.
-6. **Housekeeping (Phase 8)** — `REPO_STRUCTURE.md`, `LIVE_ONLY_MIGRATION.md` L55,
-   `RENDER_STEPS.md` L32/L59, `make_figures.py` docstring, `README.md` L146, `.gitignore`
-   for `*smoke*.{rds,rda}`; `passer90_climate.rds` regeneration date; `Manuscript/README.md`
-   export-step description.
+4. **`update_descriptive_stats.R` — done.** Fixed `sample.n.wing = sum(!is.na(conc.wing.length))`
+   and `sample.n.bill = sum(!is.na(Bill_width.mm.))` (pooled lnCVR 0.184 → 0.177; bill lnCVR 0.107 → 0.068);
+   added within-contributor lnCVR, contributor-per-cell, and variance share slots.
+5. **P7 gate rewrite — done.** `Manuscript/index.qmd` fully rewritten under Scenario B;
+   title, abstract, plain language summary updated; 7 Results subsections implemented;
+   Allen's rule retracted; PREDICTS retired and moved to `archive/predicts/`;
+   isometry contrast presented with zero-including interval; ATLANTIC ANTS index context;
+   methods updated with 50-tree glmmTMB propto engine; renders cleanly to HTML and DOCX without warnings.
+6. **Housekeeping (Phase 8) — done.** `REPO_STRUCTURE.md`, `LIVE_ONLY_MIGRATION.md`,
+   `RENDER_STEPS.md`, `Manuscript/README.md`, `README.md` updated; `effect_scale.rds` comparators filled;
+   `arthropod_estimates.rds` and `fig-arthropods.png` moved to `archive/predicts/`.
 7. **Data decisions pending** — nearest-valid-cell fill for the 772 coastal NA-tmean records
    (P5 declined; would change S3t/S7/brms N automatically); DEM or locality altitude to make
    P1's nearest-site imputation unnecessary; reconcile 235 vs 233 coordinate sites (P0).

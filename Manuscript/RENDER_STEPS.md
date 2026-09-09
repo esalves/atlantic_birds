@@ -29,17 +29,9 @@ Two figures are produced from R, not by make_figures.py:
 Rscript ../Analysis/scripts/atlantic_diet_interaction.R   # writes images/diet_interaction_plot.png
 ```
 
-- `fig-arthropods.png` comes from the Rmd's `export_fig_arthropods` chunk. It is
-  built on the PREDICTS database, which the live-only filter does **not** affect,
-  so the existing file is still valid; re-export from the Rmd only if you want a
-  fresh copy for the final version.
-- `fig-drmsem.png` is the full-record drmSEM DAG, copied from
-  `../Analysis/figures/drmsem_dag_noarthro.png`. The arthropod-coverage DAG was
-  rejected (Fisher's C P = 0.009), so the full-record model is the one shown.
-  The DAG now draws wing length as two co-equal response nodes — `mean(wing)`
-  and `sd(wing)` — with the σ (variance-submodel) paths entering `sd(wing)` as
-  ordinary directed edges, since drmSEM models the mean and residual SD as
-  separate distributional responses. Regenerate with
+- `fig-arthropods.png` and `arthropod_estimates.rds` were retired in Phase 4e
+  and archived under `archive/predicts/` (PREDICTS studies lack multi-year temporal depth).
+- `fig-drmsem.png` is the full-record drmSEM DAG (supplementary). Regenerate with
   `Rscript ../Analysis/scripts/make_figures.R noarthro`.
 
 ## 2. Render the document
@@ -55,9 +47,11 @@ Output goes to the Quarto manuscript output directory (`_manuscript/` /
 ## Notes
 
 - All quantitative values in the text auto-populate via inline R from
-  `descriptive_summary.rds`, `diet_interaction_results.rds`,
-  `arthropod_estimates.rds`, and `drmsem_results_{arthro,noarthro}.rds`. If a
-  number looks wrong, re-run the relevant analysis script, not the manuscript.
+  `descriptive_summary.rds`, `controlled_wing_phylo_results.rds`,
+  `multitrait_phylo_results.rds`, `bivariate_phylo_results.rds`,
+  `variance_phylo_results.rds`, `diet_interaction_phylo.rds`,
+  `ants_results.rds`, and `climate_trends.rds`. If a number looks wrong,
+  re-run the relevant analysis script, not the manuscript.
 - `descriptive_summary.rds` now supplies the sample counts (`n_spp`, `n_rec`);
   `data_summary.rds` is no longer read by `index.qmd`.
 - Quick consistency check after rendering: the abstract/intro should say
