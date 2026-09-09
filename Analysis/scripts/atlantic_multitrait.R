@@ -38,6 +38,30 @@
 #        season + (1 + scaled_yr || spp) + (1 | src) + (1 | site), on records
 #        with 5 <= hour_num <= 19
 #
+# MODES (2026-09-09):
+#   (no flag)     lme4 fast tier as above (the Tier-1 screen). Writes
+#                 output/multitrait_results.rds and output/multitrait_table.md
+#                 (the markdown gains a phylogenetic-tier section whenever
+#                 output/multitrait_phylo_results.rds exists on disk).
+#   --trees N     PHYLOGENETIC TIER: the same models refitted with glmmTMB's
+#                 `propto` covariance structure (Williams, McGillycuddy, Drobniak,
+#                 Bolker, Warton & Nakagawa 2025, bioRxiv 10.64898/2025.12.20.695312)
+#                 through the shared engine scripts/_phylo_engine.R, on the
+#                 IDENTICAL N (default 50) trees of the published brms analysis,
+#                 Rubin-pooled across trees. Per trait (log body mass, bill width,
+#                 bill length, tail, tarsus; wing is left to Phase 1): M0, M1,
+#                 M3 and the within-contributor Mundlak decomposition (MWsrc);
+#                 plus the body-mass capture-hour pair (HOUR0 / HOUR1). Reads the
+#                 lme4 tier from output/multitrait_results.rds (run the default
+#                 mode first) for the comparison table and writes
+#                 output/multitrait_phylo_results.rds, then regenerates
+#                 output/multitrait_table.md with both tiers. Minutes.
+#   --engine glmmTMB|brms   engine of the phylogenetic tier. Only glmmTMB is
+#                 implemented in this script (there never was a brms path here;
+#                 the brms body-mass model is atlantic_parallel_mass.R and the
+#                 bivariate brms cross-check is atlantic_bivariate_wing_mass.R
+#                 --engine brms). --engine brms stops with that message.
+#
 # UNITS: scaled_yr is (Year - 2009.487) / 5.0199 (attr "scaled:scale" of
 # passer90$scaled_yr, i.e. the SD of the pre-threshold known-sex sample; see
 # REVISION_NOTES_P0.md). Per-decade change = beta * 10 / 5.0199. Percent per
@@ -52,17 +76,40 @@
 #          trait x model x term), $coverage (contributors / municipalities /
 #          spanning contributors per trait), $hour (mass diurnal model),
 #          $isometry, $plan_comparison, $meta
-#          output/multitrait_table.md           markdown table pasted into
-#          REVISION_NOTES_P2.md
+#          output/multitrait_phylo_results.rds  (--trees) list: $table (pooled,
+#          one row per trait x model x term, with n, trees converged, per-decade
+#          units), $varcomp (phylogenetic SD / proportion per model), $hour,
+#          $comparison_lme4 (phylogenetic vs lme4 estimate, SE ratio, whether
+#          the zero-exclusion verdict changes), $timing, $meta
+#          output/multitrait_table.md           markdown tables pasted into
+#          REVISION_NOTES_P2.md (lme4 tier + phylogenetic tier)
 #
-# RUN:  Rscript Analysis/scripts/atlantic_multitrait.R
-#       (from the repo root, Analysis/, or Analysis/scripts/; ~1-2 min)
+# RUN:  Rscript Analysis/scripts/atlantic_multitrait.R              # lme4 tier, ~30 s
+#       Rscript Analysis/scripts/atlantic_multitrait.R --trees 50   # phylogenetic tier, minutes
+#       (from the repo root, Analysis/, or Analysis/scripts/)
 # Session used for the numbers in REVISION_NOTES_P2.md: R 4.6.0, lme4 2.0.1,
 # Matrix, dplyr 1.1.x. Nothing stochastic; set.seed recorded by convention.
 # ---------------------------------------------------------------------------
 
 suppressMessages({ library(dplyr); library(lme4) })
 set.seed(20260909)
+
+# --- command line: default = lme4 tier; --trees N = phylogenetic tier (glmmTMB) ---
+args <- commandArgs(trailingOnly = TRUE)
+get_flag <- function(flag) {
+  i <- grep(paste0("^", flag, "(=|$)"), args)[1]
+  if (is.na(i)) return(NULL)
+  v <- sub(paste0("^", flag, "=?"), "", args[i]); if (!nzchar(v)) v <- args[i + 1]
+  v
+}
+MODE    <- if (!is.null(get_flag("--trees"))) "trees" else "lme4"
+N_TREES <- if (MODE == "trees") as.integer(get_flag("--trees")) else 0L
+if (MODE == "trees" && (is.na(N_TREES) || N_TREES < 1L)) stop("--trees needs a positive integer")
+ENGINE  <- if (!is.null(get_flag("--engine"))) get_flag("--engine") else "glmmTMB"
+if (MODE == "trees" && tolower(ENGINE) != "glmmtmb")
+  stop("Only --engine glmmTMB is implemented in atlantic_multitrait.R (no brms path exists here; ",
+       "see atlantic_parallel_mass.R for the brms body-mass model and atlantic_bivariate_wing_mass.R --engine brms).")
+ENGINE <- if (MODE == "trees") "glmmTMB" else "lme4"
 
 # --- robust path resolution (repo layout: Analysis/{scripts,data,output,figures}) ---
 # Locate the Analysis/ directory regardless of getwd() (script may be run from the
@@ -85,6 +132,9 @@ derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
 out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
 fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
 script_path  <- function(...) file.path(ANALYSIS_DIR, "scripts", ...)
+# Shared phylogenetic engine (glmmTMB propto; uses the path helpers above):
+# phylo_species_name(), phylo_A_list(), fit_phylo_glmmtmb(), run_phylo_trees(), pool_rubin_df(), tidy_phylo_fit()
+if (MODE == "trees") source(file.path(ANALYSIS_DIR, "scripts", "_phylo_engine.R"))
 
 # ---------------------------------------------------------------------------
 # 1. Data
@@ -179,6 +229,10 @@ add_units <- function(tab, trait_mean, log_scale) {
   tab
 }
 
+# Row selector on a tidy table (lme4 tier by default; the phylogenetic tier passes its own)
+get <- function(tr, model, term = "scaled_yr", tab = table_all) tab[tab$trait == tr & tab$model == model & tab$term == term, ]
+
+if (MODE == "lme4") {   # ======================= lme4 fast tier (sections 3-7) =======================
 # ---------------------------------------------------------------------------
 # 3. Per-trait model sequence
 # ---------------------------------------------------------------------------
@@ -275,7 +329,6 @@ hour <- list(
 # For a fractional wing change w, isometry predicts a fractional mass change of
 # (1 + w)^3 - 1. Computed here for the lme4 M0 and M1 estimates of this script;
 # the published brms (50-tree) version is in P0's effect_scale.rds.
-get <- function(tr, model, term = "scaled_yr") table_all[table_all$trait == tr & table_all$model == model & table_all$term == term, ]
 iso_row <- function(model, years = 23) {
   w <- get("wing", model); m <- get("ln_body_mass", model)
   w_frac <- w$estimate * (years / SD_YR) / w$trait_mean          # fractional wing change over `years`
@@ -364,9 +417,206 @@ meta <- list(
 out <- list(table = table_all, coverage = coverage, hour = hour, isometry = isometry,
             plan_comparison = plan_comparison, meta = meta)
 saveRDS(out, out_path("multitrait_results.rds"))
+phylo <- if (file.exists(out_path("multitrait_phylo_results.rds"))) readRDS(out_path("multitrait_phylo_results.rds")) else NULL
+
+} else {   # ======================= phylogenetic tier (section 10) =======================
+# ---------------------------------------------------------------------------
+# 10. Phylogenetic tier: glmmTMB propto across N_TREES trees (engine: _phylo_engine.R)
+# ---------------------------------------------------------------------------
+# The lme4 tier is read from disk (comparison + coverage); nothing of it is refitted here.
+if (!file.exists(out_path("multitrait_results.rds")))
+  stop("output/multitrait_results.rds not found: run `Rscript atlantic_multitrait.R` (lme4 tier) first.")
+lme4_res  <- readRDS(out_path("multitrait_results.rds"))
+table_all <- lme4_res$table; coverage <- lme4_res$coverage; hour <- lme4_res$hour
+t_phylo <- Sys.time()
+
+# Species -> tree tips (eBird synonyms); the species term (spp) and the phylogenetic
+# term (species_name) share the tip name, as in the published brms model.
+# Herpsilochmus_sellowi is absent from the tree (engine note; 0 records in this sample).
+d$species_name <- phylo_species_name(d$Binomial)
+d <- d[d$species_name != "Herpsilochmus_sellowi", , drop = FALSE]
+d$spp <- d$species_name
+A_all <- phylo_A_list(sort(unique(d$species_name)), n_trees = N_TREES)   # the published 50 trees (cached)
+N_TREES <- length(A_all)
+A_for <- function(data) { s <- sort(unique(as.character(data$species_name))); lapply(A_all, function(A) A[s, s, drop = FALSE]) }
+cat(sprintf("Phylogenetic tier: glmmTMB %s propto, %d trees, %d species in the sample\n",
+            as.character(packageVersion("glmmTMB")), N_TREES, n_distinct(d$species_name)))
+
+# Convergence repair around the engine loop (identical to atlantic_bivariate_wing_mass.R;
+# candidate addition to _phylo_engine.R). With both (1 | spp) and the phylogenetic
+# term, the REML surface has two modes; glmmTMB's default all-zero start reaches
+# the worse one (phylogenetic SD ~ 0, iid species SD absorbing it, objective
+# higher by ~24 units, non-positive-definite Hessian) on some trees. Trees without
+# a positive-definite Hessian are refitted from the free variance parameters of a
+# converged tree of the SAME model (or a generic seed), inserted into that tree's
+# own theta vector (propto entries encode A and are tree-specific); the refit is
+# kept only if it converged and its objective is not worse. Both counts are kept.
+# A usable tree = positive-definite Hessian AND finite fixed-effect SEs. Trees still
+# unusable after two seeded restarts (seed from a converged tree, then a generic
+# seed) are EXCLUDED from the Rubin pooling — their SEs are undefined and pooling
+# them returns NA — and listed in $excluded_trees; n_converged counts the trees
+# actually pooled. Point estimates of excluded trees stay in $per_tree_fixed.
+run_phylo_robust <- function(formula, data, A_list, ...) {
+  r <- run_phylo_trees(formula, data, A_list, keep_fits = TRUE, verbose = FALSE, ...)
+  usable_tree <- function(i) isTRUE(r$varcomp$converged[r$varcomp$tree == i]) &&
+    all(is.finite(r$per_tree_fixed$se[r$per_tree_fixed$tree == i]))
+  r$varcomp$usable <- vapply(r$varcomp$tree, usable_tree, logical(1))
+  r$n_converged_first_pass <- sum(r$varcomp$usable)
+  bad <- which(!r$varcomp$usable); r$retried_trees <- bad; r$repaired_trees <- integer(0)
+  sp_sd <- sd(tapply(data[[all.vars(formula)[1]]], as.character(data$species_name), mean), na.rm = TRUE)
+  for (i in bad) {
+    good <- which(r$varcomp$usable)
+    s <- fit_phylo_glmmtmb(formula, data, A_list[[i]], doFit = FALSE, ...)
+    th0 <- s$parameters$theta; free <- which(!is.na(s$mapArg$theta))
+    seeds <- list()
+    if (length(good)) { seed <- r$fits[[good[1]]]$fit$par; th <- th0; th[free] <- seed[names(seed) == "theta"]; seeds$converged_tree <- th }
+    th <- th0; th[free] <- 0; th[free[1]] <- log(0.01 * sp_sd); th[free[length(free)]] <- log(sp_sd); seeds$generic <- th
+    old_obj <- r$fits[[i]]$fit$objective
+    for (th in seeds) {
+      fit2 <- tryCatch(fit_phylo_glmmtmb(formula, data, A_list[[i]], start = list(theta = th), ...), error = function(e) NULL)
+      if (is.null(fit2)) next
+      td <- tidy_phylo_fit(fit2, tree = i)
+      ok2 <- isTRUE(fit2$sdr$pdHess) && all(is.finite(td$fixed$se))
+      # tolerance 0.01: a same-mode refit differs from the original by optimizer round-off
+      # (~1e-4), the two modes by ~24 objective units
+      if (ok2 && (is.na(old_obj) || fit2$fit$objective <= old_obj + 0.01)) {
+        r$fits[[i]] <- fit2
+        r$per_tree_fixed <- rbind(r$per_tree_fixed[r$per_tree_fixed$tree != i, ], td$fixed)
+        r$varcomp[r$varcomp$tree == i, names(td$varcomp)] <- td$varcomp
+        r$varcomp$usable[r$varcomp$tree == i] <- TRUE
+        r$repaired_trees <- c(r$repaired_trees, i)
+        break
+      }
+    }
+  }
+  r$per_tree_fixed <- r$per_tree_fixed[order(r$per_tree_fixed$tree), ]
+  r$varcomp$objective <- sapply(r$fits, function(f) f$fit$objective)
+  r$varcomp$retried <- r$varcomp$tree %in% bad
+  r$excluded_trees <- r$varcomp$tree[!r$varcomp$usable]
+  keep <- r$per_tree_fixed$tree %in% r$varcomp$tree[r$varcomp$usable]
+  r$pooled <- pool_rubin_df(r$per_tree_fixed[keep, ])
+  r$varcomp_summary <- r$varcomp %>% filter(usable) %>%
+    summarise(across(where(is.numeric) & !tree & !objective, list(mean = ~mean(.x, na.rm = TRUE), lo = ~quantile(.x, .025, na.rm = TRUE), hi = ~quantile(.x, .975, na.rm = TRUE))))
+  r$n_converged <- sum(r$varcomp$usable)
+  r$pooling <- "Rubin's rules over usable trees only (positive-definite Hessian, finite SEs); see excluded_trees"
+  r$fits <- NULL
+  r
+}
+
+# One model across trees -> tidy pooled rows (same columns as the lme4 table where they exist)
+pfit <- function(formula, data, trait, model, terms_keep, note = "") {
+  t1 <- Sys.time()
+  r <- run_phylo_robust(formula, data, A_for(data))
+  secs <- as.numeric(Sys.time() - t1, units = "secs")
+  po <- r$pooled %>% filter(component == "cond", par %in% terms_keep)
+  # lme4-"singular" analogue: the species year-slope SD at the zero boundary (mean over
+  # trees < 1e-3 x sigma). The non-phylogenetic species INTERCEPT SD is ~0 by design
+  # whenever the phylogenetic term is present (absorbed) and is not flagged.
+  vs <- r$varcomp_summary
+  slope_col <- grep("^spp\\.(?!.*Intercept).*_mean$", names(vs), perl = TRUE, value = TRUE)[1]
+  sd_slope <- if (is.na(slope_col)) NA_real_ else vs[[slope_col]]
+  tab <- data.frame(trait = trait, model = model, term = po$par, estimate = po$estimate, se = po$se, t = po$z,
+                    lower = po$lower, upper = po$upper, n = nrow(data), n_spp = n_distinct(data$species_name),
+                    n_src = if ("src" %in% all.vars(formula)) nlevels(droplevels(data$src)) else NA_integer_,
+                    n_site = if ("site" %in% all.vars(formula)) nlevels(droplevels(data$site)) else NA_integer_,
+                    n_trees = r$n_trees, n_converged = r$n_converged, n_converged_first_pass = r$n_converged_first_pass,
+                    n_repaired = length(r$repaired_trees), between_tree_var = po$between_tree_var,
+                    sd_phylo_mean = vs$sd_phylo_mean, phylo_prop_mean = vs$phylo_prop_mean, sd_spp_slope_mean = sd_slope,
+                    boundary_spp_slope = isTRUE(sd_slope < 1e-3 * vs$sigma_mean),
+                    singular = NA, messages = "", formula = deparse1(formula), note = note, stringsAsFactors = FALSE)
+  vc <- cbind(trait = trait, model = model, n = nrow(data), n_trees = r$n_trees, n_converged = r$n_converged,
+              as.data.frame(r$varcomp_summary), stringsAsFactors = FALSE)
+  yr <- po[po$par %in% c("scaled_yr", "yr_within_src"), ][1, ]
+  cat(sprintf("  [%s | %s] %s = %s [%s, %s] z = %.2f | phylo SD %.4g, phylo prop %.3f | %d/%d pdHess (first pass %d) | %.0f s\n",
+              trait, model, yr$par, signif(yr$estimate, 4), signif(yr$lower, 4), signif(yr$upper, 4), yr$z,
+              r$varcomp_summary$sd_phylo_mean, r$varcomp_summary$phylo_prop_mean, r$n_converged, r$n_trees, r$n_converged_first_pass, secs))
+  list(table = tab, varcomp = vc, per_tree = list(fixed = r$per_tree_fixed, varcomp = r$varcomp),
+       timing = data.frame(trait = trait, model = model, n = nrow(data), n_trees = r$n_trees, n_converged = r$n_converged,
+                           n_converged_first_pass = r$n_converged_first_pass, n_retried = length(r$retried_trees),
+                           n_repaired = length(r$repaired_trees), secs = secs, secs_per_tree = secs / r$n_trees, stringsAsFactors = FALSE))
+}
+
+phylo_traits <- setdiff(names(traits), "wing")     # wing: Phase 1 (atlantic_parallel_controlled.R) is authoritative
+p_tab <- list(); p_vc <- list(); p_tree <- list(); p_time <- list()
+base_terms <- c("scaled_yr", "scaled_lat", "SexMale")
+for (tr in phylo_traits) {
+  dt <- d[!is.na(d[[tr]]), ]; dt$y <- dt[[tr]]
+  trait_mean <- if (is_log[[tr]]) mean(exp(dt$y)) else mean(dt$y)
+  dcc <- dt %>% filter(!is.na(site), !is.na(scaled_lon), !is.na(scaled_alt), !is.na(season)) %>%
+    group_by(src) %>% mutate(yr_mean_src = mean(scaled_yr), yr_within_src = scaled_yr - yr_mean_src) %>% ungroup() %>% as.data.frame()
+  f0 <- y ~ Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp)
+  f1 <- update(f0, . ~ . + (1 | src) + (1 | site))
+  f3 <- update(f1, . ~ . + scaled_lon + scaled_alt + season + (1 | ring))
+  fWsrc <- y ~ Sex + yr_within_src + yr_mean_src + scaled_lat + scaled_lon + scaled_alt + season +
+    (1 + yr_within_src || spp) + (1 | src) + (1 | site) + (1 | ring)
+  cat(sprintf("[%s] n = %d, complete-case (M3) n = %d, %d species ...\n", tr, nrow(dt), nrow(dcc), n_distinct(dt$species_name)))
+  fits <- list(
+    pfit(f0, dt,                    tr, "M0_baseline", base_terms),
+    pfit(f1, dt[!is.na(dt$site), ], tr, "M1_src_site", base_terms),
+    pfit(f3, dcc,                   tr, "M3_ring",     c(base_terms, "scaled_lon", "scaled_alt", "seasonMAM", "seasonJJA", "seasonSON")),
+    pfit(fWsrc, dcc, tr, "MWsrc_mundlak_contributor", c("yr_within_src", "yr_mean_src", "scaled_lat", "SexMale")))
+  p_tab[[tr]]  <- add_units(bind_rows(lapply(fits, `[[`, "table")), trait_mean, is_log[[tr]])
+  p_vc[[tr]]   <- bind_rows(lapply(fits, `[[`, "varcomp"))
+  p_time[[tr]] <- bind_rows(lapply(fits, `[[`, "timing"))
+  p_tree[[tr]] <- setNames(lapply(fits, `[[`, "per_tree"), sapply(fits, function(x) x$table$model[1]))
+}
+p_table <- as.data.frame(bind_rows(p_tab)); p_varcomp <- as.data.frame(bind_rows(p_vc)); p_timing <- as.data.frame(bind_rows(p_time))
+
+# Body mass, capture hour (same sample rule as the lme4 tier)
+dh <- d %>% filter(!is.na(ln_body_mass), !is.na(hour_num), hour_num >= 5, hour_num <= 19, !is.na(site), !is.na(season)) %>% as.data.frame()
+dh$y <- dh$ln_body_mass
+fH0 <- y ~ Sex + scaled_yr + scaled_lat + season + (1 + scaled_yr || spp) + (1 | src) + (1 | site)
+fH1 <- update(fH0, . ~ . + hour_num)
+cat(sprintf("[ln_body_mass HOUR] n = %d records with 05:00-19:00 clock time ...\n", nrow(dh)))
+hf <- list(pfit(fH0, dh, "ln_body_mass", "HOUR0_no_hour",   c("scaled_yr", "scaled_lat", "SexMale"), note = "records with parseable Hour in [05:00, 19:00]"),
+           pfit(fH1, dh, "ln_body_mass", "HOUR1_with_hour", c("scaled_yr", "scaled_lat", "SexMale", "hour_num"), note = "hour_num in decimal hours; 100*estimate = % mass per hour"))
+hour_tab_p <- add_units(bind_rows(lapply(hf, `[[`, "table")), mean(exp(dh$y)), TRUE)
+hr <- hour_tab_p[hour_tab_p$model == "HOUR1_with_hour" & hour_tab_p$term == "hour_num", ]
+hour_p <- list(table = hour_tab_p, varcomp = bind_rows(lapply(hf, `[[`, "varcomp")), n_mass_hour_05_19_complete = nrow(dh),
+               pct_per_hour = 100 * hr$estimate, pct_per_hour_lower = 100 * hr$lower, pct_per_hour_upper = 100 * hr$upper, z_hour = hr$t,
+               year_beta_with_hour = hour_tab_p$estimate[hour_tab_p$model == "HOUR1_with_hour" & hour_tab_p$term == "scaled_yr"],
+               year_z_with_hour    = hour_tab_p$t[hour_tab_p$model == "HOUR1_with_hour" & hour_tab_p$term == "scaled_yr"],
+               year_beta_without_hour = hour_tab_p$estimate[hour_tab_p$model == "HOUR0_no_hour" & hour_tab_p$term == "scaled_yr"])
+p_timing <- bind_rows(p_timing, bind_rows(lapply(hf, `[[`, "timing")))
+p_tree$ln_body_mass_hour <- setNames(lapply(hf, `[[`, "per_tree"), c("HOUR0_no_hour", "HOUR1_with_hour"))
+
+# Comparison with the lme4 tier (same trait, model, term, sample)
+yr_terms <- c("scaled_yr", "yr_within_src", "yr_mean_src", "hour_num")
+l <- bind_rows(table_all, hour$table) %>% filter(term %in% yr_terms) %>%
+  transmute(trait, model, term, lme4_estimate = estimate, lme4_se = se, lme4_lower = lower, lme4_upper = upper, lme4_n = n, lme4_singular = singular)
+p <- bind_rows(p_table, hour_tab_p) %>% filter(term %in% yr_terms) %>%
+  transmute(trait, model, term, phylo_estimate = estimate, phylo_se = se, phylo_lower = lower, phylo_upper = upper, phylo_n = n,
+            n_trees, n_converged, phylo_pct_per_decade = pct_per_decade, phylo_pct_lower = pct_per_decade_lower, phylo_pct_upper = pct_per_decade_upper)
+comparison <- inner_join(l, p, by = c("trait", "model", "term")) %>%
+  mutate(same_sample = lme4_n == phylo_n, delta_estimate = phylo_estimate - lme4_estimate,
+         delta_in_lme4_se = delta_estimate / lme4_se, se_ratio_phylo_over_lme4 = phylo_se / lme4_se,
+         lme4_excludes_zero = lme4_lower > 0 | lme4_upper < 0, phylo_excludes_zero = phylo_lower > 0 | phylo_upper < 0,
+         verdict_changes = lme4_excludes_zero != phylo_excludes_zero) %>% as.data.frame()
+
+phylo <- list(
+  table = p_table, varcomp = p_varcomp, hour = hour_p, comparison_lme4 = comparison, timing = p_timing, per_tree = p_tree,
+  meta = list(generated = as.character(Sys.time()), engine = "glmmTMB propto (Williams et al. 2025) via _phylo_engine.R; REML; Rubin's rules across trees",
+              n_trees = N_TREES, trees = "the 50 clootl trees of the published brms analysis (phylo_A_list(); cache data/derived/phylo_A_50trees.rds from models/brm0_multiphylo.rda)",
+              glmmTMB_version = as.character(packageVersion("glmmTMB")), r_version = R.version.string,
+              sd_year = SD_YR, centre_year = CTR_YR, sd_years_per_decade = DEC, n_sample = nrow(d), n_species = n_distinct(d$species_name),
+              models = c(M0_baseline = "y ~ Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + phylo",
+                         M1_src_site = "M0 + (1 | src) + (1 | site)",
+                         M3_ring = "M1 + scaled_lon + scaled_alt + season + (1 | ring), complete cases",
+                         MWsrc_mundlak_contributor = "M3 with scaled_yr -> yr_within_src + yr_mean_src",
+                         HOUR0_no_hour = "ln mass ~ Sex + scaled_yr + scaled_lat + season + (1 + scaled_yr || spp) + (1 | src) + (1 | site) + phylo, 05-19 h",
+                         HOUR1_with_hour = "HOUR0 + hour_num",
+                         phylo = "propto(0 + species_name | g, A) appended by fit_phylo_glmmtmb()"),
+              intervals = "estimate +/- 1.96 * Rubin SE (within-tree Wald variance + (1 + 1/m) between-tree variance); column t holds the pooled z",
+              converged = "n_converged = trees with a positive-definite Hessian after the seeded-restart repair; n_converged_first_pass = before it",
+              lme4_tier_generated = lme4_res$meta$generated,
+              wing = "wing is not fitted here; the phylogenetic controlled wing models are Phase 1 (controlled_wing_phylo_results.rds)",
+              elapsed_min = as.numeric(difftime(Sys.time(), t_phylo, units = "mins"))))
+saveRDS(phylo, out_path("multitrait_phylo_results.rds"))
+}   # ======================= end of the two tiers =======================
 
 # ---------------------------------------------------------------------------
-# 8. Markdown table (pasted into REVISION_NOTES_P2.md)
+# 8. Markdown tables (pasted into REVISION_NOTES_P2.md): lme4 tier, then the
+#    phylogenetic tier when multitrait_phylo_results.rds is available
 # ---------------------------------------------------------------------------
 fmt <- function(x, d = 2) ifelse(is.na(x), "NA", formatC(x, format = "f", digits = d))
 cell <- function(tr, model, term = "scaled_yr") {
@@ -393,11 +643,54 @@ md <- c(md, "",
   sprintf("Body mass diurnal model (n = %s records with 05:00–19:00 clock time): +%.3f %% mass per hour [%.3f, %.3f], t = %.2f; year slope with hour in the model %.4f (t = %.2f).",
           format(hour$n_mass_hour_05_19_complete, big.mark = ","), hour$pct_per_hour, hour$pct_per_hour_lower,
           hour$pct_per_hour_upper, hour$t_hour, hour$year_beta_with_hour, hour$year_t_with_hour))
+if (!is.null(phylo)) {
+  pcell <- function(tr, model, term = "scaled_yr") {
+    r <- get(tr, model, term, tab = phylo$table)
+    if (!nrow(r)) return("—")
+    dg <- if (is_log[[tr]]) 4 else 2
+    sprintf("%s [%s, %s] z = %s (n = %s; %d/%d trees)%s", fmt(r$estimate, dg), fmt(r$lower, dg), fmt(r$upper, dg),
+            fmt(r$t, 1), format(r$n, big.mark = ","), r$n_converged, r$n_trees,
+            if (isTRUE(r$boundary_spp_slope)) " (species-slope SD at zero)" else "")
+  }
+  pprop <- function(tr, model) { v <- phylo$varcomp[phylo$varcomp$trait == tr & phylo$varcomp$model == model, ]
+    if (!nrow(v)) "—" else sprintf("%.3f (SD %s)", v$phylo_prop_mean, signif(v$sd_phylo_mean, 3)) }
+  hp <- phylo$hour
+  md <- c(md, "", sprintf("### Phylogenetic tier (glmmTMB propto, %d trees, Rubin-pooled; generated %s)", phylo$meta$n_trees, phylo$meta$generated), "",
+    "| Trait | M0 baseline β_yr | M1 +src +site | M3 +lon +alt +season +ring | Within-contributor (Mundlak) | Between-contributor | Phylogenetic proportion, M1 (phylo SD) |",
+    "|---|---|---|---|---|---|---|")
+  for (tr in setdiff(names(traits), "wing")) {
+    md <- c(md, sprintf("| %s | %s | %s | %s | %s | %s | %s |", traits[[tr]],
+      pcell(tr, "M0_baseline"), pcell(tr, "M1_src_site"), pcell(tr, "M3_ring"),
+      pcell(tr, "MWsrc_mundlak_contributor", "yr_within_src"), pcell(tr, "MWsrc_mundlak_contributor", "yr_mean_src"), pprop(tr, "M1_src_site")))
+  }
+  cmp <- phylo$comparison_lme4
+  md <- c(md, "",
+    sprintf("Same fixed and random structure as the lme4 rows plus the phylogenetic species term propto(0 + species_name | g, A) on the %d published trees; interval = estimate ± 1.96 × Rubin SE; \"k/%d trees\" = trees with a positive-definite Hessian after the seeded-restart repair; \"(species-slope SD at zero)\" = the species year-slope variance sits at the boundary (the lme4 \"singular\" analogue; fixed effects unaffected). Wing is Phase 1's.",
+            phylo$meta$n_trees, phylo$meta$n_trees),
+    sprintf("Phylogenetic vs lme4 (%d matched estimates): median |Δβ| / lme4 SE = %.3f (max %.3f); median SE ratio %.3f (range %.3f–%.3f); zero-exclusion verdict changes in %d of %d.",
+            nrow(cmp), median(abs(cmp$delta_in_lme4_se)), max(abs(cmp$delta_in_lme4_se)), median(cmp$se_ratio_phylo_over_lme4),
+            min(cmp$se_ratio_phylo_over_lme4), max(cmp$se_ratio_phylo_over_lme4), sum(cmp$verdict_changes), nrow(cmp)),
+    sprintf("Body mass diurnal model, phylogenetic (n = %s): +%.3f %% mass per hour [%.3f, %.3f], z = %.2f; year slope with hour %.4f (z = %.2f), without hour %.4f.",
+            format(hp$n_mass_hour_05_19_complete, big.mark = ","), hp$pct_per_hour, hp$pct_per_hour_lower, hp$pct_per_hour_upper, hp$z_hour,
+            hp$year_beta_with_hour, hp$year_z_with_hour, hp$year_beta_without_hour))
+}
 writeLines(md, out_path("multitrait_table.md"))
 
 # ---------------------------------------------------------------------------
 # 9. Console summary
 # ---------------------------------------------------------------------------
+if (MODE == "trees") {
+  cat("\n=== Phylogenetic tier: year slopes (Rubin-pooled; t column = z) ===\n")
+  print(phylo$table %>% filter(term %in% c("scaled_yr", "yr_within_src", "yr_mean_src")) %>%
+          transmute(trait, model, term, estimate = signif(estimate, 4), se = signif(se, 3), z = round(t, 2), lower = signif(lower, 4), upper = signif(upper, 4),
+                    n, conv = paste0(n_converged, "/", n_trees), pct_per_decade = round(pct_per_decade, 2)) %>% as.data.frame(), row.names = FALSE)
+  cat("\n=== Phylogenetic vs lme4 ===\n")
+  print(phylo$comparison_lme4 %>% transmute(trait, model, term, lme4 = signif(lme4_estimate, 4), phylo = signif(phylo_estimate, 4),
+                                            d_in_se = round(delta_in_lme4_se, 3), se_ratio = round(se_ratio_phylo_over_lme4, 3), verdict_changes) %>% as.data.frame(), row.names = FALSE)
+  cat("\n=== Timing (seconds per model, all trees) ===\n"); print(phylo$timing, row.names = FALSE)
+  cat(sprintf("\nWrote %s and %s (%.1f min)\n", out_path("multitrait_phylo_results.rds"), out_path("multitrait_table.md"), phylo$meta$elapsed_min))
+  quit(save = "no", status = 0)
+}
 cat("\n=== Coverage ===\n"); print(coverage[, c("trait", "n", "pct_of_sample", "n_src", "n_site", "n_src_both_periods", "n_rec_src_both_periods", "src_both_periods")])
 cat("\n=== Year slopes (scaled_yr and Mundlak components) ===\n")
 print(table_all %>% filter(term %in% c("scaled_yr", "yr_within_src", "yr_mean_src", "yr_within_site", "yr_mean_site")) %>%

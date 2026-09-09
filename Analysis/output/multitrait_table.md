@@ -9,3 +9,17 @@
 
 β_yr is per SD-year (SD = 5.0199 yr); multiply by 1.992 for per-decade units. Wald 95 % CI in brackets; lme4 REML, no phylogenetic term.
 Body mass diurnal model (n = 8,345 records with 05:00–19:00 clock time): +0.404 % mass per hour [0.291, 0.516], t = 7.02; year slope with hour in the model -0.0063 (t = -0.99).
+
+### Phylogenetic tier (glmmTMB propto, 50 trees, Rubin-pooled; generated 2026-09-09 14:44:25.512583)
+
+| Trait | M0 baseline β_yr | M1 +src +site | M3 +lon +alt +season +ring | Within-contributor (Mundlak) | Between-contributor | Phylogenetic proportion, M1 (phylo SD) |
+|---|---|---|---|---|---|---|
+| log body mass (ln g) | -0.0072 [-0.0165, 0.0021] z = -1.5 (n = 11,256; 50/50 trees) | -0.0056 [-0.0164, 0.0051] z = -1.0 (n = 11,256; 50/50 trees) | -0.0046 [-0.0138, 0.0047] z = -1.0 (n = 11,077; 50/50 trees) | -0.0032 [-0.0104, 0.0041] z = -0.9 (n = 11,077; 50/50 trees) | 0.0060 [-0.0305, 0.0424] z = 0.3 (n = 11,077; 50/50 trees) | 0.954 (SD 0.829) |
+| bill width (mm) | 0.24 [0.06, 0.42] z = 2.6 (n = 3,209; 50/50 trees) | -0.03 [-0.18, 0.12] z = -0.4 (n = 3,209; 50/50 trees) | -0.03 [-0.18, 0.13] z = -0.3 (n = 3,205; 50/50 trees) | 0.02 [-0.19, 0.22] z = 0.2 (n = 3,205; 50/50 trees) | 0.41 [-0.48, 1.30] z = 0.9 (n = 3,205; 50/50 trees) | 0.539 (SD 2.59) |
+| bill length (mm) | -0.00 [-0.11, 0.11] z = -0.0 (n = 7,697; 50/50 trees) | 0.16 [-0.02, 0.34] z = 1.8 (n = 7,697; 49/50 trees) (species-slope SD at zero) | 0.17 [-0.02, 0.36] z = 1.8 (n = 7,540; 50/50 trees) | 0.15 [-0.12, 0.42] z = 1.1 (n = 7,540; 50/50 trees) | 0.07 [-0.39, 0.52] z = 0.3 (n = 7,540; 50/50 trees) | 0.600 (SD 4.99) |
+| tail length (mm) | 0.27 [-0.27, 0.82] z = 1.0 (n = 8,872; 50/50 trees) | 0.30 [-0.19, 0.80] z = 1.2 (n = 8,872; 50/50 trees) | 0.24 [-0.28, 0.76] z = 0.9 (n = 8,679; 50/50 trees) | 0.24 [-0.22, 0.70] z = 1.0 (n = 8,679; 50/50 trees) | -0.20 [-1.34, 0.94] z = -0.3 (n = 8,679; 50/50 trees) | 0.916 (SD 28) |
+| tarsus length (mm) | 0.42 [0.24, 0.60] z = 4.7 (n = 4,361; 50/50 trees) | 0.26 [-0.06, 0.58] z = 1.6 (n = 4,361; 50/50 trees) (species-slope SD at zero) | 0.26 [-0.08, 0.60] z = 1.5 (n = 4,285; 50/50 trees) (species-slope SD at zero) | 0.27 [-0.16, 0.70] z = 1.2 (n = 4,285; 50/50 trees) | 0.02 [-0.67, 0.70] z = 0.0 (n = 4,285; 50/50 trees) | 0.803 (SD 7.82) |
+
+Same fixed and random structure as the lme4 rows plus the phylogenetic species term propto(0 + species_name | g, A) on the 50 published trees; interval = estimate ± 1.96 × Rubin SE; "k/50 trees" = trees with a positive-definite Hessian after the seeded-restart repair; "(species-slope SD at zero)" = the species year-slope variance sits at the boundary (the lme4 "singular" analogue; fixed effects unaffected). Wing is Phase 1's.
+Phylogenetic vs lme4 (28 matched estimates): median |Δβ| / lme4 SE = 0.011 (max 0.106); median SE ratio 1.002 (range 0.993–1.047); zero-exclusion verdict changes in 0 of 28.
+Body mass diurnal model, phylogenetic (n = 8,345): +0.404 % mass per hour [0.291, 0.517], z = 7.03; year slope with hour -0.0063 (z = -0.99), without hour -0.0076.
