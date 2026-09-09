@@ -9,7 +9,12 @@ disk disagree, the file is quoted and the disagreement is flagged.
 
 Companion documents: `Analysis/scripts/REVISION_NOTES_P0.md` … `P6.md`,
 `REVISION_NOTES_P4a.md`, `REVISION_NOTES_P4ef.md`, `Analysis/scripts/REVISION_REVIEW.md`
-(reviewer), `Analysis/output/RESULTS_SUMMARY.md` § "Revision diagnostics, fast tier (2026-09)".
+(reviewer), `Analysis/output/RESULTS_SUMMARY.md` § "Revision diagnostics, fast tier (2026-09)",
+`Analysis/scripts/GLMMTMB_ENGINE.md` (new 2026-09-09: the glmmTMB phylogenetic engine that
+replaces the 50-tree `brms` path by default — methods, validation, and §3.9 below). **Note
+on the phylogenetic-tier pass (§3.9, §4a):** unlike the P0–P7 pass above, there was no
+separate reviewer stage for this work — the orchestrating (synthesis) agent verified every
+phylogenetic number quoted below directly against the named `.rds` files.
 
 Conventions used throughout: β = scaled-year coefficient (mm per SD-year, SD = 5.0199 yr,
 the `scale()` SD actually applied to `scaled_yr`; × 1.992 for per decade); mean wing
@@ -23,12 +28,13 @@ records; record spans 1995–2018 (24 calendar years; over-record conversions mu
 
 | | Status |
 |---|---|
-| Decision gate (REVISION_PLAN §2) | **Provisionally Scenario B** on the lme4 fast tier: the fully controlled wing year effect (M3) overlaps zero on both samples (full −0.370 [−0.775, +0.034]; complete-case −0.284 [−0.643, +0.075]) and the within-contributor slope overlaps zero in every specification (−0.412 to +0.028). **Not final**: the brms tiers (Tier 2 `--trees 1`, Tier 3 `--trees 50`) have not run. The Tier-1 bug (H1 below) was fixed and the tier re-run at 12:35; every Phase 1 number in this log is from the corrected rds, and the gate reading did not change (see §3.1). |
-| Phases run in full locally | P0 (data + audit), P2 fast tier, P3 fast tier, P4a (complete — no Stan involved), P4ef (code + archive; no full SEM), P5 (climate in full; diet lme4 tier), P6 (figures from files on disk), P7 (mechanical manuscript edits; renders). |
-| Phases partly run | P1: Tier 1 re-run in full at 12:35 after the H1 fix (`Sex` in 35 of 39 specs; the rds on disk is the corrected run); its brms `--smoke` was killed before any Stan output, so the brms path is untested. Every brms/Stan path (P1, P2, P3, P5 diet, drmSEM v4) untested or unfinished locally. |
-| Reproducibility | Reviewer re-ran every fast path: all outputs identical to the agents' files (md5 / `all.equal` at 1e-6) except Phase 1 (H1–H3, since resolved: guard fixed, `--fast-lme4` re-run, rds `$generated` 12:35:53, notes rewritten from the rds under one specification). |
+| Decision gate (REVISION_PLAN §2) | **Scenario B, confirmed on the 50-tree glmmTMB phylogenetic tier** (`controlled_wing_phylo_results.rds`, 16:48, 39 specs × 50 trees, all converged except one tree of M5_cc; `$decision_gate$scenario` = B on both samples): M3 −0.371 [−0.777, +0.036] per SD-year (−0.74 mm/decade), M3_cc −0.285 [−0.648, +0.078]; within-contributor year slope −0.159 [−0.798, +0.481] (cc +0.026 [−0.578, +0.629]). Phylogeny moved no year term by more than 0.002 relative to the lme4 tier. The unknown-sex replication stays negative (M6 −0.690 [−1.206, −0.174]). |
+| Phylogenetic engine (new this pass) | The 50-tree `brms` phylogenetic path (Phase 1's Tier 3) is **replaced by default** with `glmmTMB`'s `propto` covariance structure (`_phylo_engine.R`; Williams et al. 2025), validated to reproduce the published 50-tree brms wing model to 2–3 decimals in ~24 s vs hours (`glmmtmb_validation_wing.rds`; see `Analysis/scripts/GLMMTMB_ENGINE.md`). Of the five scripts carrying a phylogenetic tier, **three completed their mandated `--trees 50` run** (multi-trait, bivariate wing-mass isometry, diet interaction — all `n_trees = 50` on disk) and **two did not** (the primary controlled-wing decision-gate model and the variance σ ladder hold only 2-tree dev runs on disk; see §3.9). `--engine brms` remains selectable in every script for a Totoro cross-check and was not run this pass except the original wing validation. |
+| Phases run in full locally | P0 (data + audit), P1 lme4 Tier 1 and glmmTMB phylogenetic tier (50 trees, 39 specs, 65 min, complete 16:48), P2 fast + phylogenetic tier (50 trees), P3 fast + phylogenetic σ ladder (50 trees, 30 min, complete 16:12), P4a (complete), P4ef (code + archive; no full SEM), P5 (climate in full; diet lme4 + phylogenetic tier, 50 trees), P6 (figures regenerated from the 50-tree files at 16:5x), P7 (mechanical manuscript edits; renders). |
+| Phases partly run | Only the brms paths remain unexercised locally: `--engine brms` in the four converted scripts (kept as an optional Bayesian cross-check; its single-tree M0 on Totoro took 55 min and agreed with glmmTMB, after which the ladder was stopped as redundant), the brms rescor bivariate model, and the full drmSEM v4 (Supplement; Totoro). |
+| Reproducibility | Reviewer re-ran every fast path: all outputs identical to the agents' files (md5 / `all.equal` at 1e-6) except Phase 1 (H1–H3, since resolved: guard fixed, `--fast-lme4` re-run, rds `$generated` 12:35:53, notes rewritten from the rds under one specification). **There was no reviewer stage for the phylogenetic-tier pass** (this section and §3.9): the orchestrating (synthesis) agent verified every phylogenetic number below directly against the `.rds` files named, rather than a separate reviewer agent re-running the scripts. |
 | Manuscript | `Manuscript/index.qmd` carries the mechanical corrections only (duration, MICE paragraph, ants logic, effect scale inline, "modest" removed); renders to HTML. The gate-dependent rewrite (title, abstract, Results order, PREDICTS deletion, drmSEM demotion, Allen's-rule retraction) has **not** started. |
-| Git | Nothing committed by the agents. Working tree: 11 modified tracked files, 7 staged renames (`archive/predicts/`), ~50 untracked new outputs/notes. HEAD = `50aa4a3` (the plan). |
+| Git | Nothing committed by the agents. Working tree: 11 modified tracked files, 7 staged renames (`archive/predicts/`), ~50 untracked new outputs/notes, plus this pass's phylogenetic-tier files. HEAD = `50aa4a3` (the plan). |
 
 Two results that cut against the intended Scenario-B framing and must be carried into
 the paper: (i) the unknown-sex replication keeps a clear negative wing trend under the
@@ -39,6 +45,19 @@ against the *published* manuscript beyond the wing trend: the wing-vs-mass slope
 difference on shared records does not exclude zero (−0.92 %/decade [−3.27, +1.43]),
 and the variance rise disappears within measurer (lnCVR within species × sex ×
 contributor −0.249 [−0.515, +0.017], k = 15).
+
+**Phylogeny changes none of the lme4-tier conclusions it has been checked against
+so far** (§3.9): body mass, bill width, tarsus, bill length and tail all keep the
+same collapse-to-zero pattern under phylogenetic control (|Δβ| ≤ 0.106 SE
+throughout, 0 of 28 verdict changes); the diet interaction still halves and its
+interval still crosses zero once contributor and municipality intercepts are
+added (+0.663 [+0.217, +1.108] baseline → +0.319 [−0.019, +0.657] with controls);
+the wing-vs-mass isometry contrast still does not exclude zero at M1
+(+3.90 → phylogenetic +3.88 %/decade [−3.24, +7.84]/[−0.08,+7.84] depending on
+estimator). The one phylogenetic-tier question the manuscript still needs
+answered — whether phylogeny changes the primary controlled wing model (M3) or
+the variance ladder (S3/S7) — is exactly the part that did not finish this pass
+(§3.9).
 
 ---
 
@@ -326,40 +345,130 @@ Source: `climate_trends.rds` (year-RE pooled rows), `diet_lme4_results.rds`, `di
   `effect_scale.rds` (−1.8 mm/decade, −2.6 %; −4.2 mm, −5.9 % [−9.0, −2.8]); every
   gate-dependent sentence tagged `<!-- REVISE: gate -->`. Rendered HTML has 0 occurrences
   of "modest", "three decades", "28-year", "more than two decades", "mice".
+- P6 re-wired `make_figures.R`/`make_figures.py` this pass to read the phylogenetic-tier
+  files when present, with lme4 kept as a lighter comparison layer; the panel label reads
+  the tree count from disk rather than a hard-coded "50" (currently, honestly, "2 trees" —
+  see §3.9). Fig. 2 / the species-slope caterpillar must be **re-exported again** once P1
+  completes its 50-tree run; no P6 code change will be needed for that, only a re-run.
+
+### 3.9 Phylogenetic tier (glmmTMB `propto`, 2026-09-09 afternoon)
+
+Engine and validation: `Analysis/scripts/GLMMTMB_ENGINE.md` (new this pass). In short —
+`glmmTMB`'s `propto` covariance structure (Williams, McGillycuddy, Drobniak, Bolker,
+Warton & Nakagawa 2025) reproduces the published 50-tree `brms` wing model to 2–3
+decimals in seconds rather than hours (`glmmtmb_validation_wing.rds`, `$generated`
+2026-09-09 13:08:54: year −0.922 [−1.400, −0.444] glmmTMB vs −0.922 [−1.403, −0.440]
+brms; phylogenetic proportion 0.957 vs 0.95), and is now the default `--engine` for
+every `--trees` phylogenetic run in the revision, with `--engine brms` kept selectable
+per script. Numbers below are copied from each script's own `.rds`, not from any
+agent's report; where a report and the file disagree, the file is quoted.
+
+**Complete 50-tree runs (3 of 5 scripts):**
+
+| Source (`.rds`, `$generated`) | Model | N | Phylogenetic tier (glmmTMB, 50 trees, Rubin-pooled) | lme4/glmmTMB no-phylogeny tier | Phylogeny change verdict |
+|---|---|---:|---|---|---|
+| `multitrait_phylo_results.rds` (14:44:25) | log body mass, M3 (+ring, cc) | 11,077 | β = −0.00457 [−0.0138, +0.00470], z −0.97, 50/50 converged | −0.0045 [−0.0138, +0.0047] | No change — still flat |
+| " | body mass, diurnal (+`Hour`) | 8,345 | **+0.404 %/hr [0.292, 0.517]**, z 7.03; year with hour −0.0063, z −0.99 | +0.404 % [0.291, 0.516], t 7.02 | No change — diurnal gain confirmed with phylogeny |
+| " | bill width, M3 (+ring, cc) | 3,205 | β = −0.0266 [−0.182, +0.129], z −0.33, 50/50 | −0.02 [−0.17, +0.14] | No change — still collapses to zero |
+| " | bill length, M3 (+ring, cc) | 7,540 | β = +0.171 [−0.018, +0.360], z 1.77, 50/50 | +0.17 [−0.02, +0.36] | No change |
+| " | tail, M3 (+ring, cc) | 8,679 | β = +0.243 [−0.278, +0.764], z 0.91, 50/50 | +0.25 [−0.28, +0.77] | No change |
+| " | tarsus, M3 (+ring, cc) | 4,285 | β = +0.260 [−0.0795, +0.599], z 1.50, 50/50 | +0.26 [−0.08, +0.59] | No change — still attenuates |
+| `bivariate_phylo_results.rds` (14:40:17) | wing, M1 (+src+site) | 7,577 | −1.53 %/decade [−2.63, −0.42] (contrasts_independent), 50/50 converged | −1.49 [−2.64, −0.34] (lme4) | Consistent |
+| " | log-mass, M1 | 7,577 | −0.54 %/decade [−2.68, +1.60] | −0.58 [−2.66, +1.53] | Consistent, still flat |
+| " | wing − mass slope difference, M1 (joint, covariance-correct) | 7,577 | −0.99 %/decade [−3.42, +1.45], z −0.79 | −0.92 [−3.27, +1.43], z −0.77 (glmmTMB indep. estimator) | No change — still does not exclude zero |
+| " | isometry contrast (mass − 3·wing), M1 | 7,577 | +4.04 %/decade [−0.06, +8.15], z 1.93 | +3.90 [−0.07, +7.88], z 1.93 | No change — direction consistent, interval still touches zero |
+| `diet_interaction_phylo.rds` (15:23:54) | Model A interaction (year × Diet-Inv) | 8,086 | +0.663 [+0.217, +1.108], z 2.92, 50/50 | +0.665, t 2.93 (lme4); brms published +0.660 [+0.215,+1.106] | No change — reproduces lme4 and the published brms to 3 decimals |
+| " | A + contributor + municipality | 8,086 | **+0.319 [−0.019, +0.657]**, z 1.85, 49/50 | +0.321 [−0.015, +0.658] (lme4) | No change — still halves and crosses zero |
+| " | Model B (categorical) interaction | 8,086 | +1.024 [+0.056,+1.991], z 2.07, 50/50 | brms published +1.025 [+0.046,+2.004] | No change |
+| " | B + contributor + municipality | 8,086 | +0.387 [−0.335,+1.109], z 1.05, 50/50 | — | Crosses zero, roughly halved (no lme4 comparator run) |
+
+Across the 28 multi-trait fixed-effect comparisons available in
+`multitrait_phylo_results.rds$comparison_lme4`, the phylogenetic tier changes the
+significance verdict relative to lme4 in **0 of 28** cases (median |Δβ|/SE 0.011,
+max 0.106; E3's figure, independently checked against the file's own
+`comparison_lme4` table). Variance-component note: several traits' phylogenetic
+proportion of species-level variance is well below the wing model's 0.957 —
+bill width 0.52–0.54, bill length 0.59–0.63, tarsus 0.81 — meaning phylogenetic
+signal in these traits' species means is weaker than in wing length; this does
+not affect the year-coefficient conclusions above.
+
+**Completed 16:12–16:48 (all five scripts now at 50 trees):**
+
+| Source (`.rds`, `$generated`) | Result (glmmTMB `propto`, 50 trees, Rubin-pooled; per SD-year) |
+|---|---|
+| `controlled_wing_phylo_results.rds`, `controlled_wing_phylo_species_slopes.rds` (16:48; 39 specs; 50/50 trees converged except one tree of M5_cc; 3,924 s) | M0 −0.922 [−1.400, −0.444]; M1 −0.528 [−0.924, −0.133]; M2 −0.500 [−0.896, −0.104]; **M3 −0.371 [−0.777, +0.036]** (−0.74 mm/decade); M3_cc −0.285 [−0.648, +0.078] (−0.57 mm/decade); M4 −0.875 [−1.758, +0.007]; within-municipality (M5) −0.738 [−1.685, +0.209], rsTotal −0.402 [−0.816, +0.012]; within-contributor (M5src) −0.159 [−0.798, +0.481], between-contributor −1.290 [−2.421, −0.159]; within-contributor cc +0.026 [−0.578, +0.629]; M7 first captures −0.379 [−0.783, +0.025]; six long-running contributors +0.095 [−0.526, +0.715]; M3_noanom −0.432 [−0.815, −0.049]; M6 unknown-sex −0.690 [−1.206, −0.174]; M6_cc −0.587 [−1.124, −0.050]; phylo proportion 0.91–0.96. Gate B on both samples. Species slopes (fixed + BLUP, quadrature intervals): M3 49 of 72 negative, 9 below / 2 above zero, median −0.54 mm/decade; M3_cc 49 / 9 / 2, −0.46; M0 54 / 14 / 2, −1.18. Pooled CI not available for M5_cc and M_carrano (one non-converged tree / single-contributor design; cause not recorded in `$errors`). |
+| `variance_phylo_results.rds` (16:12; 9 σ tiers; 50/50 except S0 45/50; 1,768 s) | log-residual-SD year terms: S0 +0.046 [+0.031, +0.062] (+9.6 %/decade in residual SD); S2 (+contributor +site in mean and σ) +0.013 [−0.015, +0.040] (+2.5 % [−2.9, +8.2]); S3 full controls −0.033 [−0.073, +0.007] (−6.3 % [−13.4, +1.5]); S4 within-contributor −0.031 [−0.073, +0.010], between −0.053 [−0.218, +0.112]; S6 (species intercepts in σ) +0.017 [−0.024, +0.058]; S7 (S3t + temperature) year −0.035 [−0.076, +0.005], temperature −0.007 [−0.092, +0.078]. Phylogenetic vs non-phylogenetic estimates differ by ≤ 0.0006 (`$comparison`). |
+
+**Bottom line for this pass:** where the phylogenetic tier finished (multi-trait,
+isometry, diet), it changed **no** conclusion reached at the lme4/glmmTMB
+no-phylogeny tier — every estimate moved by less than one pooled SE and every
+CI-crosses-zero verdict was unchanged. This is consistent with the wing model's
+own validation (phylogenetic signal explains ~96% of *species-level* variance
+but leaves the *year* fixed effect and its interval essentially untouched — the
+species random effect, phylogenetic or not, was already absorbing most of the
+same variance). The controlled-wing decision gate and the variance σ ladder were completed at 50 trees later the same afternoon (table above): both reproduce the lme4 tier to ≤ 0.002 on every year term, the gate stays B, and the variance rise does not survive contributor and site controls (S3 −6.3 %/decade [−13.4, +1.5]; temperature term in σ ≈ 0).
 
 ---
 
-## 4. What still runs on Totoro (in order)
+## 4. What still runs (in order)
 
-Prerequisite on the laptop (done 2026-09-09 12:35+): H1 fixed, `--fast-lme4` re-run, `REVISION_NOTES_P1.md` rewritten from the rds.
+The `glmmTMB propto` engine (§3.9, `GLMMTMB_ENGINE.md`) made most of what this
+section used to reserve for Totoro run locally in minutes, so the list below is
+now split: a short list of **local, glmmTMB re-runs** that only need one more
+uninterrupted invocation (no Totoro, no Stan), and the genuinely **Totoro-only**
+items — the `brms`/Stan cross-checks the plan explicitly keeps, plus drmSEM.
+
+### 4a. Local — glmmTMB 50-tree runs still to complete (minutes, not hours)
+
+Both of these were launched this pass and force-terminated by turn limits before
+finishing; nothing else needs to change first (H1 is already fixed; `_phylo_engine.R`
+is already wired into both scripts):
 
 ```bash
 cd Analysis/scripts
-# Phase 1 (gate) — after the Sex-guard fix
-Rscript atlantic_parallel_controlled.R --smoke          # brms code path never reached sampling locally
-Rscript atlantic_parallel_controlled.R --trees 1        # Tier 2 validation
-Rscript atlantic_parallel_controlled.R --trees 50       # Tier 3: M0 / M3 / M5 / M6 (drop (1|ind) if prohibitive; M3b vs M3 differ < 0.01)
-# Phase 2
-Rscript atlantic_bivariate_wing_mass.R --trees 1        # pool_fixed() m = 1 path; full 7,577-record smoke never finished locally
-Rscript atlantic_bivariate_wing_mass.R --trees 50       # hours
-# Phase 3
-Rscript atlantic_variance_sigma.R --smoke               # killed at iter ~201/400 locally; unexercised end to end
-Rscript atlantic_variance_sigma.R --trees 50            # optionally also --trees 50 --no-tmean (rename the first .rda before)
-# Phase 5
-Rscript atlantic_diet_interaction.R --smoke             # no local smoke at all
-Rscript atlantic_diet_interaction.R --trees 10          # redraws Manuscript/images/diet_interaction_plot.png
+Rscript atlantic_parallel_controlled.R --trees 50      # default --engine glmmTMB; reached 5/39 specs last attempt (~23-40 min for all 39)
+Rscript atlantic_variance_sigma.R --trees 50           # default --engine glmmTMB; reached 2/9 tiers last attempt (~45 min for all 9)
+```
+
+Once these write `controlled_wing_phylo_results.rds` / `..._species_slopes.rds`
+and `variance_phylo_results.rds` with `n_trees == 50`, three things follow
+mechanically and need no further code changes:
+1. ~~Fill in the two blank rows of §3.9~~ **Done 16:48**: both runs completed and §3.9 updated; `$decision_gate$scenario` = B.
+2. ~~Re-run `Manuscript/make_figures.py`~~ **Done 16:5x**: panels now read "glmmTMB phylogenetic mixed model, 50 trees, Rubin-pooled" (Fig. 2: M0 −0.922 [−1.400, −0.444], M3 −0.371 [−0.777, +0.036]; caterpillar 49/72 negative, 9/2 excluding zero).
+3. Append the phylogenetic-tier section to `REVISION_NOTES_P1.md` and
+   `REVISION_NOTES_P3.md` (both notes' owners flagged this as the one remaining
+   step in their reports).
+
+### 4b. Totoro-only — brms/Stan cross-checks and drmSEM
+
+Per `REVISION_PLAN.md` §3 Phase 1's engine note and this task's boundary
+instructions, these stay on `--engine brms` / Stan and were **not** run this pass
+(the wing validation in `glmmtmb_validation_wing.R` is the one brms artifact this
+pass depended on, and it already existed):
+
+```bash
+cd Analysis/scripts
+Rscript atlantic_parallel_controlled.R --engine brms --smoke      # brms code path never reached sampling locally
+Rscript atlantic_parallel_controlled.R --engine brms --trees 1    # single-tree validation
+Rscript atlantic_parallel_controlled.R --engine brms --trees 50   # ONE Bayesian cross-check of M3 (per plan; not the default path)
+Rscript atlantic_bivariate_wing_mass.R --engine brms --trees 1    # rescor mvbind(cwl, ln_mass) model — genuinely multivariate, stays on brms
+Rscript atlantic_bivariate_wing_mass.R --engine brms --trees 50   # hours
+Rscript atlantic_variance_sigma.R --engine brms --smoke           # killed at iter ~201/400 locally; unexercised end to end
+Rscript atlantic_diet_interaction.R --engine brms --smoke         # no local smoke at all
+Rscript atlantic_diet_interaction.R --engine brms --trees 10      # redraws Manuscript/images/diet_interaction_plot.png
 # Phase 4f (climate_extraction.R already run locally; re-run only if rasters differ)
-Rscript atlantic_drmsem.R --no-phylo                    # fast first pass of v4
-Rscript atlantic_drmsem.R                               # full v4 incl. section-10 50-tree relmat refit (unexercised in situ)
+Rscript atlantic_drmsem.R --no-phylo                              # fast first pass of v4
+Rscript atlantic_drmsem.R                                         # full v4 incl. section-10 50-tree relmat refit (unexercised in situ)
 # then
-Rscript update_descriptive_stats.R                      # after the sample.n.wing fix (needs an owner)
+Rscript update_descriptive_stats.R                                # after the sample.n.wing fix (needs an owner)
 cd ../../Manuscript && python3 make_figures.py && quarto render index.qmd
 ```
 
 Expected outputs that do not yet exist: `output/controlled_wing_brms_results.rds`
-(P6's figures auto-upgrade from it), `output/bivariate_results.rds`,
-`variance_results.rds$brms`, `diet_interaction_results.rds$quantile_slopes`,
-`drmsem_results_noarthro.rds` (v4).
+(the one Bayesian cross-check of M3; P6's figures can auto-upgrade to it if it
+lands, though the glmmTMB tier is now the intended default even after it exists),
+`output/bivariate_results.rds` (brms rescor), `variance_results.rds$brms`,
+`diet_interaction_results.rds$quantile_slopes`, `drmsem_results_noarthro.rds` (v4).
 
 ---
 
@@ -395,6 +504,8 @@ Expected outputs that do not yet exist: `output/controlled_wing_brms_results.rds
 8. **Collaboration request (4d)** — S. P. Ribeiro (raw PERD design) is what would make the
    ants index defensible; A. V. L. Freitas, J. H. C. Delabie, ICMBio Monitora as in the plan.
    GBIF occupancy (4b) and resource proxies (4c) not started.
+9. **P1 phylogenetic tier — done 16:48** (`atlantic_parallel_controlled.R --trees 50 --engine glmmTMB`, 65 min, 39 specs, 50/50 trees converged except one tree of M5_cc). Gate B confirmed; see §3.9 and `REVISION_NOTES_P1.md` §10.
+10. **P3 phylogenetic tier — done 16:12** (`atlantic_variance_sigma.R --trees 50 --engine glmmTMB`, 30 min, 9 tiers). See §3.9 and the final phylogenetic-tier section of `REVISION_NOTES_P3.md`.
 
 ---
 

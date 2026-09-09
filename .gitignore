@@ -57,3 +57,7 @@ Analysis/*.zip
 **/*.quarto_ipynb
 
 Analysis/data/raw/worldclim/*.zip
+
+# smoke-test model objects (wiring checks only, never results)
+*smoke*.rda
+*_SMOKE*.rds

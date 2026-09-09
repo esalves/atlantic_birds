@@ -118,12 +118,22 @@ drmSEM-only curated doc is retained in `../../archive/atlantic_drmsem_results.md
 in `REVISION_STATUS.md`; per-phase notes `../scripts/REVISION_NOTES_P*.md`).
 Everything in this section is a **fast-tier result: `lme4` / `glmmTMB` REML with
 Wald ± 1.96 SE intervals and no phylogenetic term** (species intercepts absorb
-it; the lme4 baseline reproduces the brms −0.92 to two decimals). The 50-tree
-brms runs on Totoro (`atlantic_parallel_controlled.R --trees 50`,
-`atlantic_bivariate_wing_mass.R --trees 50`, `atlantic_variance_sigma.R --trees 50`)
-are pending and are the inferential results; the numbers below fix the
-qualitative picture but not the final intervals. §1–§5 above are the June 2026
-published-baseline narrative and are **qualified, not replaced**, by this section.
+it; the lme4 baseline reproduces the brms −0.92 to two decimals). §1–§5 above are
+the June 2026 published-baseline narrative and are **qualified, not replaced**,
+by this section.
+
+**Phylogenetic tier, added same day (afternoon).** The 50-tree `brms` path
+originally planned for this section's inferential numbers is **replaced by
+default** with `glmmTMB`'s `propto` covariance structure (Williams,
+McGillycuddy, Drobniak, Bolker, Warton & Nakagawa 2025), validated to reproduce
+the published 50-tree `brms` wing model to 2–3 decimals in ~24 s instead of hours
+(`glmmtmb_validation_wing.rds`; methods in `../scripts/GLMMTMB_ENGINE.md`; full
+account in `REVISION_STATUS.md` §3.9). Phylogenetic-tier numbers are added
+**alongside** the fast-tier lme4/glmmTMB numbers below, in-line, wherever a
+50-tree phylogenetic run has completed — all five scripts (controlled wing, multi-trait,
+bivariate wing-mass isometry, variance σ ladder, diet interaction) finished at 50 trees
+on 2026-09-09 (the wing and variance ladders at 16:48 and 16:12). One `brms` cross-check (a Bayesian re-fit of
+the primary controlled model, M3) remains planned and has not run.
 
 Units as above: β per SD-year (SD = 5.020 yr; × 1.992 for per decade), mean wing
 71.13 mm, live-only 73 species / 12,571 records / 8,478 wing records, 1995–2018.
@@ -198,16 +208,19 @@ Key points:
   49 of 72 negative, 9 intervals below zero and 2 above, median −0.56 mm/decade
   (M0: 56 of 72, 17 / 2, median −1.18).
 
-### R3. Multi-trait table (`multitrait_results.rds`, `multitrait_table.md`; lme4 REML)
+**Phylogenetic tier (glmmTMB `propto`, 50 trees, `controlled_wing_phylo_results.rds`, 16:48; 39 specs, all 50/50 trees converged except one tree of M5_cc).** M0 −0.922 [−1.400, −0.444]; M1 −0.528 [−0.924, −0.133]; M2 −0.500 [−0.896, −0.104]; **M3 −0.371 [−0.777, +0.036]** (−0.74 mm/decade); M3_cc −0.285 [−0.648, +0.078] (−0.57 mm/decade); M4 −0.875 [−1.758, +0.007]; within-municipality (M5) −0.738 [−1.685, +0.209], rsTotal −0.402 [−0.816, +0.012]; within-contributor (M5src) −0.159 [−0.798, +0.481], between-contributor −1.290 [−2.421, −0.159]; within-contributor cc +0.026 [−0.578, +0.629]; M7 first captures −0.379 [−0.783, +0.025]; six long-running contributors +0.095 [−0.526, +0.715]; M3_noanom −0.432 [−0.815, −0.049]; M6 unknown-sex −0.690 [−1.206, −0.174]; M6_cc −0.587 [−1.124, −0.050]; phylo proportion 0.91–0.96. `$decision_gate$scenario` = **B** on both samples. Every year term is within 0.002 of the lme4 estimate above. Species slopes from the M3 fit (fixed + BLUP, quadrature intervals, not inference): 49 of 72 negative, 9 below zero, 2 above, median −0.54 mm/decade (M0: 54 / 14 / 2, −1.18).
 
-| Trait (n) | M0 baseline | + contributor + municipality | fully controlled (M3) | within-contributor |
-|---|---|---|---|---|
-| log body mass (11,256) | −0.0072 [−0.0165, +0.0021] | −0.0056 [−0.0164, +0.0051] | −0.0045 [−0.0138, +0.0047] | −0.0031 [−0.0102, +0.0039] |
-| bill width (3,209) | **+0.24 [0.06, 0.42]** | **−0.02 [−0.17, +0.13]** | −0.02 [−0.17, +0.14] | +0.03 [−0.18, +0.23] |
-| bill length (7,697) | −0.00 [−0.11, +0.10] | +0.16 [−0.02, +0.34] | +0.17 [−0.02, +0.36] | +0.14 [−0.13, +0.41] |
-| tail length (8,872) | +0.28 [−0.27, +0.83] | +0.30 [−0.19, +0.80] | +0.25 [−0.28, +0.77] | +0.24 [−0.21, +0.70] |
-| tarsus length (4,361) | **+0.42 [0.26, 0.59]** | +0.26 [−0.06, +0.58] | +0.26 [−0.08, +0.59] | +0.26 [−0.16, +0.68] |
-| wing (8,478; cross-ref, R2 is authoritative) | −0.92 [−1.40, −0.44] | −0.53 [−0.92, −0.13] | −0.30 [−0.66, +0.06] | +0.02 [−0.58, +0.62] |
+### R3. Multi-trait table (`multitrait_results.rds`, `multitrait_table.md`; lme4 REML;
+phylogenetic tier `multitrait_phylo_results.rds`, glmmTMB `propto`, **50 trees, complete**)
+
+| Trait (n) | M0 baseline | + contributor + municipality | fully controlled (M3), lme4 | **fully controlled (M3), phylogenetic (50 trees)** | within-contributor |
+|---|---|---|---|---|---|
+| log body mass (11,256 / 11,077 at M3) | −0.0072 [−0.0165, +0.0021] | −0.0056 [−0.0164, +0.0051] | −0.0045 [−0.0138, +0.0047] | **−0.0046 [−0.0138, +0.0047], z −0.97, 50/50** | −0.0031 [−0.0102, +0.0039] |
+| bill width (3,209 / 3,205) | **+0.24 [0.06, 0.42]** | **−0.02 [−0.17, +0.13]** | −0.02 [−0.17, +0.14] | **−0.027 [−0.182, +0.129], z −0.33, 50/50** | +0.03 [−0.18, +0.23] |
+| bill length (7,697 / 7,540) | −0.00 [−0.11, +0.10] | +0.16 [−0.02, +0.34] | +0.17 [−0.02, +0.36] | **+0.171 [−0.018, +0.360], z 1.77, 50/50** | +0.14 [−0.13, +0.41] |
+| tail length (8,872 / 8,679) | +0.28 [−0.27, +0.83] | +0.30 [−0.19, +0.80] | +0.25 [−0.28, +0.77] | **+0.243 [−0.278, +0.764], z 0.91, 50/50** | +0.24 [−0.21, +0.70] |
+| tarsus length (4,361 / 4,285) | **+0.42 [0.26, 0.59]** | +0.26 [−0.06, +0.58] | +0.26 [−0.08, +0.59] | **+0.260 [−0.080, +0.599], z 1.50, 50/50** | +0.26 [−0.16, +0.68] |
+| wing (8,478; cross-ref, R2 is authoritative) | −0.92 [−1.40, −0.44] | −0.53 [−0.92, −0.13] | −0.30 [−0.66, +0.06] | **−0.371 [−0.777, +0.036], z −1.79, 50/50** | +0.02 [−0.58, +0.62] |
 
 Key points:
 - **Every baseline trend that excluded zero (wing, bill width, tarsus) has a
@@ -219,15 +232,32 @@ Key points:
   effect**: only **2 of 22** bill-width contributors span both periods (A. Piratelli,
   M. Alves; 620 of 3,209 records); with contributor alone the sign flips (−0.24,
   t −3.4). The Allen's-rule reading is not supported and is to be retracted.
+- **Phylogeny changes nothing in this table**: the 50-tree phylogenetic tier
+  (glmmTMB `propto`) reproduces every M3 lme4 estimate above to within one pooled
+  SE (median |Δβ|/SE = 0.011, max 0.106, across 28 fixed-effect comparisons in
+  `multitrait_phylo_results.rds$comparison_lme4`), with **0 of 28 significance
+  verdicts changed**, and reproduces the diurnal mass gain (**+0.404 %/hr
+  [0.292, 0.517], z 7.03**, phylogenetic tier, N 8,345, 50/50 converged; year
+  with hour −0.0063, z −0.99). Phylogenetic signal in species-level means is
+  substantial for wing (0.957, see R2/`GLMMTMB_ENGINE.md`) and body mass (0.949–0.950)
+  but weaker for the other traits (bill width 0.52–0.54, bill length 0.59–0.63,
+  tail 0.91–0.92, tarsus 0.81) — none of this changes the year-effect conclusions.
 - **Isometry on shared records** (7,577 records with both traits, 72 species;
-  `bivariate_fast_lme4.rds`): with contributor + site intercepts the wing slope
-  excludes zero (−0.55 [−0.97, −0.13]) and the mass slope does not (−0.0027
-  [−0.0135, +0.0081]) — but the **difference of the two year slopes is
-  −0.92 %/decade [−3.27, +1.43]** (joint glmmTMB, z −0.77) and the isometry
-  contrast (mass − 3·wing) +3.90 [−0.07, +7.88] (z 1.93; +2.01 [−1.47, +5.48] with
-  lon + alt + season). The §1 statement "wings shorter at constant mass" is a
-  consistent direction, **not a demonstrated departure from isometry**; the mass
-  interval is ~2.5× the wing interval (residual SD 3.7 % vs 2.2 %).
+  lme4 tier `bivariate_fast_lme4.rds`; **phylogenetic tier `bivariate_phylo_results.rds`,
+  glmmTMB, 50 trees, complete**): with contributor + site intercepts the wing
+  slope excludes zero (lme4 −0.55 [−0.97, −0.13]; phylogenetic contrasts_independent
+  estimator −1.53 %/decade [−2.64, −0.34], 50/50 converged) and the mass slope does
+  not (lme4 −0.0027 [−0.0135, +0.0081]; phylogenetic −0.54 %/decade [−2.68, +1.60]) —
+  the **difference of the two year slopes is −0.92 %/decade [−3.27, +1.43]** (lme4-tier
+  joint glmmTMB, z −0.77) and **−0.99 %/decade [−3.42, +1.45], z −0.79** (phylogenetic
+  tier, joint model with two trait-specific `propto` terms — the covariance-correct
+  estimate; wing-mass slope correlation only 0.04–0.05, so it barely differs from the
+  independence assumption). The isometry contrast (mass − 3·wing) is +3.90 [−0.07,
+  +7.88] (lme4-tier, z 1.93) and **+4.04 %/decade [−0.06, +8.15], z 1.93** (phylogenetic
+  tier) — **phylogeny does not change this conclusion**. The §1 statement "wings
+  shorter at constant mass" is a consistent direction, **not a demonstrated departure
+  from isometry**, with or without phylogeny; the mass interval is ~2.5× the wing
+  interval (residual SD 3.7 % vs 2.2 %).
 
 ### R4. Variance (`variance_results.rds`; glmmTMB `dispformula`, metafor)
 
@@ -257,6 +287,8 @@ Key points:
   distributional model on Totoro is the primary variance evidence.
 - Side effect for the mean: the heteroscedastic S3 fit shrinks the controlled mean
   year slope on the same records from −0.32 [−0.69, +0.04] to −0.15 [−0.35, +0.05].
+
+**Phylogenetic tier (glmmTMB `propto`, 50 trees, `variance_phylo_results.rds`, 16:12; 9 σ tiers, 50/50 trees converged except S0 45/50).** log-residual-SD year terms: S0 +0.046 [+0.031, +0.062] (+9.6 %/decade in residual SD); S2 (+contributor +site in mean and σ) +0.013 [−0.015, +0.040] (+2.5 % [−2.9, +8.2]); S3 full controls −0.033 [−0.073, +0.007] (−6.3 % [−13.4, +1.5]); S4 within-contributor −0.031 [−0.073, +0.010], between −0.053 [−0.218, +0.112]; S6 (species intercepts in σ) +0.017 [−0.024, +0.058]; S7 (S3t + temperature) year −0.035 [−0.076, +0.005], temperature −0.007 [−0.092, +0.078]. The phylogenetic and non-phylogenetic estimates differ by ≤ 0.0006 on every term (`$comparison`). Reading: the baseline rise in among-individual variance is a between-contributor composition effect; within contributor and site it is absent or reversed, and temperature has no detectable effect on residual variance.
 
 ### R5. ATLANTIC ANTS litter-ant richness index (`ants_results.rds`; Phase 4a, full run)
 
@@ -320,6 +352,19 @@ superseded and await the v4 Totoro run.
   intercepts halve it to +0.321 [−0.015, +0.658], t 1.87**. The substantive point
   (insectivores show no steeper decline; slope at Diet-Inv 100 ≈ 0 in every
   specification) survives; the size of the frugivore/omnivore contrast does not.
+  **Phylogenetic tier (`diet_interaction_phylo.rds`, glmmTMB `propto`, 50 trees,
+  complete):** Model A interaction (year × Diet-Inv) **+0.663 [+0.217, +1.108],
+  z 2.92, 50/50 converged** — reproduces both the lme4 tier (+0.665) and the
+  published `brms` fit (+0.660 [+0.215, +1.106]) to 3 decimals. With contributor +
+  municipality intercepts (A_src_site): **+0.319 [−0.019, +0.657], z 1.85, 49/50
+  converged** — matches the lme4 tier's +0.321 [−0.015, +0.658] and **confirms the
+  halve-and-cross-zero result under phylogeny**. Categorical Model B interaction
+  +1.024 [+0.056, +1.991] (published `brms` +1.025 [+0.046, +2.004]); with
+  contributor + municipality +0.387 [−0.335, +1.109], z 1.05 (also crosses zero).
+  Year slope at Diet-Inv p10/p50/p90 with provenance controls, phylogenetic tier:
+  −1.82 / −1.07 / −0.14 mm/decade — the obligate-insectivore (p90) slope is
+  indistinguishable from zero in every specification, phylogenetic or not.
+  **Phylogeny changes nothing here.**
 
 ### Provenance (this section)
 
@@ -332,3 +377,11 @@ superseded and await the v4 Totoro run.
 `figure_data/*.csv` (P6). Smoke-test files (`bivariate_smoke_results.rds`,
 `models/bivariate_smoke.rda`) are wiring checks and carry no results. Independent
 re-run of every fast path: `../scripts/REVISION_REVIEW.md`.
+
+Phylogenetic tier (added same day, afternoon; no separate reviewer re-run — see
+`REVISION_STATUS.md` §3.9): `glmmtmb_validation_wing.rds` (engine validation);
+`multitrait_phylo_results.rds`, `bivariate_phylo_results.rds`,
+`diet_interaction_phylo.rds` (**complete, 50 trees**); `controlled_wing_phylo_results.rds`,
+`controlled_wing_phylo_species_slopes.rds` (**complete, 50 trees**, 16:48), `variance_phylo_results.rds`
+(**complete, 50 trees**, 16:12); methods note
+`../scripts/GLMMTMB_ENGINE.md`.

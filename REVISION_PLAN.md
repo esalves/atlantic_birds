@@ -410,25 +410,43 @@ M6 (unknown-sex replication) cannot be run from the derived data! Instead:
 ### Phase 1 — Artefact-controlled primary model: THE DECISION GATE (server; ~1–2 days compute)
 
 > [!IMPORTANT]
-> **COMPUTATIONAL DIRECTIVE FOR THE ORCHESTRATING AGENT: AVOID THE 400-STAN-FIT BOTTLENECK**
-> Running 8 models (M0–M7) across 50 phylogenetic trees in Stan with `brms`
-> (`8 models × 50 trees = 400 MCMC fits`) on ~8,500 rows with complex multi-level
-> structures (`(1|spp) + (1|gr(binomial, cov=A)) + (1|src) + (1|site) + (1|ring)`)
-> will consume hundreds of CPU hours, risk divergences, and stall the project.
-> The orchestrating agent MUST execute Phase 1 in three tiered steps:
+> **COMPUTATIONAL DIRECTIVE, UPDATED 2026-09-09 (afternoon): the 400-Stan-fit
+> bottleneck is now avoided by engine, not just by tiering.** The three-tier
+> structure below (`lme4` screen → single-tree validation → 50-tree pooling) is
+> unchanged, but **Tier 3 now runs by default in `glmmTMB` using the `propto`
+> covariance structure** (Williams, McGillycuddy, Drobniak, Bolker, Warton &
+> Nakagawa 2025, bioRxiv 10.64898/2025.12.20.695312; engine in
+> `Analysis/scripts/_phylo_engine.R`; methods and validation in
+> `Analysis/scripts/GLMMTMB_ENGINE.md`), not `brms`/Stan. Validated on this
+> project's own data (`glmmtmb_validation_wing.rds`): glmmTMB reproduces the
+> published 50-tree `brms` M0 fit to 2–3 decimals (year −0.922 [−1.400, −0.444]
+> vs −0.922 [−1.403, −0.440]; phylogenetic proportion 0.957 vs 0.95) in **~24 s**
+> instead of hours. Consequence: **the full M0–M7 ladder (all 39 model
+> specifications in `atlantic_parallel_controlled.R`, not only M0/M3/M5/M6) can
+> now run at 50 trees in well under an hour**, so the "reserve 50-tree pooling
+> for definitive models only" restriction below is relaxed — run the whole
+> ladder at 50 trees by default (`--trees 50`, default `--engine glmmTMB`) and
+> use `--engine brms` only for the one Bayesian cross-check this plan still
+> wants (see the updated Tier 3 below). As of this pass, that full run has been
+> attempted twice and force-terminated by turn/wall-clock limits after 5 of 39
+> specs each time (23–104 s/spec observed; ~20–40 min projected for all 39);
+> it has not yet completed — see `REVISION_STATUS.md` §3.9/§4a for exactly
+> which specs are and are not on disk. The three tiers, updated:
 > 1. **Tier 1 — Instantaneous `lme4` screening (< 2 minutes):**
 >    Fit M0 through M7 in `lme4` immediately using `Analysis/scripts/atlantic_parallel_controlled.R`
 >    with a `--fast-lme4` flag. This immediately confirms the exact coefficients, SEs, and
->    t-values for the entire sequence.
-> 2. **Tier 2 — Single-tree `brms` validation (~1 hour):**
->    Fit M0 through M7 on a single representative tree (or consensus tree) in `brms` to verify
->    that Bayesian posterior means and 95 % credible intervals match REML estimates and to check
->    R-hat / Bulk-ESS.
-> 3. **Tier 3 — 50-tree Rubin-pooled fits ONLY for definitive models:**
->    Reserve the expensive 50-tree Rubin pooling exclusively for:
->    - M0 (baseline replication, to match existing manuscript numbers).
->    - M3/M5 (the definitive controlled model).
->    - M6 (unknown-sex replication check).
+>    t-values for the entire sequence. Unchanged; already complete (`REVISION_STATUS.md` §3.1).
+> 2. **Tier 2 — glmmTMB 50-tree Rubin-pooled fits for the FULL ladder (~20–40 minutes):**
+>    Fit every M0–M7 (and `_cc`, `_noanom`, `M_carrano`, jackknife) specification across
+>    the 50 published trees with `--trees 50` (default `--engine glmmTMB`). This is now the
+>    routine path, not a reserved-for-definitive-models exception, because the engine made
+>    it cheap; keep the phylogenetic-proportion and `pdHess`-convergence diagnostics per tree.
+> 3. **Tier 3 — ONE Bayesian cross-check on Totoro (`--engine brms`, single tree or a
+>    small tree sample, ~1 hour):** Fit M3 (the definitive controlled model) in `brms`/Stan
+>    to verify that Bayesian posterior means and 95 % credible intervals match the glmmTMB
+>    Wald estimates and to check R-hat/Bulk-ESS — the one place in Phase 1 that still needs
+>    Stan, per this project's decision to keep one posterior-based sanity check of the
+>    Wald/REML phylogenetic tier before it goes in the manuscript. Not yet run.
 
 New `Analysis/scripts/atlantic_parallel_controlled.R`. Models to fit and save:
 
@@ -447,8 +465,23 @@ Output `output/controlled_wing_results.rds` with a before/after table.
 
 ### Phase 2 — Multi-trait and Isometry test on shared individuals (server; ~1–2 days)
 
+**Engine update, 2026-09-09:** the univariate wing, log-mass, and wing|log-mass
+models, and the multi-trait screen (`atlantic_multitrait.R`), now default to
+`--engine glmmTMB` (`propto`, `_phylo_engine.R`) and both completed their full
+50-tree run locally in under 45 minutes each (`bivariate_phylo_results.rds`,
+`multitrait_phylo_results.rds`; `REVISION_STATUS.md` §3.9). Only the genuinely
+multivariate model below (item 1, the `mvbind`/`rescor` bivariate model with an
+estimated residual correlation) stays on `--engine brms`, because that residual
+correlation is a Stan/`brms` specification, not something `propto` represents;
+the glmmTMB tier instead estimates the wing-mass slope difference two ways (an
+independence-assumption delta method, and a joint long-format model with two
+trait-specific `propto` terms as the covariance-correct estimate) — both land
+within one SE of each other on this data (wing-mass slope correlation ≈ 0.04–0.05),
+so the `brms` rescor cross-check below is a confirmation, not expected to change
+the conclusion, but has not run yet (Totoro).
+
 New `Analysis/scripts/atlantic_bivariate_wing_mass.R`:
-1. **Bivariate brms model:** `mvbind(cwl, ln_mass)` with `set_rescor(TRUE)`, species
+1. **Bivariate brms model (kept on `--engine brms`; not yet run):** `mvbind(cwl, ln_mass)` with `set_rescor(TRUE)`, species
    intercept+slope per response, phylo term per response, contributor and site intercepts,
    on the 7,577 shared records; derived quantity = difference of year slopes (in % per decade)
    with its interval. Plus `cwl ~ ... + ln_mass` model.
@@ -465,8 +498,20 @@ New `Analysis/scripts/atlantic_bivariate_wing_mass.R`:
 
 ### Phase 3 — Variance re-analysis (server; ~1–2 days)
 
-- brms distributional model: `bf(cwl ~ <M3 mean structure>, sigma ~ scaled_yr +
-  scaled_tmean + Sex + (1|src) + (1|site))`, 10–50 trees. This replaces drmSEM
+**Engine update, 2026-09-09:** the distributional (sigma) model below now defaults
+to `--engine glmmTMB` via its `dispformula` argument (`fit_phylo_glmmtmb(...,
+dispformula = ~ scaled_yr + scaled_tmean + Sex + ...)`), not `brms`, for the same
+reason as Phase 1 (validated 2–3-decimal agreement with `brms` at a fraction of
+the compute; `GLMMTMB_ENGINE.md`). This pass ran a `--trees 50` attempt on
+`atlantic_variance_sigma.R` that reached 2 of 9 sigma tiers (S0–S1) before being
+force-terminated — the σ ladder (S0–S7, S3t) still needs one more uninterrupted
+run (`REVISION_STATUS.md` §3.9/§4a; projected ~45 minutes based on the per-tier
+timings already logged). `--engine brms` remains available for a cross-check but
+has not been exercised past a killed smoke test.
+
+- Distributional model: `bf(cwl ~ <M3 mean structure>, sigma ~ scaled_yr +
+  scaled_tmean + Sex + (1|src) + (1|site))`, 50 trees (glmmTMB `dispformula`,
+  default; `brms` cross-check optional). This replaces drmSEM
   as the primary variance evidence and is not self-authored software.
 - lnCVR within sex, and within species × sex × contributor where k permits;
   report the k = 6 paired result plainly (E. Carrano negative mean −0.46).
@@ -528,7 +573,14 @@ claim still leaves the title and abstract.
   S-climate. Regenerate `passer90_climate.rds` on the live-only sample.
 - `atlantic_diet_interaction.R`: add diet-distribution figure, predictions at
   observed quantiles (10, 50, 90 % Diet-Inv), family random intercept sensitivity;
-  drop the ±1 SD projection text.
+  drop the ±1 SD projection text. **Engine update, 2026-09-09:** the phylogenetic
+  tier (Models A/B and their contributor+municipality/family variants) now
+  defaults to `--engine glmmTMB` and completed its full 50-tree run locally
+  (513 s; `diet_interaction_phylo.rds`) — it reproduces the published `brms`
+  fit and the lme4 tier to 3 decimals and confirms the interaction still halves
+  and crosses zero once contributor and municipality intercepts are added
+  (`REVISION_STATUS.md` §3.9). `--engine brms` remains available for a Totoro
+  cross-check (`--trees 10`) and has not been run.
 
 ### Phase 6 — Figures (1–2 days, after Phases 1–3)
 
@@ -580,6 +632,24 @@ claim still leaves the title and abstract.
 
 ## 4. Run order on the server
 
+**Engine update, 2026-09-09:** every `--trees` step below now defaults to
+`--engine glmmTMB` (`_phylo_engine.R`'s `propto` structure), which runs in
+seconds-to-minutes rather than hours (validated against the published `brms`
+fit in `glmmtmb_validation_wing.rds`; see `Analysis/scripts/GLMMTMB_ENGINE.md`).
+Steps 3–4 collapse from "Totoro, hours" to "local or server, minutes"; the
+former Tier-3 restriction to definitive models only is lifted (run the full
+model ladder at 50 trees by default). `--engine brms` is still selectable, and
+three specific fits stay on it deliberately: the bivariate `rescor` model
+(Phase 2, item 1 — a genuinely multivariate Stan specification), one Bayesian
+cross-check of the primary controlled wing model (M3, Phase 1), and the diet
+interaction's own Totoro cross-check. As of this document, three of five
+phylogenetic scripts (Phase 2's two scripts, Phase 5 diet) have completed a
+full local `--trees 50` glmmTMB run; two (Phase 1's decision-gate model, Phase 3's
+variance ladder) reached partial progress (5/39 specs; 2/9 σ-tiers respectively)
+before being interrupted and need one more uninterrupted invocation — not a
+server/Totoro requirement, just enough wall-clock time (`REVISION_STATUS.md`
+§3.9/§4a give the exact remaining commands).
+
 ```bash
 cd Analysis/scripts
 # Step 0: regenerate data carrying all metadata, traits, and unknown-sex records
@@ -591,23 +661,30 @@ Rscript audit_provenance.R                 # Phase 0 tables + figures (fast)
 # Step 2: Phase 1 fast lme4 screening (takes < 2 min; confirms M0-M7 trajectory)
 Rscript atlantic_parallel_controlled.R --fast-lme4
 
-# Step 3: Phase 1 brms single-tree validation (~1-2 hr; verifies Bayesian/REML agreement)
-Rscript atlantic_parallel_controlled.R --trees 1
-
-# Step 4: Phase 1 final 50-tree Rubin pooling (only on definitive models: M0, M3/M5, M6)
+# Step 3: Phase 1 glmmTMB 50-tree Rubin pooling, FULL ladder (~20-40 min; default engine)
+#         — attempted twice this pass, reached 5/39 specs each time before being
+#           interrupted; not yet complete (REVISION_STATUS.md §3.9/§4a)
 Rscript atlantic_parallel_controlled.R --trees 50
 
+# Step 3b: Phase 1 ONE Bayesian cross-check of M3 on Totoro (not yet run)
+Rscript atlantic_parallel_controlled.R --engine brms --trees 1
+
 # Step 5: Phase 2 multi-trait models (bivariate wing-mass, diurnal mass, bill width collapse)
-Rscript atlantic_bivariate_wing_mass.R     # Phase 2
+#         — glmmTMB 50-tree tier COMPLETE (bivariate_phylo_results.rds, multitrait_phylo_results.rds)
+Rscript atlantic_bivariate_wing_mass.R --trees 50   # Phase 2 (default engine glmmTMB)
+Rscript atlantic_multitrait.R --trees 50            # Phase 2
+Rscript atlantic_bivariate_wing_mass.R --engine brms --trees 1   # rescor cross-check, not yet run
 
 # Step 6: Phase 3 variance analysis
-Rscript atlantic_variance_sigma.R          # Phase 3
+#         — glmmTMB 50-tree tier reached 2/9 sigma-tiers this pass, not yet complete
+Rscript atlantic_variance_sigma.R --trees 50        # Phase 3 (default engine glmmTMB)
 Rscript atlantic_ants_index.R              # Phase 4a: ATLANTIC ANTS litter-ant index
 Rscript atlantic_gbif_occupancy.R          # Phase 4b: GBIF occupancy trends (long)
 
 # Step 7: Climate and diet updates
 Rscript climate_extraction.R               # regenerate live-only passer90_climate.rds + climate trends
-Rscript atlantic_diet_interaction.R        # Phase 5 (updated)
+Rscript atlantic_diet_interaction.R --trees 50     # Phase 5 (updated; glmmTMB 50-tree tier COMPLETE)
+Rscript atlantic_diet_interaction.R --engine brms --trees 10   # Totoro cross-check, not yet run
 Rscript atlantic_drmsem.R                  # Supplement only, INCLUDE_ARTHRO = FALSE
 Rscript update_descriptive_stats.R
 
