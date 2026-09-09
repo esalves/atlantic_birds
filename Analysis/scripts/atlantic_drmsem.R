@@ -1,85 +1,107 @@
 # atlantic_drmsem.R
 # ---------------------------------------------------------------------------
-# Distributional piecewise SEM (drmSEM) for Atlantic Forest passerines.
+# WHAT: Distributional piecewise SEM (drmSEM) of wing length in live-measured
+# adult Atlantic Forest passerines (73 species, 1990-2018). Two endogenous
+# nodes: record-level temperature (WorldClim Tmean at the capture coordinates
+# and year <- year + latitude) and wing length, whose MEAN is modelled on
+# temperature, sex and latitude with species AND contributor (Main_researcher)
+# random intercepts, and whose residual SD (sigma) is modelled on year and
+# temperature. Section 10 refits the wing node with a phylogenetic species
+# effect (Pagel's lambda, 50 trees, Rubin pooling).
 #
-# RESEARCH QUESTION: Is the bird body size decline over time (1990–2018)
-# mediated by rising temperatures (Bergmann's rule) and/or declining
-# arthropod abundance (food limitation), and do these drivers also affect
-# the VARIANCE of body size — not just the mean?
+# STATUS - SUPPLEMENTARY, EXPLORATORY (2026-09, revision Phase 4f;
+# REVISION_PLAN.md S1 "S2.7 drmSEM" and S3 "Phase 4f"). This script is NOT the
+# primary evidence for any claim in the manuscript:
+#   * the primary wing trend is the artefact-controlled brms model
+#     (atlantic_parallel_controlled.R, Phase 1);
+#   * the primary variance evidence is the brms distributional sigma model
+#     with contributor / site / sex terms (atlantic_variance_sigma.R, Phase 3).
+# drmSEM is reported in the Supplement only, as a check that the sign of the
+# sigma-channel paths agrees under an explicit graph, with intervals (no
+# P-values in the main text: one inferential standard throughout).
 #
-# CAUSAL GRAPH (DAG):
+# AUTHORSHIP / SOFTWARE DISCLOSURE (must appear in the Supplement): drmSEM
+# (and drmTMB, its fitting engine) and prepR4pcm (tree retrieval and name
+# reconciliation, section 10) are co-authored by E.S.A.S. and, per
+# REVISION_PLAN S2.7, are to be disclosed as unpublished software distributed
+# as development versions (r-universe / GitHub). Versions used for this edit:
+# R 4.6.0, drmTMB 0.1.4, drmSEM 0.5.0, prepR4pcm 0.5.0.9000, brms 2.23.0.
+# A short validation note (drmSEM i.i.d. paths vs the brms fits on the same
+# data, same signs / magnitudes) accompanies the Supplement table.
 #
-#   scaled_yr ──→ scaled_tmean ─────────────────→ wing_length
-#        │             │                              ↑
-#        │             └──────→ arthro_obs_std ───────┘
-#        └────────────────────────────┘   ↑
-#                       scaled_lat ────────┘  (+ scaled_lat → scaled_tmean)
+# D-SEPARATION CLAIMS TO BE REPORTED (Shipley's test, Fisher's C):
+#   Full-record graph (the ONLY graph reported):
+#     year -> tmean <- lat ;  tmean, Sex, lat -> mean(wing) ;
+#     year, tmean -> sigma(wing) ;  random intercepts (1|spp), (1|Main_researcher)
+#     [and relmat() in section 10] are stripped from the causal edge set by
+#     drmSEM and add NO claims (verified 2026-09-09 on a 1,500-record subset:
+#     the claim set is identical with and without the contributor intercept).
+#     Exactly ONE missing edge => one claim on Fisher's C with df = 2:
+#        Sex _||_ scaled_tmean | {scaled_yr, scaled_lat}
+#     Report: C, df = 2, P, the LR of the single claim, and N / species.
+#     (Last full run before this edit, 2026-06-15, N = 7,810, 72 spp, no
+#      contributor intercept: C = 0.51, df = 2, P = 0.78 - superseded; refit.)
+#   Retired arthropod graph (NOT reported, see MODEL SCOPE below): two claims
+#     (Sex _||_ tmean | yr, lat ; Sex _||_ arthro | yr, tmean, lat) on df = 4;
+#     rejected in June 2026 (C = 13.5, P = 0.009). No coefficient from a
+#     rejected graph is quoted anywhere in the revision.
 #
-#   sigma(wing_length) ~ scaled_yr + scaled_tmean
-#   [Tests whether morphological variability changes over time/temperature,
-#    complementing the lnCVR meta-analysis in the primary manuscript.]
+# SIGMA-CHANNEL WORDING (referee S2.7): the sigma submodel gives TWO separable
+# effects - later years -> larger residual SD, warmer records -> smaller
+# residual SD. Year and record temperature are essentially uncorrelated in
+# these data (year -> tmean path ~ 0 in the June run), so the variance rise
+# is NOT "linked to thermal extremes"; the manuscript text must present the
+# two sigma paths as independent associations.
 #
-# KEY DESIGN DECISIONS:
-#   (1) Arthropod node is ENDOGENOUS (arthro_obs_std ~ scaled_yr + scaled_tmean).
-#       It uses the OBSERVED annual mean log(abundance / effort) from the raw
-#       PREDICTS data (dat_no_grassland), NOT model predictions. EARLIER this
-#       node was exogenous and built from the fitted brm_no_grass model;
-#       that index is a near-linear function of year, so with TIME-RESOLVED
-#       temperature it shared temperature's temporal trend and the d-separation
-#       claim (arthro ⟂ tmean | year, lat) was strongly rejected (Fisher's C
-#       p ≈ 1e-26). Making arthropods endogenous and adding the scaled_tmean →
-#       arthropod edge models that dependence instead of assuming it away, so
-#       the DAG is no longer misspecified on that edge. The retired exogenous
-#       predicted-index variant is kept (commented) in section 9 as a sensitivity.
-#       CAVEAT: the observed aggregate is a YEAR-LEVEL value broadcast to every
-#       bird in that year, so the arthropod node is fitted on replicated values
-#       and its SEs are anticonservative; per-bird scaled_tmean as a predictor of
-#       a year-level outcome is a level mismatch. Treat the arthropod node's
-#       coefficients/SEs as approximate (the wing_length and temperature nodes
-#       are unaffected). Years with < 5 arthropod records are dropped, so the
-#       analysis is restricted to years with arthropod coverage.
-#       A scaled_lat → arthro_obs_std edge is also included: the d-separation
-#       claim scaled_lat ⟂ arthro_obs_std was strongly rejected (LR ≈ 276),
-#       because latitude composition varies across years while arthro_obs_std is
-#       a year-level value. This edge is a STATISTICAL adjustment for that
-#       sampling-induced association (it restores DAG consistency / Fisher's C),
-#       NOT a claim that latitude causes year-level arthropod abundance.
-#       Two caveats this does NOT remove: (a) arthro_obs_std → wing_length is
-#       ≈ 0 here (the strong effect seen with the predicted index was an artefact
-#       of that index being a smooth function of year); (b) requiring arthropod
-#       coverage restricts the data to ~1997–2011, which can change the
-#       year → sigma(wing_length) trend relative to the full-data run — report
-#       the variance result on the full dataset too.
+# WHY the wing node carries (1 | Main_researcher): the revision's central
+# finding is that observer turnover generates apparent trends (REVISION_PLAN
+# S0). Any model whose sigma submodel contains year must therefore absorb
+# between-contributor mean differences, otherwise a change in who measured
+# masquerades as a change in residual variance. drmTMB accepts a second
+# i.i.d. random intercept (tested 2026-09-09, also together with relmat()).
+# A contributor term in the sigma submodel itself is not attempted here (the
+# brms sigma model in Phase 3 carries it).
 #
-#   (2) The MAIN SEM (sections 4–8) uses i.i.d. species intercepts (1 | spp).
-#       drmTMB/drmSEM DO support phylogenetic effects (this corrects an earlier
-#       note): section 10 fits a phylogeny-corrected variant via the structured-
-#       effect marker relmat(1 | species_name, K), where K is an evolutionary
-#       covariance built by drmSEM::drm_phylo_cov(). drmSEM strips relmat() from
-#       the causal edge set, so paths(), dsep(), fisher_c() and the effect
-#       calculus keep operating on the fixed-effect DAG while each node's
-#       likelihood carries the phylogenetic random effect. Pagel's lambda is
-#       selected per tree by AIC and coefficients are pooled across 50 trees
-#       (Rubin's rules). The primary brms analysis (brm0_multiphylo.rda) remains
-#       the formal authority; treat the drmSEM phylo paths as corroboration and
-#       compare directions/magnitudes.
+# INPUTS:
+#   data/derived/passer90.rda          live-only, known-sex, 73 spp, with
+#                                      Main_researcher / Municipality / ID_ABT
+#                                      (rebuild_passer90_live.R, Phase 0)
+#   data/derived/passer90_climate.rds  the same records + record-level WorldClim
+#                                      Tmean (climate_extraction.R). MUST carry
+#                                      ID_ABT: a file without it predates the
+#                                      Phase 0 rebuild (89-species, museum
+#                                      specimens included) and is refused.
+#   [retired] archive/predicts/dat_no_grassland.rds - only with the explicit
+#                                      --arthro-override flag (see MODEL SCOPE)
+# OUTPUTS (Analysis/output, mode-suffixed "_noarthro"):
+#   drmsem_results_<mode>.rds / .md    Fisher's C, d-sep claims, path tables,
+#                                      effect decomposition, pooled phylo paths
+#   drmsem_effects_cache_<mode>.rds, drmsem_phylo_prep_<mode>.rds,
+#   drmsem_phylo_results_<mode>.rds    caches (git-ignored)
+#   figures/drmsem_{dag,coef_forest,effects_forest,sigma_curves}_<mode>.png
 #
-#   (3) Single complete-case dataset (from passer90_climate.rds). Multiple
-#       imputation is not propagated here (50-tree phylogenetic uncertainty IS,
-#       in section 10). Run the SEM on each imputed dataset and pool coefficients
-#       manually (Rubin's rules) if MI uncertainty propagation is also needed.
+# RUN:
+#   Rscript Analysis/scripts/atlantic_drmsem.R                # full supplement run
+#   Rscript Analysis/scripts/atlantic_drmsem.R --no-phylo     # skip section 10
+#   Rscript Analysis/scripts/atlantic_drmsem.R --smoke        # 1,500-record subset,
+#        no phylo, tiny B; writes to a temp dir, touches NOTHING in the repo
+#   Rscript Analysis/scripts/atlantic_drmsem.R --allow-stale-climate
+#        fall back to passer90.rda + STATIC WorldClim climatology when
+#        passer90_climate.rds is stale (spatial, not temporal, temperature)
+#   Rscript Analysis/scripts/atlantic_drmsem.R --arthro-override=PREDICTS_RETIRED
+#        re-run the RETIRED 3-node PREDICTS graph for provenance only
 #
 # REQUIREMENTS:
-#   pak::pak(c("drmTMB", "drmSEM"),
-#            repos = "https://itchyshin.r-universe.dev")
-#   passer90_climate.rds — run climate_extraction.R (WorldClim) first
-#   dat_no_grassland.rds — from atlantic_birds_ms.Rmd (raw arthropod records,
-#     forest biomes only, ants included; see Helms et al. 2016 for justification)
-#     the main model no longer needs brm_no_grass.rda — only the
-#     commented exogenous-index sensitivity in section 9 does)
-#   Section 10 (phylogenetic variant) additionally needs:
-#     pak::pak("itchyshin/prepR4pcm"); install.packages(c("clootl","phytools","ape"))
-#     — same tree-retrieval / name-reconciliation stack as atlantic_parallel.R.
+#   pak::pak(c("drmTMB", "drmSEM"), repos = "https://itchyshin.r-universe.dev")
+#   Section 10 additionally: pak::pak("itchyshin/prepR4pcm");
+#   install.packages(c("clootl", "phytools", "ape")) - the same tree-retrieval
+#   / name-reconciliation stack as atlantic_parallel.R.
+#
+# HISTORY: v3 (2026-06) fitted an endogenous PREDICTS arthropod node in a
+# 3-node graph; that graph was rejected by d-separation and PREDICTS itself
+# was retired in Phase 4e (archive/predicts/README.md). v4 (2026-09): arthropod
+# node off with an explicit override, contributor intercept on the wing node,
+# climate-file staleness guard, --smoke mode, results carry the disclosure.
 # ---------------------------------------------------------------------------
 
 # --- Installation (run once) ------------------------------------------------
@@ -128,17 +150,70 @@ fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
 # Effect tables are cached to CACHE_FILE and reused unless the SEM data changes
 # (or RECOMPUTE = TRUE), so re-sourcing the script does not re-simulate.
 # ============================================================================
+# --- COMMAND-LINE FLAGS -------------------------------------------------------
+.args <- commandArgs(trailingOnly = TRUE)
+.flag <- function(f) any(.args == f)
+.flag_value <- function(prefix) {
+  hit <- grep(paste0("^", prefix, "="), .args, value = TRUE)
+  if (length(hit)) sub(paste0("^", prefix, "="), "", hit[1]) else ""
+}
+SMOKE               <- .flag("--smoke")
+NO_PHYLO            <- .flag("--no-phylo")
+ALLOW_STALE_CLIMATE <- .flag("--allow-stale-climate") || SMOKE
+ARTHRO_OVERRIDE     <- identical(.flag_value("--arthro-override"), "PREDICTS_RETIRED")
+
 # --- MODEL SCOPE ------------------------------------------------------------
-# INCLUDE_ARTHRO = TRUE  → endogenous arthropod model (3 nodes), restricted to
-#                          years with arthropod coverage (~1997–2011).
-# INCLUDE_ARTHRO = FALSE → full-data temperature/variance model (2 nodes), ALL
-#                          records (1990–2018). Use this to check whether the
-#                          year → sigma(wing_length) variance trend (the lnCVR-
-#                          corroborating result) holds on the full dataset or is
-#                          an artefact of the arthropod subsetting.
-# The two modes write SEPARATE caches (suffix below), so you can run both.
+# The PREDICTS arthropod node is RETIRED (revision Phase 4e, referee S2.6):
+# 53 of 56 PREDICTS studies are single-year snapshots and the 17 Atlantic
+# Forest studies span 1998-2009 only, so the "arthropod decline" was a contrast
+# between independent studies, not a time series; the 3-node graph was also
+# rejected by d-separation. The inputs now live in archive/predicts/ (README
+# there). INCLUDE_ARTHRO is therefore FALSE and CANNOT be switched on by
+# editing this file: the guard below stops the script if the constant is set
+# TRUE without the explicit command-line override
+#     --arthro-override=PREDICTS_RETIRED
+# which exists only to reproduce the archived June-2026 numbers for the
+# response letter. Nothing from that model is reported.
+#
+# INCLUDE_ARTHRO = FALSE -> full-record temperature / variance graph (2 nodes),
+#                          ALL live-measured records 1990-2018. THE model.
+# INCLUDE_ARTHRO = TRUE  -> retired 3-node graph restricted to years with
+#                          PREDICTS coverage (~1998-2008). Override only.
+#
+# FUTURE HOOK (Phase 4a/4b): if a locality x year litter-ant or GBIF occupancy
+# index becomes available (atlantic_ants_index.R / atlantic_gbif_occupancy.R,
+# Analysis/data/derived/ants_*.rds), it should enter as a NEW node
+#   ants_index ~ scaled_yr + scaled_lat (+ contributor / method terms)
+# joined on Municipality x Year, NOT through this PREDICTS switch. Not
+# implemented here because the P4a outputs are not final.
 INCLUDE_ARTHRO <- FALSE
+if (isTRUE(INCLUDE_ARTHRO) && !ARTHRO_OVERRIDE) {
+  stop("INCLUDE_ARTHRO is retired (Phase 4e). Re-run with ",
+       "--arthro-override=PREDICTS_RETIRED if you really need the archived ",
+       "3-node PREDICTS graph; nothing from it may be reported.", call. = FALSE)
+}
+if (ARTHRO_OVERRIDE) {
+  INCLUDE_ARTHRO <- TRUE
+  warning("RETIRED PREDICTS arthropod node enabled by explicit override. ",
+          "This graph was rejected by d-separation (June 2026) and PREDICTS ",
+          "carries no within-study temporal information; for provenance only.",
+          call. = FALSE)
+}
 .mode <- if (INCLUDE_ARTHRO) "arthro" else "noarthro"
+
+# --- SMOKE MODE ---------------------------------------------------------------
+# --smoke: 1,500-record subsample, no phylogenetic section, tiny Monte-Carlo
+# budgets, and EVERY output (caches, results, figures) redirected to a temp
+# directory so a smoke run can never overwrite the files the manuscript reads.
+if (SMOKE) {
+  SMOKE_DIR <- file.path(tempdir(), "drmsem_smoke")
+  dir.create(SMOKE_DIR, showWarnings = FALSE, recursive = TRUE)
+  out_path <- function(...) file.path(SMOKE_DIR, ...)
+  fig_path <- function(...) file.path(SMOKE_DIR, "figures", ...)
+  dir.create(fig_path(), showWarnings = FALSE, recursive = TRUE)
+  message("SMOKE MODE: subset fit, no phylo, outputs -> ", SMOKE_DIR,
+          " (nothing in the repo is written). Numbers are NOT results.")
+}
 
 # --- Spatial arthropod aggregation ------------------------------------------
 # Instead of a single Brazil-wide year mean, we aggregate PREDICTS sites within
@@ -152,16 +227,15 @@ ARTHRO_RADIUS_KM <- 200L   # search radius for nearby PREDICTS sites
 ARTHRO_MIN_SITES <-   2L   # min sites required before using local estimate
 
 SEM_SEED    <- 20250611
-EFFECT_B    <- 200L     # coefficient draws  (CI precision)        — 50 for dev
-EFFECT_NSIM <- 200L     # inner sims, distribution-mediated leg    — 50 for dev
-RECOMPUTE   <- FALSE    # TRUE = ignore the cache and recompute
+EFFECT_B    <- if (SMOKE) 20L else 200L   # coefficient draws (CI precision); 50 for dev
+EFFECT_NSIM <- if (SMOKE) 20L else 200L   # inner sims, distribution-mediated leg
+RECOMPUTE   <- SMOKE    # TRUE = ignore the cache and recompute
 CACHE_FILE  <- out_path(paste0("drmsem_effects_cache_", .mode, ".rds"))
-# Bump MODEL_TAG whenever node FORMULAS change (the data signature alone won't
-# catch a structural change, so this forces the effect/phylo caches to refit).
-MODEL_TAG   <- paste0("v3-", .mode, if (INCLUDE_ARTHRO) paste0("-spatArthro", ARTHRO_RADIUS_KM, "km") else "")
+# MODEL_TAG (cache key for node FORMULAS) is defined at the end of section 3,
+# once it is known whether the contributor intercept is available (HAS_SRC).
 
 # --- Section 10 (phylogenetic SEM, Route A) ---------------------------------
-RUN_PHYLO        <- TRUE                  # FALSE skips the whole phylo variant
+RUN_PHYLO        <- !NO_PHYLO && !SMOKE   # --no-phylo / --smoke skip the phylo variant
 N_PHYLO_TREES    <- 50L                   # trees sampled for Rubin pooling
 LAMBDA_GRID      <- c(0, 0.25, 0.5, 0.75, 0.9, 1)  # Pagel's lambda grid (AIC-selected)
 PHYLO_PREP_CACHE <- out_path(paste0("drmsem_phylo_prep_", .mode, ".rds"))   # reconciled trees + matched data
@@ -172,30 +246,82 @@ RECOMPUTE_PHYLO  <- FALSE                 # TRUE = ignore phylo caches and refit
 # 1. LOAD DATA
 # ============================================================================
 
-# Bird data: prefer time-resolved WorldClim temperature (passer90_climate.rds);
-# fall back to static Annual_mean_temperature from passer90.rda if not yet generated.
-climate_path <- derived_path("passer90_climate.rds")
-if (file.exists(climate_path)) {
-  birds <- readRDS(climate_path)
-  message("Using time-resolved temperature (scaled_tmean from WorldClim).")
-} else {
+# Bird data. passer90.rda (Phase 0 rebuild) is ALWAYS loaded: it defines the
+# live-only analytical sample and carries the provenance columns. The
+# time-resolved temperature comes from passer90_climate.rds when that file is
+# current; a stale file (built before the Phase 0 rebuild, hence without
+# ID_ABT: 89 species, museum specimens included) is refused unless
+# --allow-stale-climate, in which case the STATIC WorldClim climatology in
+# passer90.rda is used instead (spatial, not temporal, temperature).
+load(derived_path("passer90.rda"))   # -> passer90
+.prov_cols <- intersect(c("ID_ABT", "Main_researcher", "Municipality", "Locality",
+                          "Ring", "Recapture", "season", "wing_col", "Status"),
+                        names(passer90))
+
+.static_fallback <- function() {
   warning(
-    "passer90_climate.rds not found — falling back to Annual_mean_temperature.\n",
-    "This is a STATIC per-locality climatology: it captures spatial but NOT\n",
-    "temporal temperature variation. The year → temperature → body size\n",
-    "mediation test will reflect spatial Bergmann's rule, not the temporal trend.\n",
-    "Run climate_extraction.R (WorldClim) first to generate passer90_climate.rds.",
-    call. = FALSE
-  )
-  load(derived_path("passer90.rda"))   # → passer90
-  birds <- passer90
-  birds$scaled_tmean <- as.numeric(scale(birds$Annual_mean_temperature))
+    "Using STATIC Annual_mean_temperature from passer90.rda.\n",
+    "This is a per-locality climatology: it captures spatial but NOT temporal\n",
+    "temperature variation, so the year -> temperature -> wing path reflects\n",
+    "spatial Bergmann's rule, not the temporal trend. Run climate_extraction.R\n",
+    "(live-only sample, Phase 5) to regenerate passer90_climate.rds.",
+    call. = FALSE)
+  b <- passer90
+  b$scaled_tmean <- as.numeric(scale(b$Annual_mean_temperature))
+  b
 }
 
-# Raw arthropod records (PREDICTS, forest biomes only, ants included). The MAIN
-# model aggregates these directly (section 2); the fitted brm_no_grass model is
-# only needed for the commented exogenous-index sensitivity in section 9.
-load(derived_path("dat_no_grassland.rds"))   # → dat_no_grassland
+climate_path <- derived_path("passer90_climate.rds")
+TEMP_SOURCE  <- NA_character_
+if (file.exists(climate_path)) {
+  birds <- readRDS(climate_path)
+  if (!"ID_ABT" %in% names(birds)) {
+    msg <- sprintf(paste0(
+      "passer90_climate.rds is STALE: %d rows / %d species and no ID_ABT column, ",
+      "i.e. built before the Phase 0 live-only rebuild (REVISION_PLAN S1 ",
+      "'Housekeeping'). Re-run climate_extraction.R, or pass ",
+      "--allow-stale-climate to fall back to the static climatology."),
+      nrow(birds), length(unique(birds$spp)))
+    if (!ALLOW_STALE_CLIMATE) stop(msg, call. = FALSE)
+    message(msg)
+    birds <- .static_fallback(); TEMP_SOURCE <- "static_worldclim_climatology"
+  } else {
+    # Guarantee the live-only sample and attach any provenance column the
+    # climate script did not carry (it inherits passer90's columns, so this is
+    # normally a no-op).
+    birds <- birds %>% semi_join(passer90 %>% select(ID_ABT), by = "ID_ABT")
+    .missing <- setdiff(.prov_cols, names(birds))
+    if (length(.missing)) {
+      birds <- birds %>%
+        left_join(passer90 %>% select(all_of(c("ID_ABT", .missing))), by = "ID_ABT")
+    }
+    TEMP_SOURCE <- "worldclim_record_level"
+    message("Using time-resolved temperature (scaled_tmean from WorldClim), ",
+            nrow(birds), " live-only records.")
+  }
+} else {
+  message("passer90_climate.rds not found.")
+  birds <- .static_fallback(); TEMP_SOURCE <- "static_worldclim_climatology"
+}
+
+# PREDICTS arthropod records: RETIRED (Phase 4e). Loaded ONLY under the explicit
+# override, from archive/predicts/ (or the old derived/ path if a copy remains).
+REPO_DIR <- dirname(ANALYSIS_DIR)
+if (INCLUDE_ARTHRO) {
+  .cand <- c(file.path(REPO_DIR, "archive", "predicts", "dat_no_grassland.rds"),
+             derived_path("dat_no_grassland.rds"))
+  .hit  <- .cand[file.exists(.cand)]
+  if (!length(.hit)) {
+    stop("dat_no_grassland.rds not found in archive/predicts/ or data/derived/. ",
+         "The PREDICTS inputs were archived in Phase 4e; see ",
+         "archive/predicts/README.md.", call. = FALSE)
+  }
+  load(.hit[1])   # -> dat_no_grassland
+  message("Loaded RETIRED PREDICTS records from ", .hit[1])
+} else {
+  message("PREDICTS arthropod data not loaded: the node is retired and its ",
+          "inputs are archived under archive/predicts/ (Phase 4e).")
+}
 
 # ============================================================================
 # 2. BUILD SPATIALLY-RESOLVED ARTHROPOD AGGREGATE (AF-region, locality × year)
@@ -325,11 +451,57 @@ if (INCLUDE_ARTHRO) {
 }
 
 birds <- birds %>%
-  filter(!is.na(wing_length),
+  mutate(spp        = as.factor(spp),
+         scaled_yr  = as.numeric(scaled_yr),    # scale() matrices -> numeric
+         scaled_lat = as.numeric(scaled_lat)) %>%  # (before filter(): dplyr >= 1.1
+  filter(!is.na(wing_length),                     #  deprecates 1-col matrices there)
          !is.na(scaled_tmean),
          !is.na(scaled_lat),
-         !is.na(Sex)) %>%
-  mutate(spp = as.factor(spp))
+         !is.na(Sex))
+
+# Contributor intercept on the wing node (Phase 4f). Main_researcher is complete
+# (0 % NA, 42 contributors among wing records; audit_sources.rds). If the
+# column is somehow absent the model falls back to species-only intercepts and
+# says so - the results file records which was fitted (src_intercept).
+HAS_SRC <- "Main_researcher" %in% names(birds) && !all(is.na(birds$Main_researcher))
+if (HAS_SRC) {
+  n_na_src <- sum(is.na(birds$Main_researcher))
+  if (n_na_src > 0) message("Dropping ", n_na_src, " records with NA Main_researcher.")
+  birds <- birds %>% filter(!is.na(Main_researcher)) %>%
+    mutate(Main_researcher = factor(Main_researcher))
+} else {
+  message("Main_researcher not available: fitting WITHOUT the contributor intercept.")
+}
+
+if (SMOKE) {
+  set.seed(SEM_SEED)
+  birds <- birds[sample(nrow(birds), min(1500L, nrow(birds))), ] %>% droplevels()
+  message("SMOKE MODE: subsampled to ", nrow(birds), " records.")
+}
+
+# Cache key for node FORMULAS: bump whenever a node formula changes (the data
+# signature alone cannot see a structural change). v4 = contributor intercept.
+MODEL_TAG <- paste0("v4-", .mode,
+                    if (HAS_SRC) "-src" else "-nosrc",
+                    if (INCLUDE_ARTHRO) paste0("-spatArthro", ARTHRO_RADIUS_KM, "km") else "",
+                    if (SMOKE) "-SMOKE" else "")
+
+# Wing-node MEAN formula, shared by section 4 (i.i.d. species intercept) and
+# section 10 (relmat() phylogenetic species effect). `env` must see K for relmat.
+wing_mu_formula <- function(species_term, env = parent.frame()) {
+  rhs <- c("scaled_tmean",
+           if (INCLUDE_ARTHRO) "arthro_obs_std",
+           "Sex", "scaled_lat", species_term,
+           if (HAS_SRC) "(1 | Main_researcher)")
+  stats::as.formula(paste("wing_length ~", paste(rhs, collapse = " + ")), env = env)
+}
+# drmTMB::bf() captures its arguments with substitute() and insists on literal
+# formula calls, so a formula held in a variable must be spliced in with
+# bquote() and evaluated in `env` (which must see K for relmat()).
+wing_bf <- function(species_term, env = parent.frame()) {
+  f <- wing_mu_formula(species_term, env)
+  eval(bquote(drmTMB::bf(.(f), sigma ~ scaled_yr + scaled_tmean)), envir = env)
+}
 
 if (INCLUDE_ARTHRO) {
   cat(sprintf(
@@ -341,6 +513,8 @@ if (INCLUDE_ARTHRO) {
     "SEM dataset [full-data temp/variance model]: %d records, %d species, years %d–%d\n",
     nrow(birds), length(unique(birds$spp)), min(birds$Year), max(birds$Year)))
 }
+if (HAS_SRC) cat(sprintf("Contributors (Main_researcher): %d\n", nlevels(birds$Main_researcher)))
+cat("Wing-node mean formula:", deparse1(wing_mu_formula("(1 | spp)")), "\n")
 
 # ============================================================================
 # 4. FIT drmSEM
@@ -349,8 +523,9 @@ if (INCLUDE_ARTHRO) {
 # INCLUDE_ARTHRO = TRUE → three endogenous nodes:
 #   Node 1 — scaled_tmean:   temperature, driven by year and latitude
 #   Node 2 — arthro_obs_std: arthropod abundance, driven by year, temperature,
-#                            and latitude (see design decision (1) for the
-#                            temperature and latitude edges)
+#                            and latitude (RETIRED, override only; the
+#                            temperature / latitude edges are explained in
+#                            HISTORY in the header and in section 9)
 #   Node 3 — wing_length:    the primary response, with a sigma submodel
 #
 # INCLUDE_ARTHRO = FALSE → two endogenous nodes (no arthropod node, arthropod
@@ -360,6 +535,12 @@ if (INCLUDE_ARTHRO) {
 # morphological variability changes over time and with temperature (parallel to
 # the lnCVR analysis). Remaining missing edges define the Fisher's C d-sep claims.
 
+# The wing node's mean formula is built by wing_mu_formula(): species intercept
+# (1 | spp), plus (1 | Main_researcher) when available, plus arthro_obs_std only
+# under the retired override. Random-effect terms are not causal edges: drmSEM
+# strips them from the DAG, so the d-sep claim set is unchanged by HAS_SRC.
+wing_node <- drm_node(wing_bf("(1 | spp)"), family = gaussian())
+
 if (INCLUDE_ARTHRO) {
   sem_fit <- drm_sem(
     scaled_tmean = drm_node(
@@ -368,17 +549,12 @@ if (INCLUDE_ARTHRO) {
     ),
     # Observed arthropod abundance ~ year + temperature + latitude. The
     # scaled_lat edge is a statistical adjustment for the year-level aggregate's
-    # sampling structure (LR ≈ 276 claim), NOT a causal claim — see decision (1).
+    # sampling structure (LR ~ 276 claim), NOT a causal claim - see HISTORY.
     arthro_obs_std = drm_node(
       drmTMB::bf(arthro_obs_std ~ scaled_yr + scaled_tmean + scaled_lat),
       family = gaussian()
     ),
-    wing_length = drm_node(
-      drmTMB::bf(wing_length ~ scaled_tmean + arthro_obs_std +
-                   Sex + scaled_lat + (1 | spp),
-                 sigma ~ scaled_yr + scaled_tmean),
-      family = gaussian()
-    ),
+    wing_length = wing_node,
     data = birds
   )
 } else {
@@ -387,11 +563,7 @@ if (INCLUDE_ARTHRO) {
       drmTMB::bf(scaled_tmean ~ scaled_yr + scaled_lat + (1 | spp)),
       family = gaussian()
     ),
-    wing_length = drm_node(
-      drmTMB::bf(wing_length ~ scaled_tmean + Sex + scaled_lat + (1 | spp),
-                 sigma ~ scaled_yr + scaled_tmean),
-      family = gaussian()
-    ),
+    wing_length = wing_node,
     data = birds
   )
 }
@@ -453,6 +625,7 @@ print(standardize(sem_fit, method = "latent"))
   round(sum(d$wing_length), 3), round(sum(d$scaled_tmean), 3),
   if ("arthro_obs_std" %in% names(d)) round(sum(d$arthro_obs_std), 3) else "noarth",
   round(sum(as.integer(factor(d$Sex))), 0),
+  if (HAS_SRC) paste0("src", nlevels(d$Main_researcher)) else "nosrc",
   sep = "-"
 )
 sig <- .data_sig(birds)
@@ -515,8 +688,9 @@ cat("\n--- Effects of scaled_tmean → wing_length ---\n");              print(e
 # ============================================================================
 # Component-labelled arrows: solid = mu paths, styled differently for sigma.
 
-dag_plot <- plot(sem_fit)
-print(dag_plot)
+# plot() draws by side effect, so under Rscript it would leave a stray Rplots.pdf;
+# the publication DAG is built explicitly in section 12a.
+if (interactive()) { dag_plot <- plot(sem_fit); print(dag_plot) }
 
 # Optional: save for the manuscript
 # ggsave(file.path("..", "Manuscript", "images", "fig-drmsem-dag.png"),
@@ -542,12 +716,12 @@ print(dag_plot)
 # observed aggregate fixes the DAG at the cost of anticonservative SEs on the
 # arthropod node. Compare directions/magnitudes across the two.
 #
-# Requires brm_no_grass.rda (not loaded by default — see section 1).
+# Requires archive/predicts/brm_no_grass.rda (archived in Phase 4e; never loaded by default).
 # Uncomment to run.
 
 # # --- 9a. Predicted exogenous index (population-level, per year) ----------
 # arthro_env <- new.env()
-# load(out_path("models", "brm_no_grass.rda"), envir = arthro_env)
+# load(file.path(REPO_DIR, "archive", "predicts", "brm_no_grass.rda"), envir = arthro_env)  # archived Phase 4e
 # brm_arthro  <- arthro_env$brm_no_grass
 # # Recover the date-scaling brm_arthro used (scale() on Sample_midpoint Dates).
 # arthro_sp_num  <- as.numeric(dat_no_grassland$Sample_midpoint)
@@ -735,20 +909,16 @@ if (isTRUE(RUN_PHYLO) &&
   # Focal (wing_length) node, fitted alone for AIC-based lambda selection.
   # The arthropod term is included only in INCLUDE_ARTHRO mode (matches main DAG).
   fit_wing_node <- function(K) {
-    bf_wing <- if (INCLUDE_ARTHRO) {
-      drmTMB::bf(wing_length ~ scaled_tmean + arthro_obs_std + Sex +
-                   scaled_lat + relmat(1 | sp_tip, K = K),
-                 sigma ~ scaled_yr + scaled_tmean)
-    } else {
-      drmTMB::bf(wing_length ~ scaled_tmean + Sex +
-                   scaled_lat + relmat(1 | sp_tip, K = K),
-                 sigma ~ scaled_yr + scaled_tmean)
-    }
+    bf_wing <- wing_bf("relmat(1 | sp_tip, K = K)", env = environment())
     drmTMB::drmTMB(bf_wing, data = sub_to_K(K), family = gaussian())
   }
-  # Full phylogenetic SEM at a given K (same node set as the main model).
+  # Full phylogenetic SEM at a given K (same node set as the main model; the
+  # wing node keeps the (1 | Main_researcher) intercept alongside relmat() -
+  # drmTMB accepts both in one node, tested 2026-09-09 on a subset).
   fit_phylo_sem <- function(K) {
     d <- sub_to_K(K)
+    wing_node_K <- drm_node(wing_bf("relmat(1 | sp_tip, K = K)", env = environment()),
+                            family = gaussian())
     if (INCLUDE_ARTHRO) {
       drm_sem(
         scaled_tmean = drm_node(
@@ -757,22 +927,14 @@ if (isTRUE(RUN_PHYLO) &&
         arthro_obs_std = drm_node(
           drmTMB::bf(arthro_obs_std ~ scaled_yr + scaled_tmean + scaled_lat),
           family = gaussian()),
-        wing_length = drm_node(
-          drmTMB::bf(wing_length ~ scaled_tmean + arthro_obs_std + Sex +
-                       scaled_lat + relmat(1 | sp_tip, K = K),
-                     sigma ~ scaled_yr + scaled_tmean),
-          family = gaussian()),
+        wing_length = wing_node_K,
         data = d)
     } else {
       drm_sem(
         scaled_tmean = drm_node(
           drmTMB::bf(scaled_tmean ~ scaled_yr + scaled_lat + (1 | spp)),
           family = gaussian()),
-        wing_length = drm_node(
-          drmTMB::bf(wing_length ~ scaled_tmean + Sex +
-                       scaled_lat + relmat(1 | sp_tip, K = K),
-                     sigma ~ scaled_yr + scaled_tmean),
-          family = gaussian()),
+        wing_length = wing_node_K,
         data = d)
     }
   }
@@ -870,9 +1032,28 @@ results <- list(
   model_tag  = MODEL_TAG,
   mode       = .mode,
   generated  = as.character(Sys.time()),
+  smoke      = SMOKE,                       # TRUE = subset smoke test, NOT a result
+  status     = "supplementary, exploratory (REVISION_PLAN S2.7 / Phase 4f)",
   n_records  = nrow(birds),
   n_species  = length(unique(birds$spp)),
+  n_contributors = if (HAS_SRC) nlevels(birds$Main_researcher) else NA_integer_,
+  src_intercept  = HAS_SRC,                 # (1 | Main_researcher) on the wing node
+  temperature_source = TEMP_SOURCE,
+  wing_mu_formula = deparse1(wing_mu_formula("(1 | spp)")),
   year_range = range(birds$Year),
+  dsep_claims_to_report = if (INCLUDE_ARTHRO) c(
+    "Sex _||_ scaled_tmean | {scaled_yr, scaled_lat}",
+    "Sex _||_ arthro_obs_std | {scaled_yr, scaled_tmean, scaled_lat}") else
+    "Sex _||_ scaled_tmean | {scaled_yr, scaled_lat}   (Fisher's C on df = 2)",
+  software = list(
+    R = R.version.string,
+    drmTMB    = as.character(utils::packageVersion("drmTMB")),
+    drmSEM    = as.character(utils::packageVersion("drmSEM")),
+    prepR4pcm = if (requireNamespace("prepR4pcm", quietly = TRUE))
+                  as.character(utils::packageVersion("prepR4pcm")) else NA_character_,
+    disclosure = paste("drmSEM/drmTMB and prepR4pcm are co-authored by E.S.A.S.;",
+                       "development versions (r-universe / GitHub), to be disclosed",
+                       "as unpublished software in the Supplement (REVISION_PLAN S2.7).")),
   fisher_c   = if (exists("fc"))         as.data.frame(fc)         else NULL,
   dsep       = if (exists("dsep_tab"))   as.data.frame(dsep_tab)   else NULL,
   paths_raw  = if (exists("path_table")) as.data.frame(path_table) else NULL,
@@ -899,10 +1080,17 @@ saveRDS(results, RESULTS_RDS)
 }
 
 .lines <- c(
-  paste0("# drmSEM results — ", MODEL_TAG),
+  paste0("# drmSEM results — ", MODEL_TAG, if (SMOKE) "  [SMOKE TEST — NOT A RESULT]" else ""),
   paste0("_generated ", results$generated, " · N = ", results$n_records,
          " records, ", results$n_species, " species, years ",
-         results$year_range[1], "–", results$year_range[2], "_"),
+         results$year_range[1], "–", results$year_range[2],
+         if (HAS_SRC) paste0(", ", results$n_contributors, " contributors") else "",
+         "; temperature: ", TEMP_SOURCE, "_"),
+  "",
+  "_Supplementary, exploratory analysis (REVISION_PLAN §2.7 / Phase 4f). ",
+  "Wing-node mean formula: `", results$wing_mu_formula, "`. ",
+  "d-separation claim(s) to report: ", paste(results$dsep_claims_to_report, collapse = "; "), ". ",
+  results$software$disclosure, "_",
   .fence("Fisher's C (global DAG fit)",            results$fisher_c),
   .fence("d-separation claims",                    results$dsep),
   .fence("Path coefficients (raw)",                results$paths_raw),
