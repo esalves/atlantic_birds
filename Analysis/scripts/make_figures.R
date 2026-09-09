@@ -1,33 +1,186 @@
 # make_figures.R
 # ---------------------------------------------------------------------------
-# Regenerate all drmSEM result figures from the saved Analysis/output/*.rds
-# WITHOUT refitting any model. Reads drmsem_results_<mode>.rds (which store
-# paths_raw, paths_sdx and the effect tables as plain data frames) and redraws
-# the four figures per mode into Analysis/figures/.
+# WHAT: Two jobs, selected by the positional argument(s):
 #
-# Only needs ggplot2 (+ scales, grid — both ggplot2 deps / base). No drmTMB,
-# drmSEM, or fitted model objects required, so it runs fast anywhere R + ggplot2
-# are installed.
+#   (a) "export"  -> writes the CSV files that Manuscript/make_figures.py reads
+#                    (Analysis/output/figure_data/*.csv). The Python figure
+#                    script cannot read .rds / .rda files (pyreadr is not
+#                    installed), so every table it needs is flattened here:
+#                    the record-level analytical sample (passer90.rda), the
+#                    Phase 0 audit tables (audit_sites.rds, audit_sources.rds),
+#                    the effect-scale constants (effect_scale.rds) and the
+#                    Phase 1 lme4 fast-tier results (controlled_wing_results.rds,
+#                    controlled_wing_species_slopes.rds). Missing inputs are
+#                    skipped with a message, never fabricated; make_figures.py
+#                    then skips the figures that depend on them.
+#   (b) "noarthro" / "arthro" (or no mode, = both) -> regenerate the drmSEM
+#                    result figures from the saved Analysis/output/*.rds WITHOUT
+#                    refitting any model (reads drmsem_results_<mode>.rds, which
+#                    store paths_raw, paths_sdx and the effect tables as plain
+#                    data frames) and redraws the four figures per mode into
+#                    Analysis/figures/. Only needs ggplot2 (+ scales, grid).
+#                    When no mode is given the export step (a) also runs.
 #
-#   Rscript make_figures.R            # both modes (noarthro, arthro)
-#   Rscript make_figures.R arthro     # one mode only
+# WHY (2026-09, revision Phase 6; REVISION_PLAN.md §3 "Phase 6"): the redesigned
+# Fig. 1 (shared vs period-unique sites), the within-species-centred Fig. 2 with
+# the controlled (M3) fit, the species-slope caterpillar and the provenance
+# supplementary figures all need columns that passer90_export.csv (Binomial,
+# Year, cwl, bill width, lon, lat) does not carry, plus the audit and Phase 1
+# tables. Rather than teaching the Python script to read R serialisations, this
+# script writes plain CSVs; make_figures.py calls it (Rscript ... export) before
+# drawing, and falls back to the CSVs already on disk when Rscript is absent.
+#
+# INPUTS:  data/derived/passer90.rda
+#          output/audit_sites.rds, output/audit_sources.rds, output/effect_scale.rds
+#          output/controlled_wing_results.rds, output/controlled_wing_species_slopes.rds
+#          output/drmsem_results_<mode>.rds                      (drmSEM figures)
+# OUTPUTS: output/figure_data/fig_records.csv                  record-level sample
+#          output/figure_data/fig_map_sites.csv                coordinate sites x period
+#          output/figure_data/fig_contributors_per_year.csv
+#          output/figure_data/fig_records_per_contributor_year.csv
+#          output/figure_data/fig_contributor_table.csv
+#          output/figure_data/fig_wingcol_by_year.csv
+#          output/figure_data/fig_controlled_before_after.csv  Phase 1 year terms
+#          output/figure_data/fig_species_slopes.csv           Phase 1 species slopes (M3, M3_cc, M0)
+#          output/figure_data/fig_scalars.csv                  key = value constants
+#          figures/drmsem_*_<mode>.png (+ Manuscript/images/fig-drmsem.png)
+#
+# RUN:  Rscript Analysis/scripts/make_figures.R export     # CSVs for make_figures.py only
+#       Rscript Analysis/scripts/make_figures.R            # export + both drmSEM modes
+#       Rscript Analysis/scripts/make_figures.R arthro     # one drmSEM mode only
+#       (works from the repo root, Analysis/, or Analysis/scripts/)
+# Session: R 4.6.0, ggplot2 4.0.3, dplyr 1.2.1, data.table 1.17.x.
 # ---------------------------------------------------------------------------
 
 suppressPackageStartupMessages(library(ggplot2))
+set.seed(20260909)   # nothing stochastic below; recorded for the convention
 
-# --- locate repo (Analysis/output + Analysis/figures) ----------------------
-.repo <- local({
-  d <- getwd()
-  for (i in 0:10) {
-    if (file.exists(file.path(d, "atlantic_birds.Rproj")) ||
-        dir.exists(file.path(d, "Analysis", "output"))) return(d)
-    d <- dirname(d)
+# --- robust path resolution (repo layout: Analysis/{scripts,data,output,figures}) ---
+# Locate the Analysis/ directory regardless of getwd() (script may be run from the
+# repo root, Analysis/, or Analysis/scripts/), then build paths into its subfolders.
+.find_analysis_dir <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in 1:10) {
+    if (dir.exists(file.path(d, "data", "derived")) && dir.exists(file.path(d, "scripts")))
+      return(d)
+    if (dir.exists(file.path(d, "Analysis", "data", "derived")))
+      return(normalizePath(file.path(d, "Analysis"), winslash = "/"))
+    parent <- dirname(d); if (identical(parent, d)) break; d <- parent
   }
-  stop("Could not find the repo root (looked for atlantic_birds.Rproj / Analysis/output) from ", getwd())
-})
-OUTPUT_DIR <- file.path(.repo, "Analysis", "output")
-FIG_DIR    <- file.path(.repo, "Analysis", "figures")
+  stop("Could not locate Analysis/ (need Analysis/data/derived and Analysis/scripts). ",
+       "Run from inside the atlantic_birds repo.")
+}
+ANALYSIS_DIR <- .find_analysis_dir()                 # = .../atlantic_birds/Analysis
+raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
+derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
+out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
+script_path  <- function(...) file.path(ANALYSIS_DIR, "scripts", ...)
+.repo      <- dirname(ANALYSIS_DIR)
+OUTPUT_DIR <- out_path()
+FIG_DIR    <- fig_path()
 if (!dir.exists(FIG_DIR)) dir.create(FIG_DIR, recursive = TRUE)
+
+# ============================================================================
+# (a) EXPORT: flatten the rds/rda inputs of make_figures.py to CSV
+# ============================================================================
+export_figure_data <- function() {
+  suppressPackageStartupMessages(library(dplyr))
+  fd <- out_path("figure_data"); dir.create(fd, showWarnings = FALSE, recursive = TRUE)
+  wcsv <- function(df, name) {
+    df <- as.data.frame(df)
+    # drop list-columns (none expected) and flatten 1-column matrices from scale()
+    for (v in names(df)) if (is.matrix(df[[v]])) df[[v]] <- as.numeric(df[[v]])
+    data.table::fwrite(df, file.path(fd, name))
+    message(sprintf("  wrote %-40s %6d rows x %2d cols", name, nrow(df), ncol(df)))
+  }
+  skip <- function(f) { message("  SKIP ", basename(f), " not found (the figures that need it will be skipped)"); FALSE }
+  scal <- list()
+  add_scalar <- function(key, value, source) scal[[length(scal) + 1]] <<- data.frame(key = key, value = as.character(value), source = source)
+
+  # --- record-level analytical sample -----------------------------------------
+  f <- derived_path("passer90.rda")
+  if (file.exists(f)) {
+    load(f)   # -> passer90 (known-sex, live, 73 spp, 12,571 records)
+    sc <- attr(passer90, "scaling")
+    rec <- passer90 %>%
+      transmute(ID_ABT, Binomial, Family, Sex, Year, month, season = as.character(season),
+                cwl = conc.wing.length, wing_col, Bill_width.mm., Body_mass.g.,
+                Main_researcher, Municipality, Locality,
+                Longitude_decimal_degrees, Latitude_decimal_degrees, Altitude, Molt, Ring)
+    wcsv(rec, "fig_records.csv")
+    add_scalar("n_records", nrow(rec), "passer90.rda")
+    add_scalar("n_species", n_distinct(rec$Binomial), "passer90.rda")
+    add_scalar("n_wing_records", sum(!is.na(rec$cwl)), "passer90.rda")
+    add_scalar("year_centre_scaling", unname(sc$year["center"]), "attr(passer90, 'scaling')$year")
+    add_scalar("year_sd_scaling", unname(sc$year["scale"]), "attr(passer90, 'scaling')$year")
+  } else skip(f)
+
+  # --- Phase 0 audit tables -----------------------------------------------------
+  f <- out_path("audit_sites.rds")
+  if (file.exists(f)) {
+    a <- readRDS(f)
+    wcsv(a$map_sites, "fig_map_sites.csv")
+    for (k in c("locality_wing", "municipality_wing", "coordinate_site_wing", "species_municipality_wing"))
+      for (kk in names(a[[k]])) add_scalar(paste(k, kk, sep = "."), a[[k]][[kk]], "audit_sites.rds")
+    add_scalar("n_wing_quartile", a$n_wing_quartile, "audit_sites.rds")
+  } else skip(f)
+  f <- out_path("audit_sources.rds")
+  if (file.exists(f)) {
+    a <- readRDS(f)
+    wcsv(a$contributors_per_year, "fig_contributors_per_year.csv")
+    wcsv(a$records_per_contributor_year_wing, "fig_records_per_contributor_year.csv")
+    wcsv(a$contributor_table, "fig_contributor_table.csv")
+    wcsv(a$wingcol_by_year, "fig_wingcol_by_year.csv")
+    add_scalar("n_wing_contributors", a$n_wing_contributors, "audit_sources.rds")
+    add_scalar("n_span_both_wing", a$n_span_both_wing, "audit_sources.rds")
+    add_scalar("wing_records_from_spanners", a$wing_records_from_spanners, "audit_sources.rds")
+    add_scalar("prop_right_early", a$prop_right_early, "audit_sources.rds")
+    add_scalar("prop_generic_late", a$prop_generic_late, "audit_sources.rds")
+    add_scalar("spanning_contributors", paste(a$spanning_contributors, collapse = ";"), "audit_sources.rds")
+  } else skip(f)
+  f <- out_path("effect_scale.rds")
+  if (file.exists(f)) {
+    e <- readRDS(f)
+    add_scalar("mean_wing_mm", e$mean_wing_mm, "effect_scale.rds")
+    add_scalar("sd_year_scaling", e$sd_year_scaling, "effect_scale.rds")
+    add_scalar("published_wing_est", e$published$wing[["est"]], "effect_scale.rds (brm0_multiphylo Rubin pooled)")
+    add_scalar("published_wing_lo", e$published$wing[["lo"]], "effect_scale.rds")
+    add_scalar("published_wing_hi", e$published$wing[["hi"]], "effect_scale.rds")
+  } else skip(f)
+
+  # --- Phase 1 fast-tier (lme4) results -------------------------------------------
+  f <- out_path("controlled_wing_results.rds")
+  if (file.exists(f)) {
+    r <- readRDS(f)
+    wcsv(r$before_after, "fig_controlled_before_after.csv")
+    add_scalar("controlled_mode", r$mode, "controlled_wing_results.rds")
+    add_scalar("controlled_generated", format(r$generated), "controlled_wing_results.rds")
+    add_scalar("controlled_sd_year", r$sd_year, "controlled_wing_results.rds")
+    add_scalar("controlled_mean_wing_mm", r$mean_wing_mm, "controlled_wing_results.rds")
+    add_scalar("controlled_session", paste(names(r$session), unlist(r$session), sep = "=", collapse = "; "), "controlled_wing_results.rds")
+    add_scalar("decision_gate_scenario", r$decision_gate$scenario, "controlled_wing_results.rds")
+  } else skip(f)
+  f <- out_path("controlled_wing_species_slopes.rds")
+  if (file.exists(f)) {
+    s <- readRDS(f)
+    wcsv(bind_rows(s$M3, s$M3_cc, s$M0), "fig_species_slopes.csv")
+    for (m in names(s$summary)) for (k in names(s$summary[[m]]))
+      add_scalar(paste("slopes", m, k, sep = "."), s$summary[[m]][[k]], "controlled_wing_species_slopes.rds")
+  } else skip(f)
+
+  # --- brms Rubin-pooled results (Tiers 2-3), if the server run has been copied back ---
+  f <- out_path("controlled_wing_brms_results.rds")
+  if (file.exists(f)) {
+    b <- readRDS(f)
+    if (!is.null(b$species_slopes_M3)) wcsv(b$species_slopes_M3, "fig_species_slopes_brms_M3.csv")
+    if (!is.null(b$before_after))      wcsv(b$before_after, "fig_controlled_before_after_brms.csv")
+    add_scalar("brms_available", TRUE, "controlled_wing_brms_results.rds")
+  } else message("  (no controlled_wing_brms_results.rds yet: figures are labelled as the lme4 fast tier)")
+
+  wcsv(bind_rows(scal), "fig_scalars.csv")
+  invisible(fd)
+}
 
 fpath <- function(name, mode) file.path(FIG_DIR, paste0(name, "_", mode, ".png"))
 save_fig <- function(name, mode, p, w = 7, h = 5) {
@@ -163,7 +316,12 @@ fig_sigma <- function(pr, mode) {
 # Drive: loop over requested modes
 # ============================================================================
 args  <- commandArgs(trailingOnly = TRUE)
-modes <- if (length(args)) args else c("noarthro", "arthro")
+if (!length(args) || "export" %in% args) {
+  message("Exporting figure data for Manuscript/make_figures.py -> ", out_path("figure_data"))
+  export_figure_data()
+  if (identical(args, "export")) quit(save = "no", status = 0)
+}
+modes <- if (length(args)) setdiff(args, "export") else c("noarthro", "arthro")
 
 for (mode in modes) {
   f <- file.path(OUTPUT_DIR, paste0("drmsem_results_", mode, ".rds"))

@@ -1,0 +1,35 @@
+figure,item,value
+fig-map,early: records,2370.0
+fig-map,early: coordinate sites,93.0
+fig-map,early: shared sites,4.0
+fig-map,early: species,63.0
+fig-map,early: contributors,12.0
+fig-map,late: records,2870.0
+fig-map,late: coordinate sites,146.0
+fig-map,late: shared sites,4.0
+fig-map,late: species,70.0
+fig-map,late: contributors,33.0
+fig-wingtrend,M3 est,-0.370410503361508
+fig-wingtrend,M0 est,-0.921682626207744
+fig-wingtrend,M3 lo,-0.775150003745044
+fig-wingtrend,M0 lo,-1.39980860874701
+fig-wingtrend,M3 hi,0.0343289970220282
+fig-wingtrend,M0 hi,-0.443556643668483
+fig-wingtrend,M3 mmd,-0.737880536325449
+fig-wingtrend,M0 mmd,-1.83604855795429
+fig-wingtrend,M3 mmd_lo,-1.54414654904601
+fig-wingtrend,M0 mmd_lo,-2.78850496301168
+fig-wingtrend,M3 mmd_hi,0.0683854763951092
+fig-wingtrend,M0 mmd_hi,-0.883592152896893
+fig-wingtrend,M3 N,8478.0
+fig-wingtrend,M0 N,8478.0
+fig-species-slopes,n species,72.0
+fig-species-slopes,n negative,49.0
+fig-species-slopes,n excl zero negative,9.0
+fig-species-slopes,n excl zero positive,2.0
+fig-species-slopes,median mm/decade,-0.5631271638983659
+fig-s-records-by-source,wing records,8478.0
+fig-s-records-by-source,contributors with wing records,42.0
+fig-s-records-by-source,contributors spanning both periods,6.0
+fig-s-wingcol,prop right early,0.873839662447257
+fig-s-wingcol,prop generic late,0.674564459930314
