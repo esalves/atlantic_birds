@@ -16,6 +16,16 @@ run here — not even as a smoke test — because it needs the tree cloud and
 `Analysis/output/climate_trends.rds`, `diet_distribution.rds` or
 `diet_lme4_results.rds`.
 
+> **Update 2026-09-09 (agent E4, §8).** The phylogenetic tier has since been
+> run in full locally with glmmTMB's `propto` covariance structure across the
+> 50 published trees (`--engine glmmTMB`, now the default;
+> `output/diet_interaction_phylo.rds`, 694 s). It reproduces the published brms
+> interaction (+0.663 [+0.217, +1.108] vs +0.660 [+0.215, +1.106]), shows that
+> phylogeny leaves every diet coefficient unchanged relative to the lme4 tier,
+> and that the interaction halves and its interval includes zero under
+> contributor + municipality controls (+0.319 [−0.019, +0.657]). The brms path
+> remains selectable (`--engine brms`) as the Bayesian cross-check for Totoro.
+
 Provenance of this phase: a first P5 run (interrupted by a spend limit) edited
 both scripts, ran the diet `--no-brms` path, regenerated
 `passer90_climate.rds` on the live-only sample and produced a first
@@ -74,7 +84,8 @@ not, once contributor turnover is controlled.
 |---|---|---|---|
 | `climate_extraction.R` (both blocks) | **Yes, in full** | ~4 min | All 3 × 348 WorldClim 2.5′ monthly layers cached under `data/raw/worldclim/` since June (13 GB); nothing was downloaded. |
 | `atlantic_diet_interaction.R --no-brms` | **Yes, in full** | 10 s | Descriptive block + 7 lme4 models. |
-| `atlantic_diet_interaction.R` (brms, 10 trees) | **No** | — | Totoro. Flags `--trees N`, `--smoke` added; see §6. |
+| `atlantic_diet_interaction.R` (brms, 10 trees) | **No** | — | Totoro (`--engine brms --trees 10`). Flags `--trees N`, `--smoke` added; see §6. |
+| `atlantic_diet_interaction.R --trees 50` (glmmTMB phylogenetic, default engine) | **Yes, in full** (E4, §8) | 694 s (12 runs × 50 trees) | 6 models × 2 species-RE specs; `output/diet_interaction_phylo.rds`, four `figures/diet_*.png`. |
 | TerraClimate SPEI route | **Cannot run** | — | `data/raw/terraclimate/` holds only `TerraClimate_tmax_1990.nc` (97 MB) and a truncated `_1991.nc` (17 MB) plus two 0-byte files. SPEI needs `ppt` and `pet`; the code path (`spei_terraclimate()`) is written and self-activates when `TerraClimate_{ppt,pet}_1990…2018.nc` are present. |
 
 ---
@@ -343,12 +354,12 @@ uncertainty, not the grand-intercept uncertainty across species.
 ## 5. For P7 (manuscript)
 
 - Replace the ±1 SD text (`index.qmd` lines ~132–133, 202: `slope_low`,
-  `slope_high`) with the percentile slopes. Until Totoro runs the brms path,
-  `diet_interaction_results.rds$quantile_slopes` does not exist; the lme4
-  values are in `diet_lme4_results.rds$quantile_slopes` and reproduce the
-  brms baseline. After the Totoro run, read `quantile_slopes` (Rubin-pooled,
-  models A and A_fam) and `model_A_family_pooled` from
-  `diet_interaction_results.rds`.
+  `slope_high`) with the percentile slopes. **Read them from
+  `diet_interaction_phylo.rds$quantile_slopes` (phylogenetic, 50 trees,
+  Rubin-pooled; §8.3)**; `diet_lme4_results.rds$quantile_slopes` is the
+  non-phylogenetic fast tier and agrees to 2 decimals. The brms
+  `diet_interaction_results.rds$quantile_slopes` will only exist after a
+  Totoro `--engine brms` run and is a cross-check, not a prerequisite.
 - State that the interaction attenuates by half under contributor +
   municipality controls (t = 1.87) and that clade (family) controls do not
   change it; keep the substantive point (insectivores show no steeper decline;
@@ -367,7 +378,8 @@ uncertainty, not the grand-intercept uncertainty across species.
 ```bash
 cd Analysis/scripts
 Rscript climate_extraction.R                       # ~4 min with cached rasters; idempotent
-Rscript atlantic_diet_interaction.R --trees 10     # brms A, B, A_fam + percentile slopes + manuscript figure
+Rscript atlantic_diet_interaction.R --engine brms --trees 10   # brms A, B, A_fam + percentile slopes (Bayesian cross-check; figures/diet_interaction_plot_brms.png)
+# the default engine (glmmTMB, 50 trees, ~13 min) has already been run locally: Rscript atlantic_diet_interaction.R
 # optional, if TerraClimate_{ppt,pet}_1990..2018.nc are placed in data/raw/terraclimate/:
 Rscript climate_extraction.R                       # SPEI switches to the TerraClimate route automatically
 ```
@@ -381,14 +393,237 @@ geodata.ucdavis.edu).
 | File | Status |
 |---|---|
 | `Analysis/scripts/climate_extraction.R` | edited (locality block; §2.3–2.6) |
-| `Analysis/scripts/atlantic_diet_interaction.R` | edited by the first P5 run; verified, unchanged here |
+| `Analysis/scripts/atlantic_diet_interaction.R` | edited by the first P5 run; verified here; **E4 added the glmmTMB engine (§8.5)** |
+| `Analysis/output/diet_interaction_phylo.rds`, `Analysis/figures/diet_interaction_plot.png`, `diet_quantile_predictions_phylo.png`, `diet_interaction_specifications.png`, `diet_species_slopes.png` | **new (E4, §8)** |
 | `Analysis/data/derived/passer90_climate.rds` | **regenerated, live-only** (12,571 / 73 / 46 cols; 772 NA `rec_tmean`) |
 | `Analysis/output/climate_trends.rds` | new (slots listed in §2; `$settings`, `$session`) |
 | `Analysis/figures/climate_trends.png` | new |
 | `Analysis/output/diet_distribution.rds`, `diet_lme4_results.rds` | new |
 | `Analysis/figures/diet_distribution.png`, `diet_quantile_predictions.png` | new |
-| `Analysis/output/diet_interaction_results.rds`, `Manuscript/images/diet_interaction_plot.png` | **untouched** (published 10-tree brms; Totoro) |
+| `Analysis/output/diet_interaction_results.rds`, `Manuscript/images/diet_interaction_plot.png` | **untouched** (published 10-tree brms; the glmmTMB engine reads the former for the comparison and never writes it; the manuscript image is P6's) |
 | `Analysis/scripts/REVISION_NOTES_P5.md` | this file |
 
 Not touched: raw data, `passer90.rda`, any fitted model object,
 `Manuscript/index.qmd`. No git operations.
+
+---
+
+## 8. Phylogenetic tier of the diet interaction (glmmTMB, 50 trees; added 2026-09-09, agent E4)
+
+Companion to `atlantic_diet_interaction.R` (default engine now `glmmTMB`) and
+`Analysis/output/diet_interaction_phylo.rds`. Every number below is in that rds
+(`$interaction_table`, `$interaction_table_all_specs`, `$quantile_slopes`,
+`$category_slopes`, `$varcomp_summary`, `$comparison`, `$phylo_vs_lme4`,
+`$species_slopes_first_tree`, `$models[[model]][[spec]]`). Executed locally in
+full: R 4.6.0, glmmTMB 1.1.14 (`propto` covariance structure, Williams et al.
+2025, bioRxiv 10.64898/2025.12.20.695312), engine `scripts/_phylo_engine.R`,
+the **50 species correlation matrices of the published brms analysis**
+(`data/derived/phylo_A_50trees.rds`, cached from `brm0_multiphylo.rda`; the
+published diet fit used 10 of these). Sample 65 species / 8,086 wing records /
+42 contributors / 130 municipalities / 14 families (identical to the lme4 tier;
+*Herpsilochmus sellowi* is not in the diet sample, so nothing was dropped for
+the tree). Wall time 694 s for 12 model × specification runs of 50 trees (final run,
+14:24); the six primary runs took 25–107 s each (`$models[[m]][[spec]]$secs`).
+
+### 8.0 Bottom line
+
+1. **glmmTMB reproduces the published brms interaction.** Model A, 50 trees:
+   year × Diet-Inv **+0.663 [+0.217, +1.108]** mm per SD-year per SD Diet-Inv
+   (published brms, 10 trees: +0.660 [+0.215, +1.106]); year main effect −0.858
+   [−1.327, −0.389] (brms −0.855 [−1.324, −0.387]). Model B: +1.024 [+0.056,
+   +1.991] (brms +1.025 [+0.046, +2.004]). All 50 trees converged.
+2. **Phylogeny changes nothing.** glmmTMB-with-phylogeny minus lme4-without,
+   same model: |Δ estimate| ≤ 0.022 for every year and interaction coefficient
+   (largest: Model B interaction 1.024 vs 1.046), SE ratios 0.995–1.004
+   (`$phylo_vs_lme4`). The phylogenetic term carries 96 % of the species-level
+   variance (SD 24.1 mm vs residual 4.60 mm), yet the slopes are unchanged
+   because the interaction is identified within species over time.
+3. **Family adds nothing on top of phylogeny.** Model A + (1 | Family):
+   +0.665 [+0.221, +1.108]; the family SD (13.6 mm) is carved out of the
+   phylogenetic SD (24.1 → 21.0 mm; phylogenetic proportion 0.96 → 0.68) and
+   the fixed effects do not move.
+4. **The interaction does not survive contributor + municipality controls at
+   the 95 % level.** With (1 | Main_researcher) + (1 | Municipality) and
+   phylogeny: **+0.319 [−0.019, +0.657]**, z = 1.85 (49/50 trees); with family
+   as well: +0.321 [−0.014, +0.656], z = 1.88 (48/50). Model B with controls:
+   **+0.387 [−0.335, +1.109]**, z = 1.05 (50/50). The point estimate halves,
+   exactly as in the lme4 tier (+0.321), and the year main effect halves with
+   it (−0.858 → −0.466 [−0.865, −0.066]; Model B −1.377 → −0.665 [−1.187,
+   −0.143]). The interaction inherits the provenance confound documented for
+   the primary model in Phase 1; phylogeny does not rescue it.
+5. **What is robust and what is not.** In every one of the 12 specifications
+   the year slope of obligate insectivores (Diet-Inv 100, 20 species) is
+   indistinguishable from zero (−0.09 to −0.15 mm per decade, intervals ±≈ 3
+   mm/decade). The manuscript's substantive reading — *insectivores show no
+   steeper decline* — stands. The *contrast* (frugivore/omnivore species
+   declining faster) is the part that is not robust: it is +0.66 without and
+   +0.32 with provenance controls, and only the former excludes zero. Note that
+   the low-Diet-Inv slope itself stays negative with the controls
+   (p10: −1.82 mm per decade [−3.01, −0.62]); it is the *difference* between
+   diet groups whose interval includes zero.
+
+### 8.1 Models and species random-effect specification (a finding about the fit, not the biology)
+
+Fixed effects Sex + scaled_yr × diet + scaled_lat throughout; species year
+slope (spp); phylogenetic species intercept `propto(0 + species_name | g, A)`
+appended by the engine. Two species specifications were fitted for every model
+because the published structure `(1 + scaled_yr || spp)` carries an **iid
+species intercept that is redundant with the phylogenetic intercept**: in the
+validated wing model its SD is 0.005 mm (`glmmtmb_validation_wing.rds`), and
+here 0.005–0.028 mm whenever the fit converges. The likelihood is flat along
+the trade-off between the two, so the Hessian is frequently singular in the
+variance parameters:
+
+| Model | spec `(1 + yr ‖ spp)` published | spec `(0 + yr | spp)` reduced | Primary (more converged trees) |
+|---|---:|---:|---|
+| A | 50/50 | 50/50 | reduced |
+| A + Family | 34/50 | 28/50 | published |
+| A + contributor + municipality | **7/50** | 49/50 | reduced |
+| A + Family + contributor + municipality | 48/50 | **0/50** | published |
+| B | 50/50 | 50/50 | reduced |
+| B + contributor + municipality | **9/50** | 50/50 | reduced |
+
+"Converged" = positive-definite Hessian (`pdHess`) and finite SEs. Two kinds of
+failure occur (`$models[[m]][[spec]]$per_tree_interaction`, which tabulates the
+interaction estimate and SE by convergence status):
+
+- *Benign boundary*: a redundant SD sits at 0 (iid species intercept, or the
+  family intercept in the reduced A + Family + provenance fit, Family SD 0.001),
+  fixed effects unchanged to 3 decimals (e.g. A_fam_src_site reduced, 50
+  non-pdHess trees: interaction 0.318–0.320, SE 0.172, vs 0.320–0.322 on the
+  48 converged published-spec trees).
+- *Genuine bad optimum*: the optimizer lands on the mirror-image solution in
+  which the iid species SD takes the species variance (16.1 mm) and the
+  phylogenetic SD collapses to 0.09 mm, logLik NA (A_src_site published, 43
+  trees; fixed effects still 0.3214 but no usable likelihood), or on a
+  degenerate family solution with interaction 0.467–0.663 and SE 0.057 (A_fam
+  reduced, 22 trees).
+
+**Rule applied**: Rubin pooling uses converged trees only; the primary
+specification per model is the one with more converged trees (ties → reduced).
+Both specifications are saved (`$interaction_table_all_specs`,
+`$quantile_slopes_all_specs`); where both have ≥ 7 converged trees their
+pooled interactions agree to ≤ 0.002. The naive all-tree pooling is kept as a
+diagnostic (`$models[[m]][[spec]]$naive_pool_all_trees`) and should not be
+quoted. Wherever the published structure converges, the iid species SD is
+< 0.03 mm, i.e. the two specifications are the same model at the MLE.
+
+### 8.2 Interaction and year main effect (primary spec; mm per SD-year; Rubin-pooled over converged trees)
+
+| Model | Spec | Trees | Interaction | 95 % CI | z | Year | 95 % CI |
+|---|---|---:|---:|---|---:|---:|---|
+| A (continuous) | reduced | 50 | **+0.663** | +0.217, +1.108 | 2.91 | −0.858 | −1.327, −0.389 |
+| A + (1 \| Family) | published | 34 | +0.665 | +0.221, +1.108 | 2.94 | −0.852 | −1.319, −0.385 |
+| A + contributor + municipality | reduced | 49 | **+0.319** | −0.019, +0.657 | 1.85 | −0.466 | −0.865, −0.066 |
+| A + Family + contributor + municipality | published | 48 | +0.321 | −0.014, +0.656 | 1.88 | −0.463 | −0.860, −0.067 |
+| B (Invertebrate vs Other) | reduced | 50 | **+1.024** | +0.056, +1.991 | 2.07 | −1.377 | −2.025, −0.729 |
+| B + contributor + municipality | reduced | 50 | **+0.387** | −0.335, +1.109 | 1.05 | −0.665 | −1.187, −0.143 |
+
+Comparators (`$comparison`): published brms A +0.660 [+0.215, +1.106], year
+−0.855 [−1.324, −0.387]; B +1.025 [+0.046, +2.004], year −1.376 [−2.030,
+−0.722]. lme4 tier (§3.3): A +0.665, A_family_int +0.664, A_src_site +0.321
+[−0.015, +0.658], B +1.046 [+0.074, +2.018]. The between-tree variance
+component of Rubin's rule is negligible everywhere (interaction estimates
+range 0.662–0.664 across the 50 trees in Model A).
+
+Variance components, mean over converged trees (`$varcomp_summary`): Model A
+phylogenetic SD 24.1 mm, species year-slope SD 1.74, residual 4.60, phylogenetic
+proportion 0.960; with contributor + municipality: phylogenetic 23.4,
+contributor 3.12, municipality 1.59, species slope SD 1.24, residual 4.18 (the
+species-slope SD shrinks by 30 % once contributor and site intercepts absorb
+between-source differences). **Caveat**: with municipality intercepts the
+latitude coefficient is no longer identified (scaled_lat −0.65 [SE 0.11] → +0.24
+[SE 0.42]); latitude is a municipality-level variable and the site intercepts
+absorb it — the same issue Phase 1 handles with the Mundlak decomposition.
+
+### 8.3 Year slope at the observed Diet-Inv percentiles (species-weighted p10 / p50 / p90 = Diet-Inv 10 / 50 / 100; Rubin-pooled; `$quantile_slopes`)
+
+| Model | p10 (5 spp, 735 rec) | p50 (8 spp, 998 rec) | p90 (20 spp, 1,871 rec) |
+|---|---|---|---|
+| A | −1.784 [−2.533, −1.036]; **−3.55 mm/dec** | −1.011 [−1.483, −0.539]; −2.01 | −0.045 [−0.794, +0.705]; **−0.09** |
+| A + Family | −1.781 [−2.526, −1.037]; −3.55 | −1.006 [−1.475, −0.536]; −2.00 | −0.036 [−0.781, +0.710]; −0.07 |
+| A + contributor + municipality | −0.912 [−1.512, −0.312]; **−1.82** | −0.539 [−0.942, −0.137]; −1.07 | −0.074 [−0.667, +0.519]; **−0.15** |
+| A + Family + contributor + municipality | −0.912 [−1.507, −0.316]; −1.82 | −0.537 [−0.937, −0.138]; −1.07 | −0.069 [−0.658, +0.519]; −0.14 |
+
+Model B by category (`$category_slopes`): Other −1.377 [−2.025, −0.729]
+(−2.74 mm/dec) vs Invertebrate −0.353 [−1.071, +0.365] (−0.70); with
+contributor + municipality: Other −0.665 [−1.187, −0.143] (−1.33) vs
+Invertebrate −0.278 [−0.840, +0.283] (−0.55). mm per decade = slope × 10 /
+5.020. These reproduce the lme4 tier (§3.3) to 2 decimals.
+
+Species-specific total year slopes (fixed main effect + the species' own diet
+term b_int × z(Diet-Inv) + BLUP, tree 1; `$species_slopes_first_tree`,
+`figures/diet_species_slopes.png`): Model A 53 of 65 species negative (13 with
+intervals below zero, 2 above), median −1.03 mm/decade, r(slope, Diet-Inv) =
+0.41; with contributor + municipality 49 of 65 negative (8 below, 1 above),
+median −0.66 mm/decade, r = 0.31. Family means (≥ 3 species), baseline →
+with controls, mm/decade: Thraupidae (20 spp, Diet-Inv ≈ 33) −3.26 → −1.27;
+Pipridae (7) −1.28 → −0.62; Turdidae (5) −1.85 → −1.53; Emberizidae (3) −1.79 →
+−2.05; Thamnophilidae (15, Diet-Inv ≈ 95) −0.50 → −0.28; Conopophagidae (3)
+−0.74 → −0.85; Tyrannidae (3) +0.29 → +0.82. The steep-declining low-Diet-Inv
+group is essentially the Thraupidae, and it is the group whose decline the
+provenance controls shrink most. (The engine's `species_slopes_phylo()`
+quantity, year main effect + BLUP only, is kept as `slope_main_plus_blup`; see
+§8.5 iv.)
+
+### 8.4 Figures (all in `Analysis/figures/`; nothing written to `Manuscript/images/`)
+
+- `diet_interaction_plot.png` — Model A trajectories at p10/p50/p90 and Model
+  B by category (solid: baseline; dashed: + contributor + municipality), change
+  relative to 2009.5 with Rubin-pooled slope ribbons; subtitles carry the
+  pooled interactions. Replaces the brms-drawn version for P6.
+- `diet_quantile_predictions_phylo.png` — A / + Family / + contributor +
+  municipality side by side (facet labels give spec and converged trees).
+- `diet_interaction_specifications.png` — forest plot of the interaction across
+  brms (published), lme4, and glmmTMB (both spp specs, with converged/total).
+- `diet_species_slopes.png` — species slopes vs Diet-Inv, with and without the
+  provenance terms.
+- `diet_quantile_predictions.png` (lme4) and `diet_distribution.png` unchanged.
+  The brms engine (`--engine brms`) now writes `diet_interaction_plot_brms.png`
+  here instead of `Manuscript/images/diet_interaction_plot.png` (P6 owns the
+  manuscript images).
+
+### 8.5 Script changes (`atlantic_diet_interaction.R`)
+
+- `--engine glmmTMB|brms` (default glmmTMB); default `--trees` 50 for glmmTMB,
+  10 for brms (the published fit); `--no-brms` / `--no-phylo` unchanged
+  (descriptive + lme4 only). The brms code path is byte-for-byte the previous
+  one apart from the figure destination, so `--engine brms --trees 10` on
+  Totoro remains the Bayesian cross-check and still writes
+  `diet_interaction_results.rds`. The glmmTMB path never touches that file.
+- The engine is sourced after the path helpers; nothing phylogenetic is
+  re-implemented. Derived quantities (slope at a diet value) are computed per
+  tree from the fixed-effect vcov and pooled with the engine's `pool_rubin_df`.
+- Requests for `_phylo_engine.R` (not edited; owner: Synthesis): (i)
+  `run_phylo_trees()` should carry a converged flag into pooling (or expose a
+  `converged_only` argument) — `pool_rubin_df()` currently propagates NA SEs
+  from singular-Hessian fits into the pooled SE, and a naive pool can include
+  bad optima whose fixed effects differ (A_fam: 0.467 vs 0.664); (ii) document
+  that the iid species intercept in `(1 + x || spp)` is redundant with the
+  `propto` intercept and often fails `pdHess` once further intercepts are added
+  — `(0 + x | spp)` is the safer default when the phylogenetic term is present;
+  (iii) `tidy_phylo_fit()` column names such as `spp..Intercept.` are awkward
+  to select downstream; (iv) `species_slopes_phylo()` returns the year MAIN
+  effect + BLUP and ignores any fixed-effect interaction with the slope
+  covariate, so in an interaction model its `slope` is orthogonal to the
+  moderator by construction (cor with Diet-Inv = 0 to machine precision here);
+  the diet script adds b_int × z(Diet-Inv) and its Wald variance per species
+  (`slope`), keeping the engine's quantity as `slope_main_plus_blup`. A
+  `moderator =` argument (or a `newdata` interface) in the engine would make
+  this generic.
+
+### 8.6 For P7
+
+- Quote the phylogenetic tier (§8.2–8.3) in place of the lme4 numbers in §3.3;
+  the published brms values may stay as the Bayesian comparator. State: 50
+  trees, glmmTMB `propto`, Rubin-pooled over converged trees, and that
+  phylogeny leaves every diet coefficient unchanged (|Δ| ≤ 0.02 vs lme4).
+- Wording: "insectivorous species show no detectable wing-length trend in any
+  specification (−0.1 mm per decade, CI ±3); species with lower invertebrate
+  diet fractions decline faster in the baseline model (interaction +0.66 mm per
+  SD-year per SD Diet-Inv, CI +0.22 to +1.11), but the contrast halves and its
+  interval includes zero once contributor and municipality intercepts are
+  added (+0.32, CI −0.02 to +0.66); a family random intercept does not change
+  it." Do not describe the interaction as robust.
+- Keep the EltonTraits certainty qualification (§3.1) and the bimodality of the
+  covariate (§3.2).

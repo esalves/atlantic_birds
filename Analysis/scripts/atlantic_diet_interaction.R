@@ -18,63 +18,102 @@
 #       Pipridae / Emberizidae at the bottom), so the interaction is re-fitted
 #       with (1 | Family) and with (1 + scaled_yr || Family);
 #   (d) an lme4 (REML, non-phylogenetic) analogue of every model so the new
-#       pieces run in seconds without Stan or the tree cloud.
+#       pieces run in seconds without Stan or the tree cloud;
+#   (e) (2026-09, phylogenetic tier) every model re-fitted WITH the phylogenetic
+#       species term across the 50 trees of the published analysis using glmmTMB's
+#       `propto` covariance structure (Williams, McGillycuddy, Drobniak, Bolker,
+#       Warton & Nakagawa 2025, bioRxiv 10.64898/2025.12.20.695312) through the
+#       shared engine scripts/_phylo_engine.R, Rubin-pooled over trees. glmmTMB
+#       reproduces the published 50-tree brms wing model to 2-3 decimals
+#       (glmmtmb_validation_wing.R) in seconds, so the interaction can now carry
+#       phylogeny AND the Phase 1 provenance controls (contributor + municipality
+#       intercepts) in the same fit, which brms could not afford locally.
 #
 # RATIONALE (unchanged): if food limitation (declining arthropod prey) drives
 # morphological change, the year effect on wing length should be more negative
 # in species with a higher proportion of invertebrates in the diet.
 #
-# MODELS (brms, N_TREES trees, Rubin-pooled; lme4 analogues with the same
-# fixed effects and species random intercept + uncorrelated slope):
-#   Model A (continuous):  wing ~ Sex + scaled_yr * diet_inv_std + scaled_lat
-#                          + (1 + scaled_yr || spp) + (1 | gr(species_name, cov = A))
-#   Model B (categorical): as A with diet_cat2 (Invertebrate vs Other) in
-#                          place of diet_inv_std
-#   Model A_fam:           Model A + (1 | Family)          (clade sensitivity)
-#   lme4 only:             Model A + (1 + scaled_yr || Family)
-#                          Model A + (1 | Main_researcher) + (1 | Municipality)
-#                          (provenance controls of Phase 1; not phylogenetic)
+# MODELS (fixed effects Sex + scaled_yr * diet + scaled_lat; species random
+# intercept + uncorrelated species year slope (1 + scaled_yr || spp) throughout):
+#   Model A (continuous):  diet = diet_inv_std                 + phylogenetic term
+#   Model B (categorical): diet = diet_cat2 (Invertebrate vs Other) + phylogenetic term
+#   Model A_fam:           Model A + (1 | Family)               (clade sensitivity)
+#   --- glmmTMB engine only (phylogenetic, 50 trees) ---
+#   Model A_src_site:      Model A + (1 | Main_researcher) + (1 | Municipality)
+#   Model A_fam_src_site:  Model A_fam + (1 | Main_researcher) + (1 | Municipality)
+#   Model B_src_site:      Model B + (1 | Main_researcher) + (1 | Municipality)
+#   --- lme4 only (non-phylogenetic, seconds) ---
+#   Model A + (1 + scaled_yr || Family); Model A + contributor + municipality
+#   Phylogenetic term: brms  (1 | gr(species_name, cov = A));
+#                      glmmTMB propto(0 + species_name | g, A)  (appended by the engine)
 #   diet_inv_std = z-scored Diet-Inv (EltonTraits, 0-100), standardised on the
 #   RECORD-level analytical sample exactly as before (record-weighted mean/SD),
-#   so the brms coefficients stay comparable with the published fit.
+#   so the coefficients stay comparable with the published fit.
 #
 # INPUTS:  data/derived/passer90.rda            (live-only, known sex, 73 spp)
 #          data/raw/BirdFuncDat.txt             (EltonTraits 1.0)
+#          scripts/_phylo_engine.R              (glmmTMB engine; default path)
+#          data/derived/phylo_A_50trees.rds     (the 50 published-tree correlation
+#                                               matrices; built by the engine from
+#                                               output/models/brm0_multiphylo.rda)
 #          data/raw/AvesDataLite-main/          (clootl tree cloud; brms path only)
-#          scripts/_sampling_config.R           (SAMPLING, SAMPLING_CONTROL)
+#          scripts/_sampling_config.R           (SAMPLING, SAMPLING_CONTROL; brms only)
 # OUTPUTS: output/diet_distribution.rds         species table, bin counts,
 #                                               quantiles and their support
 #          figures/diet_distribution.png        species and records per bin
 #          output/diet_lme4_results.rds         lme4 analogues + quantile slopes
 #          figures/diet_quantile_predictions.png lme4 predicted trajectories at
 #                                               the 10/50/90th percentiles
-#          --- brms path only (unchanged files, extended contents) ---
+#          --- glmmTMB engine (default for --trees) ---
+#          output/diet_interaction_phylo.rds    pooled fixed effects, per-tree
+#                                               tables, variance components,
+#                                               quantile slopes, comparison with
+#                                               the published brms fit and lme4
+#          figures/diet_interaction_plot.png    Model A at the observed percentiles
+#                                               + Model B by category (50 trees)
+#          figures/diet_quantile_predictions_phylo.png  A / A_fam / A_src_site
+#          figures/diet_interaction_specifications.png  interaction coefficient
+#                                               across engines and controls
+#          figures/diet_species_slopes.png      species year slopes vs Diet-Inv
+#          --- brms engine only (Bayesian cross-check; Totoro) ---
 #          output/diet_interaction_results.rds  model_A_pooled, model_B_pooled,
 #                                               n_spp, n_rec, diet_summary (as
 #                                               before) + model_A_family_pooled,
 #                                               quantile_slopes, quantile_support
-#          ../Manuscript/images/diet_interaction_plot.png (quantile version)
+#          figures/diet_interaction_plot_brms.png
 #
-# RUN:  Rscript Analysis/scripts/atlantic_diet_interaction.R              # full brms (Totoro)
-#       Rscript Analysis/scripts/atlantic_diet_interaction.R --no-brms    # descriptive + lme4 only
-#       Rscript Analysis/scripts/atlantic_diet_interaction.R --trees 10   # brms with 10 trees
-#       Rscript Analysis/scripts/atlantic_diet_interaction.R --smoke      # 1 tree, 2 chains,
-#                                                                         # 400 iter: a SMOKE
-#                                                                         # TEST, not a result
-#       The --no-brms path never touches diet_interaction_results.rds or the
-#       manuscript figure, so the published brms numbers survive a local run.
+# RUN:  Rscript Analysis/scripts/atlantic_diet_interaction.R                  # glmmTMB, 50 trees (~5 min)
+#       Rscript Analysis/scripts/atlantic_diet_interaction.R --trees 50       # same, explicit
+#       Rscript Analysis/scripts/atlantic_diet_interaction.R --no-brms        # descriptive + lme4 only
+#       Rscript Analysis/scripts/atlantic_diet_interaction.R --engine brms --trees 10  # published
+#                                                                             # brms path (Totoro)
+#       Rscript Analysis/scripts/atlantic_diet_interaction.R --engine brms --smoke    # 1 tree,
+#                                                                             # 2 chains, 400 iter:
+#                                                                             # a SMOKE TEST
+#       --no-brms (alias --no-phylo) and the glmmTMB engine never touch
+#       diet_interaction_results.rds (the published 10-tree brms object).
 #
-# Session (2026-09-09, --no-brms path executed locally): R 4.6.0, dplyr 1.2.1,
-# tidyr 1.3.2, readr 2.2.0, lme4 2.0.1, ggplot2 4.0.3, patchwork 1.3.2.
-# brms path last run with brms 2.23.0 / prepR4pcm 0.5.0.9000 / clootl 0.1.4
-# (10 trees, server). Versions are recorded in the output rds files.
+# Session (2026-09-09): R 4.6.0, dplyr 1.2.1, tidyr 1.3.2, readr 2.2.0,
+# lme4 2.0.1, glmmTMB 1.1.14, ggplot2 4.0.3, patchwork 1.3.2 (glmmTMB path and
+# --no-brms path executed locally in full). brms path last run with brms 2.23.0 /
+# prepR4pcm 0.5.0.9000 / clootl 0.1.4 (10 trees, server). Versions are recorded
+# in the output rds files.
 # ---------------------------------------------------------------------------
 
 # ── command-line flags ───────────────────────────────────────────────────────
-.args    <- commandArgs(trailingOnly = TRUE)
-RUN_BRMS <- !("--no-brms" %in% .args)
-SMOKE    <- "--smoke" %in% .args
-N_TREES  <- 10L
+.args     <- commandArgs(trailingOnly = TRUE)
+RUN_PHYLO <- !any(c("--no-brms", "--no-phylo") %in% .args)
+SMOKE     <- "--smoke" %in% .args
+ENGINE    <- "glmmTMB"                       # default for --trees mode
+if (any(grepl("^--engine(=|$)", .args))) {
+  i <- grep("^--engine(=|$)", .args)[1]
+  v <- sub("^--engine=?", "", .args[i])
+  if (!nzchar(v) && length(.args) > i) v <- .args[i + 1]
+  ENGINE <- match.arg(tolower(v), c("glmmtmb", "brms"))
+  ENGINE <- if (ENGINE == "glmmtmb") "glmmTMB" else "brms"
+}
+RUN_BRMS <- RUN_PHYLO && ENGINE == "brms"
+N_TREES  <- if (ENGINE == "brms") 10L else 50L   # 10 = published brms fit; 50 = full tree sample
 if (any(grepl("^--trees(=|$)", .args))) {
   i <- grep("^--trees(=|$)", .args)[1]
   v <- sub("^--trees=?", "", .args[i])
@@ -127,9 +166,10 @@ if (!dir.exists(fig_path())) dir.create(fig_path(), recursive = TRUE)
 .pkg_ver <- function(p) tryCatch(as.character(packageVersion(p)), error = function(e) NA_character_)
 session_info <- list(
   date = as.character(Sys.Date()), R = R.version.string,
-  packages = sapply(c("dplyr", "tidyr", "lme4", "ggplot2", "patchwork",
+  packages = sapply(c("dplyr", "tidyr", "lme4", "glmmTMB", "ggplot2", "patchwork",
                       "brms", "prepR4pcm", "clootl", "posterior"), .pkg_ver),
-  flags = list(run_brms = RUN_BRMS, smoke = SMOKE, n_trees = N_TREES)
+  flags = list(run_phylo = RUN_PHYLO, engine = ENGINE, run_brms = RUN_BRMS,
+               smoke = SMOKE, n_trees = N_TREES)
 )
 
 # ── load data ────────────────────────────────────────────────────────────────
@@ -449,14 +489,408 @@ saveRDS(list(
   session = session_info), out_path("diet_lme4_results.rds"))
 message("Saved: ", out_path("diet_lme4_results.rds"))
 
-if (!RUN_BRMS) {
-  message("\n--no-brms: stopping before the phylogenetic brms fits. ",
-          "diet_interaction_results.rds and Manuscript/images/diet_interaction_plot.png were NOT touched.")
+if (!RUN_PHYLO) {
+  message("\n--no-brms / --no-phylo: stopping before the phylogenetic fits. ",
+          "diet_interaction_results.rds and diet_interaction_phylo.rds were NOT touched.")
   quit(save = "no", status = 0)
 }
 
 # ============================================================================
-# brms path (server): phylogeny, Models A, B, A_fam, quantile slopes, figure
+# glmmTMB engine (default): phylogenetic models across the 50 published trees
+# ============================================================================
+# Uses scripts/_phylo_engine.R (sourced AFTER the path helpers; it needs
+# derived_path / out_path / raw_path). Nothing phylogenetic is re-implemented
+# here: fit_phylo_glmmtmb() appends propto(0 + species_name | g, A) to each
+# formula, run_phylo_trees() loops over the tree sample and Rubin-pools the fixed
+# effects, tidy_phylo_fit() gives the variance components, species_slopes_phylo()
+# the species-specific slopes. Derived quantities (year slope at the observed
+# Diet-Inv percentiles and by diet category) are computed per tree from the
+# fixed-effect vcov and pooled with the SAME Rubin rule (pool_rubin_df).
+if (ENGINE == "glmmTMB") {
+  source(script_path("_phylo_engine.R"))
+  message("\n=== glmmTMB engine (propto phylogenetic term), ", N_TREES, " tree(s) ===")
+  message("glmmTMB ", as.character(packageVersion("glmmTMB")))
+
+  # -- data: tree tip names (eBird synonyms), factors, plain numerics ----------
+  dat_g <- dat %>%
+    mutate(species_name = phylo_species_name(Binomial),
+           spp  = species_name,                        # non-phylogenetic species RE
+           Sex  = factor(Sex, levels = c("Female", "Male")),
+           src  = Main_researcher, site = Municipality,
+           scaled_yr = as.numeric(scaled_yr), scaled_lat = as.numeric(scaled_lat)) %>%
+    filter(species_name != "Herpsilochmus_sellowi")    # absent from the tree (engine note)
+  stopifnot(!anyNA(dat_g$src), !anyNA(dat_g$site), !anyNA(dat_g$Family))
+  spp_g  <- sort(unique(dat_g$species_name))
+  A_list <- phylo_A_list(spp_g, n_trees = N_TREES)
+  stopifnot(length(A_list) == N_TREES, all(spp_g %in% rownames(A_list[[1]])))
+  message("Sample: ", nrow(dat_g), " wing records, ", length(spp_g), " species, ",
+          n_distinct(dat_g$src), " contributors, ", n_distinct(dat_g$site), " municipalities, ",
+          n_distinct(dat_g$Family), " families; ", length(A_list), " trees from the published cache")
+
+  # -- formulas (the engine appends the phylogenetic term) ---------------------
+  # Two species random-effect specifications are fitted for every model:
+  #   "published": (1 + scaled_yr || spp)  iid species intercept + slope, as in the
+  #                brms fits. The iid intercept is REDUNDANT with the phylogenetic
+  #                intercept here: in the validated wing model its SD is 0.005 mm
+  #                (glmmtmb_validation_wing.rds) and the phylogenetic term carries
+  #                95 % of the variance. Without provenance terms the optimizer parks
+  #                it at ~0 and converges; with contributor + municipality intercepts
+  #                it lands on the mirror-image degenerate solution on most trees
+  #                (iid SD 16.1, phylogenetic SD 0.09, singular Hessian, logLik NA),
+  #                with fixed effects unchanged to 3 decimals.
+  #   "reduced":   (0 + scaled_yr | spp)  species slope only; the species intercept
+  #                variance is carried entirely by the phylogenetic term. Converges
+  #                on every tree, identical log-likelihood and fixed effects where
+  #                both converge. THIS IS THE PRIMARY TIER; the published structure
+  #                is reported as a check, pooled over its converged trees only.
+  fixed_part <- c(A = "conc.wing.length ~ Sex + scaled_yr * diet_inv_std + scaled_lat",
+                  B = "conc.wing.length ~ Sex + scaled_yr * diet_cat2 + scaled_lat")
+  extra_re <- c(A = "", A_fam = "+ (1 | Family)", A_src_site = "+ (1 | src) + (1 | site)",
+                A_fam_src_site = "+ (1 | Family) + (1 | src) + (1 | site)",
+                B = "", B_src_site = "+ (1 | src) + (1 | site)")
+  spp_term <- c(reduced = "+ (0 + scaled_yr | spp)", published = "+ (1 + scaled_yr || spp)")
+  make_fml <- function(mdl, spec) as.formula(paste(fixed_part[[substr(mdl, 1, 1)]], spp_term[[spec]], extra_re[[mdl]]))
+  phylo_fml <- setNames(lapply(names(extra_re), make_fml, spec = "reduced"), names(extra_re))
+  model_labels <- c(
+    A = "Model A (phylogenetic)", A_fam = "A + (1 | Family)",
+    A_src_site = "A + (1 | contributor) + (1 | municipality)",
+    A_fam_src_site = "A + Family + contributor + municipality",
+    B = "Model B (phylogenetic)", B_src_site = "B + (1 | contributor) + (1 | municipality)")
+  int_term <- c(A = "scaled_yr:diet_inv_std", A_fam = "scaled_yr:diet_inv_std",
+                A_src_site = "scaled_yr:diet_inv_std", A_fam_src_site = "scaled_yr:diet_inv_std",
+                B = "scaled_yr:diet_cat2Invertebrate", B_src_site = "scaled_yr:diet_cat2Invertebrate")
+
+  # -- derived quantity from one fit: slope of year at diet value z ------------
+  # slope(z) = b_yr + b_int * z ; Var = v_yy + z^2 v_ii + 2 z v_yi (Wald; z = 0/1
+  # for Model B gives the Other / Invertebrate slopes).
+  slope_at <- function(fit, z, int_par) {
+    b <- fixef(fit)$cond; V <- as.matrix(vcov(fit)$cond)
+    est <- b["scaled_yr"] + b[int_par] * z
+    se  <- sqrt(V["scaled_yr", "scaled_yr"] + z^2 * V[int_par, int_par] + 2 * z * V["scaled_yr", int_par])
+    data.frame(z = z, estimate = unname(est), se = unname(se))
+  }
+  z_q <- z_of(q_spp)                                    # species-weighted p10 / p50 / p90
+
+  # -- fit every model x species specification across the trees ---------------
+  # Pooling uses ONLY trees with a positive-definite Hessian and finite SEs: the
+  # non-converged fits are of two kinds (recorded in $per_tree_interaction), a
+  # benign boundary case (a redundant SD at 0, fixed effects unchanged) and a
+  # genuine bad optimum (fixed effects off, SEs tiny), and Rubin's rule must not
+  # see the second. Per model the PRIMARY specification is the one with more
+  # converged trees (ties -> reduced); both are saved.
+  # NB: pool_rubin_df() returns a column named `m` (number of trees), so the loop
+  # variable is `mdl` and is referenced as .env$mdl inside dplyr verbs.
+  phylo_runs <- list()
+  spp_re_lookup <- dat_g %>% distinct(spp, Binomial, Family, diet_inv, diet_cat2) %>%
+    left_join(dat_g %>% count(spp, name = "n_records"), by = "spp")
+  for (mdl in names(extra_re)) for (spec in names(spp_term)) {
+    f <- make_fml(mdl, spec)
+    message("\n--- ", mdl, ": ", model_labels[[mdl]], " [", spec, " spp spec] ---")
+    run <- suppressWarnings(run_phylo_trees(f, dat_g, A_list, keep_fits = TRUE, verbose = TRUE))
+    fin <- run$per_tree_fixed %>% group_by(tree) %>% summarise(finite = all(is.finite(se)), .groups = "drop")
+    ok  <- run$varcomp$tree[run$varcomp$converged & run$varcomp$tree %in% fin$tree[fin$finite]]
+    run$converged_trees <- ok; run$n_converged <- length(ok)
+    run$naive_pool_all_trees <- run$pooled                     # naive pooling over every tree (diagnostic only)
+    # exact [[ ]] indexing and a stored NULL: `$` would partial-match another field
+    run["pooled"] <- list(if (length(ok)) pool_rubin_df(run$per_tree_fixed %>% filter(tree %in% ok)) else NULL)
+    run$per_tree_interaction <- run$per_tree_fixed %>% filter(par == int_term[[mdl]]) %>%
+      left_join(run$varcomp %>% select(tree, converged), by = "tree") %>%
+      group_by(converged) %>% summarise(n = n(), est_min = min(estimate), est_max = max(estimate),
+                                        se_min = min(se), se_max = max(se), .groups = "drop")
+    # derived slopes (year slope at diet values) per converged tree -> Rubin-pooled
+    is_A <- grepl("^A", mdl)
+    zs   <- if (is_A) z_q else c(0, 1)
+    labs <- if (is_A) paste0("p", probs * 100) else c("Other", "Invertebrate")
+    run$derived <- if (length(ok)) {
+      per_tree <- bind_rows(lapply(ok, function(i) {
+        d <- slope_at(run$fits[[i]], zs, int_term[[mdl]])
+        data.frame(tree = i, component = "derived", par = labs, estimate = d$estimate, se = d$se)
+      }))
+      pool_rubin_df(per_tree) %>%
+        mutate(model = .env$mdl, spec = .env$spec, quantile = par, z = zs[match(par, labs)],
+               diet_inv = if (is_A) q_spp[match(par, labs)] else NA_real_,
+               mm_per_decade = estimate * 10 / yr_sd) %>%
+        select(model, spec, quantile, diet_inv, diet_inv_std = z, slope_per_sd_year = estimate, se, lower, upper, m, mm_per_decade)
+    } else NULL
+    # species-specific year slopes (fixed + BLUP) from the first converged tree
+    run$species_slopes <- if (mdl %in% c("A", "A_src_site") && length(ok)) {
+      fit1 <- run$fits[[ok[1]]]
+      sl <- species_slopes_phylo(fit1, "scaled_yr", "spp") %>%
+        mutate(model = .env$mdl, spec = .env$spec, tree = ok[1]) %>% left_join(spp_re_lookup, by = "spp")
+      # The engine's `slope` is the year MAIN effect + BLUP and ignores the
+      # interaction, so it is orthogonal to diet by construction. Add each
+      # species' own diet contribution b_int * z(Diet-Inv) (and its Wald
+      # variance) so the point is the species-specific total year slope.
+      fx <- slope_at(fit1, z_of(sl$diet_inv), int_term[[mdl]])
+      sl %>% mutate(slope_main_plus_blup = slope, se_main_plus_blup = se_total,
+                    slope = fx$estimate + ranef, se_total = sqrt(fx$se^2 + se_ranef^2),
+                    lo = slope - 1.96 * se_total, hi = slope + 1.96 * se_total)
+    } else NULL
+    run$fits <- NULL; gc(verbose = FALSE)                # 50 fits x ~1.4 MB; drop before the next fit
+    run$formula <- paste(deparse(f), collapse = " "); run$spec <- spec; run$label <- model_labels[[mdl]]
+    phylo_runs[[mdl]][[spec]] <- run
+    message(sprintf("%s [%s]: %d/%d trees converged (pdHess & finite SE), %.0f s; interaction over converged trees %s",
+                    mdl, spec, run$n_converged, run$n_trees, run$secs,
+                    if (!is.null(run[["pooled"]])) { r <- run[["pooled"]][run[["pooled"]]$par == int_term[[mdl]], ]
+                      sprintf("%+.3f [%+.3f, %+.3f]", r$estimate, r$lower, r$upper) } else "NA"))
+    print(as.data.frame(run$per_tree_interaction), digits = 4)
+  }
+  primary_spec <- sapply(names(extra_re), function(mdl) {
+    nc <- sapply(phylo_runs[[mdl]], `[[`, "n_converged")
+    if (nc[["published"]] > nc[["reduced"]]) "published" else "reduced" })
+  primary <- setNames(lapply(names(extra_re), function(mdl) phylo_runs[[mdl]][[primary_spec[[mdl]]]]), names(extra_re))
+  message("\nPrimary species specification per model (more converged trees): ",
+          paste(names(primary_spec), primary_spec, sep = " = ", collapse = "; "))
+
+  quantile_slopes_phylo <- bind_rows(lapply(primary[grepl("^A", names(primary))], `[[`, "derived"))
+  category_slopes_phylo <- bind_rows(lapply(primary[grepl("^B", names(primary))], `[[`, "derived"))
+  quantile_slopes_all_specs <- bind_rows(lapply(unlist(phylo_runs, recursive = FALSE), `[[`, "derived"))
+  message("\nYear slope (mm per SD-year) at species-weighted Diet-Inv percentiles, glmmTMB phylogenetic, Rubin-pooled (primary spec):")
+  print(as.data.frame(quantile_slopes_phylo %>% select(model, spec, quantile, diet_inv, slope_per_sd_year, lower, upper, m, mm_per_decade)), digits = 3)
+  message("Year slope by diet category (Model B):")
+  print(as.data.frame(category_slopes_phylo %>% select(model, spec, quantile, slope_per_sd_year, lower, upper, m, mm_per_decade)), digits = 3)
+
+  # -- pooled fixed effects ----------------------------------------------------
+  runs_flat <- unlist(phylo_runs, recursive = FALSE)     # names "A.reduced", ...
+  fixed_pooled_all <- bind_rows(lapply(names(extra_re), function(mdl) bind_rows(lapply(names(spp_term), function(spec) {
+    r <- phylo_runs[[mdl]][[spec]]; if (is.null(r[["pooled"]])) return(NULL)
+    r[["pooled"]] %>% mutate(model = .env$mdl, label = model_labels[[.env$mdl]], spec = .env$spec,
+                        primary = .env$spec == primary_spec[[.env$mdl]], n_trees = r$n_trees,
+                        n_converged = r$n_converged, secs = r$secs) %>% relocate(model, label, spec, primary) }))))
+  fixed_pooled <- fixed_pooled_all %>% filter(primary)
+  make_int_table <- function(fp) fp %>%
+    filter(component == "cond", par %in% c("scaled_yr", unname(int_term))) %>%
+    mutate(term = ifelse(par == "scaled_yr", "year", "interaction")) %>%
+    select(model, label, spec, primary, term, par, estimate, se, lower, upper, z, between_tree_var, n_trees, n_converged, secs)
+  interaction_table <- make_int_table(fixed_pooled)
+  interaction_table_all_specs <- make_int_table(fixed_pooled_all)
+  message("\nInteraction and year main effect, glmmTMB phylogenetic, Rubin-pooled over converged trees (primary spec per model):")
+  print(as.data.frame(interaction_table %>% select(model, spec, term, estimate, se, lower, upper, z, n_converged, n_trees, secs)), digits = 3)
+  message("Same, every specification:")
+  print(as.data.frame(interaction_table_all_specs %>% select(model, spec, primary, term, estimate, se, lower, upper, n_converged, n_trees)), digits = 3)
+
+  # -- variance components (mean over converged trees) -------------------------
+  varcomp_summary <- bind_rows(lapply(names(extra_re), function(mdl) bind_rows(lapply(names(spp_term), function(spec) {
+    r <- phylo_runs[[mdl]][[spec]]; vc <- r$varcomp[r$varcomp$tree %in% r$converged_trees, , drop = FALSE]
+    if (!nrow(vc)) return(NULL)
+    vc %>% summarise(across(where(is.numeric) & !tree, mean), n_trees_used = n()) %>%
+      mutate(model = .env$mdl, spec = .env$spec, primary = .env$spec == primary_spec[[.env$mdl]]) %>% relocate(model, spec, primary) }))))
+  message("\nVariance components (SD; mean over converged trees):")
+  print(as.data.frame(varcomp_summary), digits = 3)
+
+  # -- comparison: published brms (10 trees) vs lme4 (no phylogeny) vs glmmTMB ---
+  brms_pub <- if (file.exists(out_path("diet_interaction_results.rds")))
+    readRDS(out_path("diet_interaction_results.rds")) else NULL   # read only; never rewritten here
+  pick <- function(tab, par, model = NA, engine, label) {
+    r <- tab[tab$par == par, ]; if (!is.na(model)) r <- r[r$model == model, ]
+    if (!nrow(r)) return(NULL)
+    data.frame(engine = engine, model = label, par = par, estimate = r$estimate[1], se = r$se[1],
+               lower = r$lower[1], upper = r$upper[1])
+  }
+  comparison <- bind_rows(
+    if (!is.null(brms_pub)) list(
+      pick(brms_pub$model_A_pooled, "b_scaled_yr:diet_inv_std", engine = "brms (published, 10 trees)", label = "A"),
+      pick(brms_pub$model_A_pooled, "b_scaled_yr", engine = "brms (published, 10 trees)", label = "A"),
+      pick(brms_pub$model_B_pooled, "b_scaled_yr:diet_cat2Invertebrate", engine = "brms (published, 10 trees)", label = "B"),
+      pick(brms_pub$model_B_pooled, "b_scaled_yr", engine = "brms (published, 10 trees)", label = "B")),
+    # lme4 analogues: A_fam_src_site is matched to A_src_site_family_slp (family
+    # SLOPE, the only lme4 spec with family + provenance terms)
+    bind_rows(lapply(list(c("A", "A_baseline"), c("A_fam", "A_family_int"), c("A_src_site", "A_src_site"),
+                          c("A_fam_src_site", "A_src_site_family_slp"), c("B", "B_baseline")), function(p)
+      bind_rows(pick(lme4_fixef, "scaled_yr", p[2], "lme4 (no phylogeny)", p[1]),
+                pick(lme4_fixef, int_term[[p[1]]], p[2], "lme4 (no phylogeny)", p[1])))),
+    interaction_table_all_specs %>%
+      transmute(engine = ifelse(primary, "glmmTMB phylogenetic (primary spp spec)", "glmmTMB phylogenetic (alternative spp spec)"),
+                model, par, estimate, se, lower, upper, spec, n_converged, n_trees)
+  ) %>% mutate(par = sub("^b_", "", par),
+               term = ifelse(par == "scaled_yr", "year", "interaction")) %>%
+    relocate(engine, model, term)
+  # phylogeny vs no phylogeny on the same model: glmmTMB (primary spec) minus lme4
+  phylo_vs_lme4 <- comparison %>% filter(grepl("^lme4|primary", engine)) %>%
+    mutate(engine = ifelse(grepl("^lme4", engine), "lme4", "glmmTMB")) %>%
+    select(engine, model, term, estimate, se) %>%
+    pivot_wider(names_from = engine, values_from = c(estimate, se)) %>%
+    mutate(diff_estimate = estimate_glmmTMB - estimate_lme4, se_ratio = se_glmmTMB / se_lme4) %>%
+    filter(!is.na(estimate_lme4))
+  message("\nComparison across engines (interaction and year main effect):")
+  print(as.data.frame(comparison), digits = 3)
+  message("\nPhylogeny (glmmTMB) minus no phylogeny (lme4), same model:")
+  print(as.data.frame(phylo_vs_lme4), digits = 3)
+
+  # ── figures (Analysis/figures only) ───────────────────────────────────────────
+  engine_tag <- sprintf("glmmTMB propto phylogenetic term, %d tree%s, Rubin-pooled over converged trees; %d species / %s records",
+                        N_TREES, ifelse(N_TREES > 1, "s", ""), length(spp_g), format(nrow(dat_g), big.mark = ","))
+  conv_lab <- function(mdl, base) sprintf("%s\n%s spp spec, %d/%d trees", base, primary_spec[[mdl]],
+                                          primary[[mdl]]$n_converged, primary[[mdl]]$n_trees)
+  .fmt_ci <- function(tab, mdl, par) { r <- tab[tab$model == mdl & tab$par == par, ]
+    sprintf("%+.3f [%+.3f, %+.3f]", r$estimate, r$lower, r$upper) }
+  # trajectories relative to the record midpoint: delta = slope * scaled_yr,
+  # SE = |scaled_yr| * SE(slope), from the POOLED slopes (slope is linear in year)
+  traj <- function(sl, mdl) {
+    s <- sl %>% filter(model == mdl)
+    expand.grid(scaled_yr = yr_seq, quantile = s$quantile, stringsAsFactors = FALSE) %>%
+      left_join(s, by = "quantile") %>%
+      mutate(delta = slope_per_sd_year * scaled_yr, delta_se = abs(scaled_yr) * se,
+             year = scaled_yr * yr_sd + yr_mu, model = mdl)
+  }
+  pred_A_phylo <- bind_rows(lapply(c("A", "A_fam", "A_src_site"), function(m) traj(quantile_slopes_phylo, m))) %>%
+    mutate(quantile = factor(quantile, levels = paste0("p", probs * 100)))
+  pred_B_phylo <- bind_rows(lapply(c("B", "B_src_site"), function(m) traj(category_slopes_phylo, m))) %>%
+    mutate(quantile = factor(quantile, levels = c("Other", "Invertebrate")))
+  q_cols <- c(p10 = "#1F77B4", p50 = "#FF7F0E", p90 = "#D62728")
+
+  # (1) manuscript-style figure: Model A at percentiles / Model B by category
+  p_A_g <- ggplot(pred_A_phylo %>% filter(model == "A"), aes(x = year, y = delta, colour = quantile, fill = quantile)) +
+    geom_hline(yintercept = 0, colour = "grey70", linewidth = 0.3) +
+    geom_ribbon(aes(ymin = delta - 1.96 * delta_se, ymax = delta + 1.96 * delta_se), alpha = 0.15, colour = NA) +
+    geom_line(linewidth = 1) +
+    scale_colour_manual(values = q_cols, labels = q_labels, name = "Diet-Inv percentile (species-weighted)") +
+    scale_fill_manual(values = q_cols, labels = q_labels, name = "Diet-Inv percentile (species-weighted)") +
+    labs(x = "Year", y = sprintf("Change in wing length (mm) relative to %.1f", yr_mu),
+         title = "Year x invertebrate diet proportion (Model A)",
+         subtitle = paste0("interaction = ", .fmt_ci(interaction_table, "A", "scaled_yr:diet_inv_std"),
+                           " mm per SD-year per SD Diet-Inv\nwith (1 | Family): ",
+                           .fmt_ci(interaction_table, "A_fam", "scaled_yr:diet_inv_std"),
+                           "\nwith contributor + municipality intercepts: ",
+                           .fmt_ci(interaction_table, "A_src_site", "scaled_yr:diet_inv_std"))) +
+    theme_classic(base_size = 11) + theme(legend.position = "bottom", legend.direction = "vertical")
+  p_B_g <- ggplot(pred_B_phylo, aes(x = year, y = delta, colour = quantile, fill = quantile, linetype = model)) +
+    geom_hline(yintercept = 0, colour = "grey70", linewidth = 0.3) +
+    geom_ribbon(data = pred_B_phylo %>% filter(model == "B"),
+                aes(ymin = delta - 1.96 * delta_se, ymax = delta + 1.96 * delta_se), alpha = 0.15, colour = NA) +
+    geom_line(linewidth = 1) +
+    scale_colour_manual(values = c(Other = "#1F77B4", Invertebrate = "#D62728"), name = "Diet category (EltonTraits Diet-5Cat)") +
+    scale_fill_manual(values = c(Other = "#1F77B4", Invertebrate = "#D62728"), name = "Diet category (EltonTraits Diet-5Cat)") +
+    scale_linetype_manual(values = c(B = "solid", B_src_site = "dashed"),
+                          labels = c(B = "Model B", B_src_site = "B + contributor + municipality"), name = NULL) +
+    labs(x = "Year", y = sprintf("Change in wing length (mm) relative to %.1f", yr_mu),
+         title = "Year x diet category (Model B)",
+         subtitle = paste0("interaction = ", .fmt_ci(interaction_table, "B", "scaled_yr:diet_cat2Invertebrate"),
+                           "; with contributor + municipality: ",
+                           .fmt_ci(interaction_table, "B_src_site", "scaled_yr:diet_cat2Invertebrate"),
+                           "\nribbons: Model B only")) +
+    theme_classic(base_size = 11) + theme(legend.position = "bottom", legend.direction = "vertical")
+  p_comb_g <- (p_A_g / p_B_g) + plot_annotation(caption = engine_tag)
+  fig_main <- fig_path(if (SMOKE) "diet_interaction_plot_SMOKE.png" else "diet_interaction_plot.png")
+  ggsave(fig_main, p_comb_g, width = 7.5, height = 11, dpi = 150)
+  message("Saved: ", fig_main)
+
+  # (2) percentile trajectories across the three continuous specifications
+  p_q_g <- ggplot(pred_A_phylo, aes(x = year, y = delta, colour = quantile, fill = quantile)) +
+    geom_hline(yintercept = 0, colour = "grey70", linewidth = 0.3) +
+    geom_ribbon(aes(ymin = delta - 1.96 * delta_se, ymax = delta + 1.96 * delta_se), alpha = 0.15, colour = NA) +
+    geom_line(linewidth = 1) +
+    facet_wrap(~ model, labeller = as_labeller(c(A = conv_lab("A", "Model A (phylogenetic)"), A_fam = conv_lab("A_fam", "+ (1 | Family)"),
+                                                 A_src_site = conv_lab("A_src_site", "+ (1 | contributor) + (1 | municipality)")))) +
+    scale_colour_manual(values = q_cols, labels = q_labels, name = "Diet-Inv percentile\n(species-weighted)") +
+    scale_fill_manual(values = q_cols, labels = q_labels, name = "Diet-Inv percentile\n(species-weighted)") +
+    labs(x = "Year", y = sprintf("Predicted change in wing length (mm) relative to %.1f", yr_mu),
+         title = "Year x diet interaction at observed Diet-Inv percentiles, phylogenetic models",
+         subtitle = paste0(engine_tag, "\nribbons = Rubin-pooled slope uncertainty (+/- 1.96 SE); facet labels give the species-RE spec and converged trees")) +
+    theme_classic(base_size = 11) + theme(legend.position = "bottom", legend.direction = "vertical")
+  ggsave(fig_path(if (SMOKE) "diet_quantile_predictions_phylo_SMOKE.png" else "diet_quantile_predictions_phylo.png"),
+         p_q_g, width = 11, height = 5.5, dpi = 150)
+  message("Saved: ", fig_path("diet_quantile_predictions_phylo.png"))
+
+  # (3) the interaction coefficient across engines and control sets
+  spec_tab <- comparison %>% filter(term == "interaction") %>%
+    mutate(diet_form = ifelse(grepl("^A", model), "continuous (per SD Diet-Inv)", "categorical (Invertebrate - Other)"),
+           spec = ifelse(grepl("^glmmTMB", engine),
+                         sprintf("%s  |  %s [%s spp RE, %d/%d trees]", model, engine, spec, n_converged, n_trees),
+                         paste0(model, "  |  ", engine))) %>%
+    arrange(diet_form, model, engine)
+  spec_tab$spec <- factor(spec_tab$spec, levels = rev(unique(spec_tab$spec)))
+  p_spec <- ggplot(spec_tab, aes(x = estimate, y = spec, colour = engine)) +
+    geom_vline(xintercept = 0, colour = "grey60", linetype = "dashed") +
+    geom_errorbar(aes(xmin = lower, xmax = upper), width = 0.25, orientation = "y") +
+    geom_point(size = 2.4) +
+    facet_wrap(~ diet_form, ncol = 1, scales = "free") +
+    scale_colour_manual(values = c("#7570B3", "#1B9E77", "#D95F02", "#E7298A"), name = NULL) +
+    labs(x = "Year x diet interaction (mm per SD-year per unit diet), 95% interval", y = NULL,
+         title = "Diet x year interaction across engines and provenance controls",
+         subtitle = "brms = published 10-tree fit; lme4 = REML, no phylogeny;\nglmmTMB = phylogenetic (propto), Rubin-pooled over converged trees [species-RE spec, converged/total trees]") +
+    theme_classic(base_size = 11) + theme(legend.position = "bottom", plot.title.position = "plot")
+  ggsave(fig_path(if (SMOKE) "diet_interaction_specifications_SMOKE.png" else "diet_interaction_specifications.png"),
+         p_spec, width = 14, height = 7, dpi = 150)
+  message("Saved: ", fig_path("diet_interaction_specifications.png"))
+
+  # (4) species-specific year slopes (fixed + BLUP, tree 1) against Diet-Inv
+  ss <- bind_rows(lapply(primary[c("A", "A_src_site")], `[[`, "species_slopes"))
+  p_ss <- ggplot(ss, aes(x = diet_inv, y = slope * 10 / yr_sd, colour = Family)) +
+    geom_hline(yintercept = 0, colour = "grey60", linetype = "dashed") +
+    geom_errorbar(aes(ymin = lo * 10 / yr_sd, ymax = hi * 10 / yr_sd), width = 0, alpha = 0.35) +
+    geom_point(aes(size = n_records), alpha = 0.85) +
+    geom_abline(data = quantile_slopes_phylo %>% filter(model %in% c("A", "A_src_site"), quantile == "p50") %>%
+                  left_join(fixed_pooled %>% filter(component == "cond", par == "scaled_yr:diet_inv_std") %>% select(model, b_int = estimate), by = "model") %>%
+                  mutate(slope = b_int * 10 / yr_sd / diet_scale,
+                         intercept = (slope_per_sd_year * 10 / yr_sd) - slope * diet_inv),
+                aes(slope = slope, intercept = intercept), colour = "grey30") +
+    facet_wrap(~ model, labeller = as_labeller(c(A = conv_lab("A", "Model A (phylogenetic)"), A_src_site = conv_lab("A_src_site", "A + contributor + municipality")))) +
+    scale_size_area(max_size = 6, name = "Wing records") +
+    labs(x = "Diet-Inv (EltonTraits, % invertebrates)", y = "Species year slope (mm per decade), fixed + BLUP",
+         title = "Species-specific wing-length trends against the diet covariate",
+         subtitle = sprintf("Points: species slopes from one tree (tree %s; +/- 1.96 SE incl. BLUP conditional SD); line: pooled fixed-effect interaction",
+                            paste(unique(ss$tree), collapse = "/"))) +
+    theme_classic(base_size = 10) + theme(legend.position = "right")
+  ggsave(fig_path(if (SMOKE) "diet_species_slopes_SMOKE.png" else "diet_species_slopes.png"), p_ss, width = 12, height = 6, dpi = 150)
+  message("Saved: ", fig_path("diet_species_slopes.png"))
+
+  # ── save ──────────────────────────────────────────────────────────────────────
+  phylo_results <- list(
+    generated = Sys.time(), engine = "glmmTMB", glmmTMB_version = as.character(packageVersion("glmmTMB")),
+    n_trees = N_TREES, tree_source = "data/derived/phylo_A_50trees.rds (the 50 trees of brm0_multiphylo.rda)",
+    smoke_test = SMOKE,
+    n_spp = length(spp_g), n_rec = nrow(dat_g), n_src = n_distinct(dat_g$src), n_site = n_distinct(dat_g$site),
+    n_family = n_distinct(dat_g$Family), species = spp_g,
+    species_re_spec = list(
+      reduced   = "(0 + scaled_yr | spp) + propto phylogenetic species intercept (species intercept variance carried by the phylogenetic term)",
+      published = "(1 + scaled_yr || spp) + propto phylogenetic species intercept (iid species intercept redundant with the phylogenetic one; SD ~ 0 when it converges)",
+      rule      = "primary spec per model = the one with more trees converged (pdHess TRUE and finite SEs); ties -> reduced. Pooling always over converged trees only.",
+      primary_spec = primary_spec),
+    models = lapply(phylo_runs, function(by_spec) lapply(by_spec, function(r)
+      r[c("label", "spec", "formula", "pooled", "naive_pool_all_trees", "per_tree_fixed", "per_tree_interaction", "varcomp",
+          "converged_trees", "n_trees", "n_converged", "secs", "derived")])),
+    fixed_pooled = fixed_pooled,                       # primary spec per model
+    fixed_pooled_all_specs = fixed_pooled_all,
+    interaction_table = interaction_table,             # primary spec per model
+    interaction_table_all_specs = interaction_table_all_specs,
+    varcomp_summary = varcomp_summary,
+    quantile_slopes = quantile_slopes_phylo,           # primary spec per model
+    quantile_slopes_all_specs = quantile_slopes_all_specs,
+    category_slopes = category_slopes_phylo,
+    quantiles = diet_distribution$quantiles, quantile_support = quantile_support,
+    comparison = comparison, phylo_vs_lme4 = phylo_vs_lme4,
+    brms_published = if (!is.null(brms_pub)) brms_pub[c("model_A_pooled", "model_B_pooled", "n_spp", "n_rec")] else NULL,
+    predictions_A = pred_A_phylo, predictions_B = pred_B_phylo,
+    species_slopes_first_tree = ss,
+    year_scaling = c(center = yr_mu, sd = yr_sd),
+    diet_standardisation = c(center = diet_center, sd = diet_scale),
+    total_secs = sum(sapply(runs_flat, `[[`, "secs")),
+    note = paste("Phylogenetic diet-interaction models fitted with glmmTMB propto (scripts/_phylo_engine.R)",
+                 "across the tree sample of the published brms analysis and Rubin-pooled over the trees whose",
+                 "Hessian is positive definite with finite SEs (species_re_spec$rule).",
+                 "Intervals are Wald +/- 1.96 SE with the Rubin between-tree variance added.",
+                 "quantile_slopes / category_slopes are derived per tree from the fixed-effect vcov and pooled",
+                 "with the same rule. species_slopes_first_tree conditions on one tree (BLUPs).",
+                 "diet_interaction_results.rds (published 10-tree brms) is read for the comparison and never rewritten."),
+    session = session_info
+  )
+  out_phylo <- out_path(if (SMOKE) "diet_interaction_phylo_SMOKE.rds" else "diet_interaction_phylo.rds")
+  saveRDS(phylo_results, out_phylo)
+  message("Saved: ", out_phylo)
+
+  message("\n=== Key results (glmmTMB phylogenetic, ", N_TREES, " trees; primary spp spec per model) ===")
+  for (mdl in names(primary)) message(sprintf("%-16s [%-9s] interaction %s | year %s | %d/%d trees converged | %.0f s  [other spec: %d/%d]",
+    mdl, primary_spec[[mdl]], .fmt_ci(interaction_table, mdl, int_term[[mdl]]), .fmt_ci(interaction_table, mdl, "scaled_yr"),
+    primary[[mdl]]$n_converged, primary[[mdl]]$n_trees, primary[[mdl]]$secs,
+    phylo_runs[[mdl]][[setdiff(names(spp_term), primary_spec[[mdl]])]]$n_converged, N_TREES))
+  message("Total glmmTMB wall time (both specs): ", round(phylo_results$total_secs), " s")
+  quit(save = "no", status = 0)
+}
+
+# ============================================================================
+# brms engine (--engine brms; Totoro): phylogeny, Models A, B, A_fam, quantile
+# slopes, figure. Kept as the Bayesian cross-check of the glmmTMB engine.
 # ============================================================================
 if (SMOKE) {
   message("\n*** SMOKE TEST: 1 tree, 2 chains, 400 iterations. Nothing below is a result. ***")
@@ -694,16 +1128,14 @@ p_B <- ggplot(pred_B, aes(x = year, y = fitted, colour = diet_cat2, fill = diet_
                          .fmt_int(rubin_B, "b_scaled_yr:diet_cat2Invertebrate"))) +
   theme_classic()
 
-# combine and save (the manuscript figure; Analysis/figures gets a copy)
+# combine and save. Written to Analysis/figures only (2026-09): the manuscript
+# figure is produced by P6's make_figures pipeline from the files on disk, and
+# the glmmTMB engine owns figures/diet_interaction_plot.png; the brms version
+# is the cross-check.
 p_combined <- p_A / p_B
-img_dir <- file.path(dirname(ANALYSIS_DIR), "Manuscript", "images")
-if (!SMOKE) {
-  ggsave(file.path(img_dir, "diet_interaction_plot.png"), p_combined,
-         width = 7, height = 10, dpi = 150)
-  message("Saved: Manuscript/images/diet_interaction_plot.png")
-}
-ggsave(fig_path(if (SMOKE) "diet_interaction_plot_SMOKE.png" else "diet_interaction_plot.png"),
+ggsave(fig_path(if (SMOKE) "diet_interaction_plot_brms_SMOKE.png" else "diet_interaction_plot_brms.png"),
        p_combined, width = 7, height = 10, dpi = 150)
+message("Saved: ", fig_path("diet_interaction_plot_brms.png"))
 
 # ============================================================================
 # Save all results (existing fields kept; new fields appended)
