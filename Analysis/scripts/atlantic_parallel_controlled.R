@@ -1,0 +1,787 @@
+# atlantic_parallel_controlled.R
+# ---------------------------------------------------------------------------
+# WHAT: Re-fits the primary wing-length model (atlantic_parallel.R) with the
+# artefact controls the referee asked for (REVISION_PLAN.md §3 Phase 1, "THE
+# DECISION GATE"): contributor and site intercepts, the wing-column protocol
+# proxy, longitude/altitude, season and moult, an individual (ring) intercept,
+# contributor-specific year slopes, a Mundlak within/between decomposition of
+# year (within municipality; also within contributor) and latitude (within
+# species), an unknown-sex replication and a first-captures-only sensitivity.
+# Writes a tidy before/after table of the scaled-year coefficient, a
+# leave-one-contributor-out jackknife, per-contributor year slopes for the six
+# contributors that span the record, and the species-specific slopes for the
+# caterpillar figure.
+#
+# WHY: only 6 of 42 contributors and 15 of 99 municipalities span both the
+# early (<= 2006) and late (>= 2013) periods, and the wing column used flips
+# 87 % right-wing -> 67 % unspecified (REVISION_NOTES_P0.md). A year slope that
+# does not survive these controls is a sampling-provenance contrast, not a
+# phenotypic trend. The outcome of M3/M5 chooses between Scenario A and B in
+# REVISION_PLAN.md §2.
+#
+# >>> THREE-TIER COMPUTATIONAL DIRECTIVE (REVISION_PLAN.md §3 Phase 1) <<<
+#   Tier 1  --fast-lme4 (default)  lme4 REML, no phylogeny, all models (M0..M7
+#           plus the finer ladder used in REVISION_PLAN.md §0), on BOTH samples
+#           (see SAMPLES). Under two minutes. Sets the decision gate provisionally.
+#   Tier 2  --trees 1              brms with the phylogenetic term on ONE tree,
+#           full chains/iterations from _sampling_config.R, to check that the
+#           Bayesian posteriors agree with REML (R-hat, bulk-ESS). ~1-2 h/model
+#           on the server.
+#   Tier 3  --trees 50             Rubin-pooled 50-tree fits ONLY for the
+#           definitive models M0, M3, M5, M6 (the default brms model set;
+#           override with --models M0,M3). 8 models x 50 trees = 400 Stan fits
+#           would take hundreds of CPU hours and is NOT to be attempted.
+#   --sample full|cc               which sample the brms tiers use (default full).
+#   --smoke                        LOCAL SMOKE TEST of the brms code path only:
+#           1 tree, chains = 2, iter = 400, warmup = 200, model M3 only,
+#           written to *_smoke.* files. Its numbers are NOT results.
+#
+# SAMPLES. Altitude is NA for 190 wing records and the capture date for 6.
+#   "cc"   complete cases (8,282), the sample REVISION_PLAN.md §0 used.
+#   "full" all 8,478 wing records: altitude imputed from the nearest coordinate
+#          site with a recorded altitude (see DECISIONS), season "unrecorded" for
+#          the 6 undated records.
+#   The 190 altitude-NA records are not random: 103 are E. Carrano's 1996-1999
+#   Ilha Rasa (Guaraqueçaba) records, i.e. the early anchor of the one
+#   contributor who spans 1996-2017 with 1,040 wing records. Dropping them
+#   removes within-contributor temporal contrast, so "full" is the primary
+#   sample and "cc" the plan-comparable one; both are reported.
+#
+# MODELS (fixed part shown; every model keeps (1 + scaled_yr || spp), i.e.
+# uncorrelated species intercepts and year slopes, matching the brms structure;
+# brms models add (1 | gr(species_name, cov = A)) for the phylogeny):
+#   M0  wing ~ Sex + scaled_yr + scaled_lat                       [baseline]
+#   M1  M0 + (1 | src) + (1 | site)                    src = Main_researcher,
+#                                                      site = Municipality
+#   M2  M1 + wing_col + scaled_lon + scaled_alt        wing_col = right/left/generic
+#   M3  M2 + season + molt3 + (1 | ind)                ind = Ring x Binomial
+#   M4  M3 with (1 + scaled_yr || src)                 contributor year slopes
+#   M5  M3 with Mundlak: yr_within_site + yr_site_mean,
+#                        lat_within_spp + lat_spp_mean; species random slope on
+#                        yr_within_site (REWB, Bell & Jones 2015 - the plan's spec)
+#   M6  M3 on UNKNOWN-sex records (passer90_allsex.rda, !known_sex), no Sex
+#   M7  M3 on first captures (first WING record per Ring x Binomial); the ring
+#       term is dropped because every individual then has one record
+# Finer ladder for the comparison with REVISION_PLAN.md §0 and for attribution:
+#   M1a_src (M0 + src), M1b_site (M0 + site), M2a_wingcol (M1 + wing_col),
+#   M3a_season (M2 + season), M3b_ring (M3a + ind; = M3 without moult),
+#   M5_rsTotal / M5src_rsTotal (Mundlak with the species random slope on TOTAL
+#   scaled_yr instead of the within component - the estimate is sensitive to this),
+#   M5src (year decomposed within/between CONTRIBUTOR, REWB),
+#   M6_m0 / M6_m1 (unknown-sex records with the M0 / M1 structure),
+#   M3_longrun (M3 on the 6 long-running contributors: >= 8 yr, >= 200 wing
+#   records), M_carrano (M3 without src on E. Carrano's records alone),
+#   M0_cc / M1_cc (M0 / M1 on the complete-case sample: the sample-restriction
+#   effect on its own). "_cc" suffix = complete-case sample; no suffix = full.
+#   *_noanom: M1 / M3 / M5src refitted without contributor x municipality x year
+#   blocks (n >= 10) whose species x sex-centred mean wing deviates by more than
+#   +/- 6 mm from the species means (a sign-blind protocol / data-entry screen;
+#   the flagged blocks are listed in $anomalous_blocks).
+#   Also written: a leave-one-contributor-out jackknife of M1 / M3 / M3_cc and
+#   per-contributor year slopes for every contributor with >= 8 sampling years.
+#
+# INPUTS:  data/derived/passer90.rda, data/derived/passer90_allsex.rda,
+#          scripts/_sampling_config.R (brms tiers), AvesDataLite (brms tiers)
+# OUTPUTS: output/controlled_wing_results.rds          (Tier 1; list, see $table,
+#            $before_after, $jackknife, $spanning_contributor_slopes, $decision_gate)
+#          output/controlled_wing_species_slopes.rds   (Tier 1; M3 and M0 slopes)
+#          output/controlled_wing_brms_results.rds     (Tiers 2-3; Rubin-pooled)
+#          output/models/controlled_<model>.rda        (Tiers 2-3; per-tree fits)
+#          output/controlled_wing_brms_smoke.rds, output/models/controlled_smoke_M3.rda
+#                                                      (--smoke only)
+# RUN:  Rscript Analysis/scripts/atlantic_parallel_controlled.R --fast-lme4
+#       Rscript Analysis/scripts/atlantic_parallel_controlled.R --trees 1
+#       Rscript Analysis/scripts/atlantic_parallel_controlled.R --trees 50
+#       Rscript Analysis/scripts/atlantic_parallel_controlled.R --trees 50 --models M0,M3 --sample cc
+#       Rscript Analysis/scripts/atlantic_parallel_controlled.R --smoke
+#       (works from the repo root, Analysis/, or Analysis/scripts/)
+#
+# NON-OBVIOUS DECISIONS (also in REVISION_NOTES_P1.md):
+#   * Altitude imputation ("full" sample): for each record without Altitude the
+#     median altitude of the NEAREST coordinate site (great-circle distance)
+#     that has one, using every record in passer90_allsex. The municipality
+#     median was rejected: E. Carrano's Guaraqueçaba records are from Ilha Rasa
+#     (an island) while the only Guaraqueçaba altitude on file (563 m) is
+#     R. Bobato's inland farm. Distances are stored in $sample_sizes$altitude_imputation.
+#     Altitude has a negligible coefficient and municipality is also a random
+#     intercept, so the imputation cannot drive the year effect; keeping the
+#     records can.
+#   * Moult is a 3-level factor (no / Yes / unrecorded) rather than a filter:
+#     Molt is NA for 43 % of early vs 13 % of late wing records, so dropping
+#     NA would delete a sixth of the sample non-randomly. M3b_ring (= M3
+#     without moult) isolates the moult term's contribution.
+#   * Individual = interaction(Ring, Binomial) (36 ring strings recur on > 1
+#     species); unringed birds get a unique singleton level (their own record
+#     id), so they do not collapse into one spurious "NA" individual.
+#   * First captures (M7) = first WING-measured record per Ring x Binomial
+#     (ordered Year, month, day), unringed kept: 7,791 records.
+#     REVISION_NOTES_P0.md's 7,734 takes the first record of ANY kind and then
+#     requires a wing value; for a wing model the first wing measurement is the
+#     relevant first capture.
+#   * Mundlak / REWB: the species random slope is on the same within-cluster
+#     year variable whose fixed effect is being estimated (the plan's spec).
+#     With the random slope on total scaled_yr instead (the _rsTotal variants)
+#     the within-contributor slope moves from ~0 to ~-0.27 and its SE halves;
+#     both are reported because the choice matters.
+#   * mm_per_decade uses SD(year) = 5.0199 (the SD scaled_yr was actually
+#     standardised with, attr(passer90, "scaling")$year), not the 5.05 of the
+#     final sample (REVISION_NOTES_P0.md §2 effect_scale).
+#   * lme4 intervals are Wald (estimate +/- 1.96 SE) and REML; the brms tiers
+#     are the inferential result. lme4 has no phylogenetic term: the species
+#     intercept absorbs it (the plan's baseline reproduced the brms -0.92).
+# Session (Tier 1 run, 2026-09-09): R 4.6.0, lme4 2.0.1, dplyr 1.2.1.
+# brms tiers: brms 2.23.0, rstan 2.32.7 (local) / cmdstanr (server),
+# prepR4pcm 0.5.0.9000, clootl 0.1.4, phytools 2.5.2, MCMCglmm 2.36, ape 5.8.1.
+# ---------------------------------------------------------------------------
+
+suppressMessages({ library(dplyr); library(lme4) })
+set.seed(20240101)
+
+# --- command-line flags ------------------------------------------------------
+args <- commandArgs(trailingOnly = TRUE)
+get_flag <- function(flag, default = NULL) {
+  i <- match(flag, args)
+  if (is.na(i)) return(default)
+  if (i == length(args) || startsWith(args[i + 1], "--")) return(TRUE)
+  args[i + 1]
+}
+MODE <- if (!is.null(get_flag("--smoke"))) "smoke" else
+        if (!is.null(get_flag("--trees"))) "trees" else "fast"
+N_TREES <- if (MODE == "trees") as.integer(get_flag("--trees")) else if (MODE == "smoke") 1L else 0L
+if (MODE == "trees" && (is.na(N_TREES) || N_TREES < 1L)) stop("--trees needs a positive integer")
+BRMS_MODELS <- if (MODE == "smoke") "M3" else strsplit(get_flag("--models", "M0,M3,M5,M6"), ",")[[1]]
+BRMS_SAMPLE <- match.arg(get_flag("--sample", "full"), c("full", "cc"))
+message(sprintf("[controlled] mode = %s%s", MODE,
+                if (MODE != "fast") sprintf(", trees = %d, models = %s, sample = %s", N_TREES,
+                                            paste(BRMS_MODELS, collapse = "/"), BRMS_SAMPLE) else ""))
+
+# --- robust path resolution (repo layout: Analysis/{scripts,data,output,figures}) ---
+# Locate the Analysis/ directory regardless of getwd() (script may be run from the
+# repo root, Analysis/, or Analysis/scripts/), then build paths into its subfolders.
+.find_analysis_dir <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in 1:10) {
+    if (dir.exists(file.path(d, "data", "derived")) && dir.exists(file.path(d, "scripts")))
+      return(d)
+    if (dir.exists(file.path(d, "Analysis", "data", "derived")))
+      return(normalizePath(file.path(d, "Analysis"), winslash = "/"))
+    parent <- dirname(d); if (identical(parent, d)) break; d <- parent
+  }
+  stop("Could not locate Analysis/ (need Analysis/data/derived and Analysis/scripts). ",
+       "Run from inside the atlantic_birds repo.")
+}
+ANALYSIS_DIR <- .find_analysis_dir()                 # = .../atlantic_birds/Analysis
+raw_path     <- function(...) file.path(ANALYSIS_DIR, "data", "raw", ...)
+derived_path <- function(...) file.path(ANALYSIS_DIR, "data", "derived", ...)
+out_path     <- function(...) file.path(ANALYSIS_DIR, "output", ...)
+fig_path     <- function(...) file.path(ANALYSIS_DIR, "figures", ...)
+script_path  <- function(...) file.path(ANALYSIS_DIR, "scripts", ...)
+dir.create(out_path("models"), showWarnings = FALSE, recursive = TRUE)
+
+# ===========================================================================
+# 1. Data: analysis frames shared by every tier
+# ===========================================================================
+load(derived_path("passer90.rda"))          # known-sex, 73 spp, 12,571 records
+load(derived_path("passer90_allsex.rda"))   # + unknown-sex records, same centring
+scaling <- attr(passer90, "scaling")
+SD_YEAR <- unname(scaling$year["scale"])    # 5.0199: the SD scaled_yr is per
+stopifnot(abs(SD_YEAR - 5.02) < 0.01)
+ALT_CENTRE <- unname(scaling$alt["center"]); ALT_SCALE <- unname(scaling$alt["scale"])
+
+# --- altitude imputation table: nearest coordinate site with a recorded altitude ---
+haversine_km <- function(lat1, lon1, lat2, lon2) {
+  r <- pi / 180; a <- sin((lat2 - lat1) * r / 2)^2 +
+    cos(lat1 * r) * cos(lat2 * r) * sin((lon2 - lon1) * r / 2)^2
+  2 * 6371 * asin(sqrt(pmin(1, a)))
+}
+alt_sites <- passer90_allsex %>% filter(!is.na(Altitude), !is.na(Latitude_decimal_degrees)) %>%
+  group_by(Latitude_decimal_degrees, Longitude_decimal_degrees) %>%
+  summarise(alt_site = median(Altitude), .groups = "drop")
+na_sites <- passer90_allsex %>% filter(is.na(Altitude), !is.na(Latitude_decimal_degrees)) %>%
+  distinct(Latitude_decimal_degrees, Longitude_decimal_degrees, Municipality, Locality, Main_researcher)
+na_sites$alt_imp <- NA_real_; na_sites$dist_km <- NA_real_
+for (i in seq_len(nrow(na_sites))) {
+  dk <- haversine_km(na_sites$Latitude_decimal_degrees[i], na_sites$Longitude_decimal_degrees[i],
+                     alt_sites$Latitude_decimal_degrees, alt_sites$Longitude_decimal_degrees)
+  k <- which.min(dk); na_sites$alt_imp[i] <- alt_sites$alt_site[k]; na_sites$dist_km[i] <- dk[k]
+}
+alt_lookup <- na_sites %>% select(Latitude_decimal_degrees, Longitude_decimal_degrees, alt_imp, dist_km) %>% distinct()
+
+prep_frame <- function(d) {
+  d %>%
+    left_join(alt_lookup, by = c("Latitude_decimal_degrees", "Longitude_decimal_degrees")) %>%
+    mutate(scaled_yr  = as.numeric(scaled_yr),
+           scaled_lat = as.numeric(scaled_lat),
+           scaled_lon = as.numeric(scaled_lon),
+           alt_imputed = is.na(Altitude),
+           alt_filled  = ifelse(alt_imputed, alt_imp, Altitude),
+           scaled_alt_cc  = as.numeric(scaled_alt),                    # NA where Altitude NA
+           scaled_alt     = ifelse(is.na(alt_filled), 0, (alt_filled - ALT_CENTRE) / ALT_SCALE),
+           Sex   = factor(Sex, levels = c("Female", "Male")),   # explicit factor (reviewer H1)
+           spp   = factor(Binomial),
+           src   = factor(Main_researcher),
+           site  = factor(Municipality),
+           # individual = Ring x species; unringed birds are their own singleton
+           ind   = factor(ifelse(is.na(Ring), paste0("unringed_", ID_ABT),
+                                 paste(Ring, Binomial, sep = "|"))),
+           wing_col = factor(wing_col, levels = c("right", "left", "generic")),
+           season_cc = factor(as.character(season), levels = c("DJF", "MAM", "JJA", "SON")),
+           season   = factor(ifelse(is.na(season), "unrecorded", as.character(season)),
+                             levels = c("DJF", "MAM", "JJA", "SON", "unrecorded")),
+           molt3    = factor(ifelse(is.na(Molt), "unrecorded", Molt),
+                             levels = c("no", "Yes", "unrecorded")),
+           has_wing = !is.na(conc.wing.length))
+}
+# first WING record per individual (unringed kept); call on a wing-only frame
+flag_first_capture <- function(w) {
+  w %>% arrange(Year, month, day) %>% group_by(Ring, Binomial) %>%
+    mutate(first_capture = is.na(Ring) | row_number() == 1L) %>% ungroup()
+}
+add_mundlak <- function(d) {
+  d %>% group_by(site) %>% mutate(yr_site_mean = mean(scaled_yr)) %>% ungroup() %>%
+    group_by(src)  %>% mutate(yr_src_mean  = mean(scaled_yr)) %>% ungroup() %>%
+    group_by(spp)  %>% mutate(lat_spp_mean = mean(scaled_lat)) %>% ungroup() %>%
+    mutate(yr_within_site = scaled_yr - yr_site_mean,
+           yr_within_src  = scaled_yr - yr_src_mean,
+           lat_within_spp = scaled_lat - lat_spp_mean)
+}
+finish <- function(d) d %>% droplevels() %>% add_mundlak()
+
+known   <- prep_frame(passer90)
+w_all   <- known %>% filter(has_wing) %>% flag_first_capture() %>% finish()      # "full", 8,478
+w_cc    <- w_all %>% filter(!alt_imputed, !is.na(season_cc)) %>% finish()          # "cc",   8,282
+w_first <- w_all %>% filter(first_capture) %>% finish()
+w_first_cc <- w_cc %>% filter(first_capture) %>% finish()
+long_running <- w_all %>% group_by(src) %>%
+  summarise(n_years = n_distinct(Year), n_wing = n(), .groups = "drop") %>%
+  filter(n_years >= 8, n_wing >= 200) %>% pull(src) %>% as.character()
+w_long    <- w_all %>% filter(as.character(src) %in% long_running) %>% finish()
+w_long_cc <- w_cc  %>% filter(as.character(src) %in% long_running) %>% finish()
+w_carrano <- w_all %>% filter(as.character(src) == "E.Carrano") %>% finish()
+
+# --- sign-blind screen for anomalous contributor x municipality x year blocks -------
+# Species x sex-centred wing deviations (centred on the whole wing sample) averaged per
+# contributor x municipality x year block with >= 10 records. Blocks whose mean deviation
+# exceeds +/- ANOM_MM (6 mm ~ 1.5 residual SD of the M3 fit, ~8 % of a wing) are flagged
+# irrespective of sign: within one contributor such shifts are protocol / data-entry
+# changes, not phenotypes. The screen exists because two contributors' late blocks sit
+# 9-12 mm below species means and generate most of the within-contributor "decline".
+ANOM_MM <- 6
+block_screen <- w_all %>% group_by(spp, Sex) %>% mutate(dev = conc.wing.length - mean(conc.wing.length)) %>% ungroup() %>%
+  group_by(src, site, Year) %>%
+  summarise(n = n(), n_spp = n_distinct(spp), mean_dev = mean(dev), wing_col = paste(sort(unique(as.character(wing_col))), collapse = "/"), .groups = "drop") %>%
+  mutate(flagged = n >= 10 & abs(mean_dev) > ANOM_MM) %>% arrange(desc(abs(mean_dev)))
+anom_blocks <- block_screen %>% filter(flagged)
+w_noanom <- w_all %>% anti_join(anom_blocks %>% select(src, site, Year), by = c("src", "site", "Year")) %>% finish()
+message(sprintf("[screen] %d of %d blocks (n >= 10) flagged at |mean dev| > %g mm, %d records; sample without them = %d",
+                nrow(anom_blocks), sum(block_screen$n >= 10), ANOM_MM, sum(anom_blocks$n), nrow(w_noanom)))
+if (nrow(anom_blocks)) print(as.data.frame(anom_blocks), digits = 3)
+
+unknown <- prep_frame(passer90_allsex %>% filter(!known_sex))
+u_all <- unknown %>% filter(has_wing) %>% flag_first_capture() %>% finish()        # 3,532
+u_cc  <- u_all %>% filter(!alt_imputed, !is.na(season_cc)) %>% finish()
+
+stopifnot(nrow(w_all) == 8478, nrow(passer90) == 12571, nlevels(droplevels(known$spp)) == 73,
+          !anyNA(w_all$scaled_alt), !anyNA(u_all$scaled_alt))
+# (one of the 73 species has no wing record, so the wing models see 72 species)
+message(sprintf("[data] wing records: full %d | cc %d | first captures %d/%d | long-running (%d src) %d/%d | E.Carrano %d | unknown-sex %d/%d",
+                nrow(w_all), nrow(w_cc), nrow(w_first), nrow(w_first_cc), length(long_running),
+                nrow(w_long), nrow(w_long_cc), nrow(w_carrano), nrow(u_all), nrow(u_cc)))
+
+alt_imp_summary <- w_all %>% filter(alt_imputed) %>%
+  group_by(src, site, Locality) %>%
+  summarise(n = n(), yr_min = min(Year), yr_max = max(Year), alt_imputed_m = first(alt_filled),
+            dist_km = first(dist_km), .groups = "drop") %>% arrange(desc(n))
+sample_sizes <- list(
+  wing_all = nrow(w_all), wing_complete_cases = nrow(w_cc),
+  altitude_na_wing = sum(w_all$alt_imputed), season_na_wing = sum(is.na(w_all$season_cc)),
+  altitude_imputation = as.data.frame(alt_imp_summary),
+  altitude_imputation_note = "nearest coordinate site with a recorded altitude (all passer90_allsex records); municipality median rejected (Ilha Rasa vs inland farm)",
+  first_captures_full = nrow(w_first), first_captures_cc = nrow(w_first_cc),
+  first_captures_P0_definition = 7734L,
+  long_running_contributors = long_running, long_running_wing_full = nrow(w_long), long_running_wing_cc = nrow(w_long_cc),
+  carrano_wing = nrow(w_carrano), carrano_years = range(w_carrano$Year),
+  unknown_sex_wing_full = nrow(u_all), unknown_sex_wing_cc = nrow(u_cc),
+  unknown_sex_label_Unknown = sum(u_all$Sex == "Unknown", na.rm = TRUE),
+  molt_unrecorded_share = mean(w_all$molt3 == "unrecorded"),
+  anomalous_block_threshold_mm = ANOM_MM, anomalous_blocks = as.data.frame(anom_blocks),
+  anomalous_records = sum(anom_blocks$n), wing_without_anomalous_blocks = nrow(w_noanom),
+  individuals_full = nlevels(w_all$ind), individuals_with_repeats_full = sum(table(w_all$ind) > 1),
+  sd_year = SD_YEAR, mean_wing_mm = mean(w_all$conc.wing.length))
+
+# ===========================================================================
+# 2. Model specifications (shared vocabulary for lme4 and brms)
+# ===========================================================================
+FX_BASE  <- "Sex + scaled_yr + scaled_lat"
+FX_NOSEX <- "scaled_yr + scaled_lat"
+FX_M2    <- "wing_col + scaled_lon + scaled_alt"
+FX_M3    <- "season + molt3"
+FX_MUND  <- "Sex + yr_within_site + yr_site_mean + lat_within_spp + lat_spp_mean"
+FX_MUNDS <- "Sex + yr_within_src + yr_src_mean + lat_within_spp + lat_spp_mean"
+RE_SPP   <- "(1 + scaled_yr || spp)"
+RE_SPP_WSITE <- "(1 + yr_within_site || spp)"     # REWB: random slope on the within variable
+RE_SPP_WSRC  <- "(1 + yr_within_src || spp)"
+RE_SRC   <- "(1 | src)"; RE_SITE <- "(1 | site)"; RE_IND <- "(1 | ind)"
+RE_SRCSL <- "(1 + scaled_yr || src)"
+j <- function(...) paste(c(...), collapse = " + ")
+spec <- function(fx, re, data, label) list(fx = fx, re = re, data = data, label = label)
+
+# Ladder on one sample; `d` = frame name for the main models, `d_first` / `d_long` for the subsets
+ladder <- function(sfx, d, d_first, d_long) {
+  L <- list(
+    M2a_wingcol = spec(j(FX_BASE, "wing_col"), j(RE_SPP, RE_SRC, RE_SITE), d, "M1 + wing-column protocol proxy"),
+    M2          = spec(j(FX_BASE, FX_M2), j(RE_SPP, RE_SRC, RE_SITE), d, "M2 = M1 + wing_col + scaled_lon + scaled_alt"),
+    M3a_season  = spec(j(FX_BASE, FX_M2, "season"), j(RE_SPP, RE_SRC, RE_SITE), d, "M2 + season"),
+    M3b_ring    = spec(j(FX_BASE, FX_M2, "season"), j(RE_SPP, RE_SRC, RE_SITE, RE_IND), d, "M2 + season + (1|individual)  [= M3 without moult]"),
+    M3          = spec(j(FX_BASE, FX_M2, FX_M3), j(RE_SPP, RE_SRC, RE_SITE, RE_IND), d, "M3 = M2 + season + moult + (1|individual)"),
+    M4          = spec(j(FX_BASE, FX_M2, FX_M3), j(RE_SPP, RE_SRCSL, RE_SITE, RE_IND), d, "M4 = M3 with (1 + scaled_yr || contributor)"),
+    M5          = spec(j(FX_MUND, FX_M2, FX_M3), j(RE_SPP_WSITE, RE_SRC, RE_SITE, RE_IND), d,
+                       "M5 = M3 with Mundlak year within/between municipality, latitude within/among species (REWB: species slope on yr_within_site)"),
+    M5_rsTotal  = spec(j(FX_MUND, FX_M2, FX_M3), j(RE_SPP, RE_SRC, RE_SITE, RE_IND), d, "M5 with the species random slope on total scaled_yr"),
+    M5src       = spec(j(FX_MUNDS, FX_M2, FX_M3), j(RE_SPP_WSRC, RE_SRC, RE_SITE, RE_IND), d,
+                       "M3 with Mundlak year within/between CONTRIBUTOR (REWB: species slope on yr_within_src)"),
+    M5src_rsTotal = spec(j(FX_MUNDS, FX_M2, FX_M3), j(RE_SPP, RE_SRC, RE_SITE, RE_IND), d, "M5src with the species random slope on total scaled_yr"),
+    M7          = spec(j(FX_BASE, FX_M2, FX_M3), j(RE_SPP, RE_SRC, RE_SITE), d_first, "M7 = M3 on first (wing) captures only; no ring term (one record per individual)"),
+    M3_longrun  = spec(j(FX_BASE, FX_M2, FX_M3), j(RE_SPP, RE_SRC, RE_SITE, RE_IND), d_long, "M3 on the 6 long-running contributors (>= 8 yr, >= 200 wing records)")
+  )
+  names(L) <- paste0(names(L), sfx); L
+}
+SPECS <- c(
+  list(M0       = spec(FX_BASE, RE_SPP, "w_all", "M0 baseline (= published brms structure)"),
+       M1a_src  = spec(FX_BASE, j(RE_SPP, RE_SRC), "w_all", "M0 + (1|contributor)"),
+       M1b_site = spec(FX_BASE, j(RE_SPP, RE_SITE), "w_all", "M0 + (1|municipality)"),
+       M1       = spec(FX_BASE, j(RE_SPP, RE_SRC, RE_SITE), "w_all", "M1 = M0 + (1|contributor) + (1|municipality)"),
+       M0_cc    = spec(FX_BASE, RE_SPP, "w_cc", "M0 on the complete-case sample"),
+       M1_cc    = spec(FX_BASE, j(RE_SPP, RE_SRC, RE_SITE), "w_cc", "M1 on the complete-case sample")),
+  ladder("",    "w_all", "w_first",    "w_long"),
+  ladder("_cc", "w_cc",  "w_first_cc", "w_long_cc"),
+  list(M_carrano = spec(j(FX_BASE, FX_M2, FX_M3), j(RE_SPP, RE_SITE, RE_IND), "w_carrano",
+                        "M3 without contributor term on E. Carrano's records alone (1996-2017)"),
+       M1_noanom    = spec(FX_BASE, j(RE_SPP, RE_SRC, RE_SITE), "w_noanom", "M1 without the flagged anomalous blocks"),
+       M3_noanom    = spec(j(FX_BASE, FX_M2, FX_M3), j(RE_SPP, RE_SRC, RE_SITE, RE_IND), "w_noanom", "M3 without the flagged anomalous blocks"),
+       M5src_noanom = spec(j(FX_MUNDS, FX_M2, FX_M3), j(RE_SPP_WSRC, RE_SRC, RE_SITE, RE_IND), "w_noanom",
+                           "M5src (within/between contributor, REWB) without the flagged anomalous blocks"),
+       M5src_rsTotal_noanom = spec(j(FX_MUNDS, FX_M2, FX_M3), j(RE_SPP, RE_SRC, RE_SITE, RE_IND), "w_noanom",
+                                   "M5src_rsTotal without the flagged anomalous blocks"),
+       M6_m0 = spec(FX_NOSEX, RE_SPP, "u_all", "unknown-sex records, M0 structure (no Sex)"),
+       M6_m1 = spec(FX_NOSEX, j(RE_SPP, RE_SRC, RE_SITE), "u_all", "unknown-sex records, M1 structure (no Sex)"),
+       M6    = spec(j(FX_NOSEX, FX_M2, FX_M3), j(RE_SPP, RE_SRC, RE_SITE, RE_IND), "u_all", "M6 = M3 on unknown-sex records (no Sex)"),
+       M6_cc = spec(j(FX_NOSEX, FX_M2, FX_M3), j(RE_SPP, RE_SRC, RE_SITE, RE_IND), "u_cc", "M6 on the complete-case unknown-sex sample"))
+)
+lme4_formula <- function(s) as.formula(paste("conc.wing.length ~ 1 +", s$fx, "+", s$re))
+frames <- list(w_all = w_all, w_cc = w_cc, w_first = w_first, w_first_cc = w_first_cc,
+               w_long = w_long, w_long_cc = w_long_cc, w_carrano = w_carrano, w_noanom = w_noanom,
+               u_all = u_all, u_cc = u_cc)
+
+# ===========================================================================
+# 3. Tier 1: lme4 REML screening
+# ===========================================================================
+YEAR_TERMS <- c("scaled_yr", "yr_within_site", "yr_site_mean", "yr_within_src", "yr_src_mean")
+ctrl <- lmerControl(optimizer = "bobyqa", calc.derivs = FALSE)
+tidy_lmer <- function(fit, name, s, dat) {
+  cf <- summary(fit)$coefficients
+  msgs <- unlist(fit@optinfo$conv$lme4$messages)
+  data.frame(model = name, label = s$label, term = rownames(cf),
+             estimate = cf[, "Estimate"], se = cf[, "Std. Error"],
+             ci_lo = cf[, "Estimate"] - 1.96 * cf[, "Std. Error"],
+             ci_hi = cf[, "Estimate"] + 1.96 * cf[, "Std. Error"],
+             t = cf[, "t value"],
+             N = nobs(fit), n_spp = nlevels(dat$spp), n_src = nlevels(dat$src), n_site = nlevels(dat$site),
+             n_ind = if (grepl("ind", s$re)) nlevels(dat$ind) else NA_integer_,
+             sample = s$data, fixed = s$fx, random = s$re,
+             singular = isSingular(fit),
+             convergence_msg = if (length(msgs)) paste(msgs, collapse = "; ") else "",
+             row.names = NULL, stringsAsFactors = FALSE) %>%
+    mutate(year_term = term %in% YEAR_TERMS,
+           mm_per_decade    = ifelse(year_term, estimate / SD_YEAR * 10, NA_real_),
+           mm_per_decade_lo = ifelse(year_term, ci_lo / SD_YEAR * 10, NA_real_),
+           mm_per_decade_hi = ifelse(year_term, ci_hi / SD_YEAR * 10, NA_real_),
+           pct_per_decade   = mm_per_decade / sample_sizes$mean_wing_mm * 100)
+}
+
+if (MODE == "fast") {
+  fits <- list(); rows <- list(); timings <- c()
+  for (nm in names(SPECS)) {
+    s <- SPECS[[nm]]; dat <- frames[[s$data]]
+    # Subset frames (E. Carrano alone): (1 | ind) is not identifiable when every
+    # individual has one record, and a factor with a single level (he used only the
+    # right-wing column) cannot enter the fixed part. Drop them and say so in the label.
+    if (grepl("ind", s$re) && nlevels(dat$ind) == nrow(dat)) {
+      s$re <- gsub("\\s*\\+\\s*\\(1 \\| ind\\)", "", s$re)
+      s$label <- paste(s$label, "[ring term dropped: no repeated individuals]")
+    }
+    for (fct in c("Sex", "wing_col", "season", "molt3")) {
+      # Guard must work for character AND factor columns: nlevels() of a character
+      # vector is 0, which silently dropped Sex from every known-sex model (reviewer H1).
+      if (grepl(paste0("\\b", fct, "\\b"), s$fx) && length(unique(na.omit(dat[[fct]]))) < 2) {
+        s$fx <- gsub(paste0("\\s*\\+\\s*\\b", fct, "\\b|\\b", fct, "\\b\\s*\\+\\s*"), "", s$fx)
+        s$label <- paste0(s$label, " [", fct, " dropped: single level]")
+      }
+    }
+    SPECS[[nm]] <- s
+    t0 <- Sys.time()
+    fit <- lmer(lme4_formula(s), data = dat, REML = TRUE, control = ctrl)
+    timings[nm] <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+    fits[[nm]] <- fit
+    rows[[nm]] <- tidy_lmer(fit, nm, s, dat)
+    yr <- rows[[nm]] %>% filter(year_term)
+    message(sprintf("[lme4] %-14s N=%5d  %s  (%.1fs)%s", nm, nobs(fit),
+                    paste(sprintf("%s=%.3f [%.3f, %.3f] t=%.2f", yr$term, yr$estimate, yr$ci_lo, yr$ci_hi, yr$t), collapse = " | "),
+                    timings[nm], if (isSingular(fit)) "  SINGULAR" else ""))
+  }
+  results <- bind_rows(rows)
+
+  # --- variance components ---------------------------------------------------
+  varcomp <- bind_rows(lapply(names(fits), function(nm) {
+    v <- as.data.frame(VarCorr(fits[[nm]]))
+    data.frame(model = nm, grp = v$grp, var1 = v$var1, sd = v$sdcor, stringsAsFactors = FALSE)
+  }))
+
+  # --- leave-one-contributor-out jackknife (M1 on full; M3 on full and cc) --------
+  jackknife <- function(spec_name, dat) {
+    s <- SPECS[[spec_name]]; f <- lme4_formula(s)
+    bind_rows(lapply(levels(dat$src), function(k) {
+      d <- dat %>% filter(as.character(src) != k) %>% finish()
+      fit <- lmer(f, data = d, REML = TRUE, control = ctrl)
+      cf <- summary(fit)$coefficients["scaled_yr", ]
+      data.frame(model = spec_name, dropped = k, n_dropped = sum(as.character(dat$src) == k),
+                 estimate = cf[1], se = cf[2], ci_lo = cf[1] - 1.96 * cf[2], ci_hi = cf[1] + 1.96 * cf[2],
+                 t = cf[3], N = nobs(fit), row.names = NULL)
+    })) %>% mutate(mm_per_decade = estimate / SD_YEAR * 10)
+  }
+  message("[jackknife] leave-one-contributor-out: M1 (full), M3 (full), M3_cc ...")
+  jk <- bind_rows(jackknife("M1", w_all), jackknife("M3", w_all), jackknife("M3_cc", w_cc))
+  full_est <- results %>% filter(term == "scaled_yr", model %in% c("M1", "M3", "M3_cc")) %>% select(model, full_estimate = estimate)
+  jk <- jk %>% left_join(full_est, by = "model") %>% mutate(shift = estimate - full_estimate) %>% arrange(model, shift)
+  jk_summary <- jk %>% group_by(model) %>%
+    summarise(full_estimate = first(full_estimate), min = min(estimate), max = max(estimate),
+              most_negative_when_dropping = dropped[which.min(estimate)],
+              least_negative_when_dropping = dropped[which.max(estimate)],
+              n_excl_zero = sum(ci_hi < 0), n_fits = n(), .groups = "drop")
+  print(jk_summary)
+
+  # --- per-contributor year slopes for the spanning / long-running contributors -----
+  # wing ~ Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | site) within each
+  # contributor with >= 8 distinct years (the within-contributor trend, one contributor at a time)
+  span_src <- w_all %>% group_by(src) %>% summarise(n_years = n_distinct(Year), n = n(), yr_min = min(Year), yr_max = max(Year),
+                                                    n_site = n_distinct(site), n_spp = n_distinct(spp), .groups = "drop") %>%
+    filter(n_years >= 8) %>% arrange(desc(n))
+  spanning_slopes <- bind_rows(lapply(seq_len(nrow(span_src)), function(i) {
+    k <- as.character(span_src$src[i]); d <- w_all %>% filter(as.character(src) == k) %>% finish()
+    re <- if (nlevels(d$site) > 1) "(1 + scaled_yr || spp) + (1 | site)" else "(1 + scaled_yr || spp)"
+    fit <- tryCatch(lmer(as.formula(paste("conc.wing.length ~ Sex + scaled_yr + scaled_lat +", re)), data = d, REML = TRUE, control = ctrl),
+                    error = function(e) lmer(conc.wing.length ~ Sex + scaled_yr + (1 + scaled_yr || spp), data = d, REML = TRUE, control = ctrl))
+    cf <- summary(fit)$coefficients["scaled_yr", ]
+    # descriptive: species x sex-centred wing (centred on the whole sample) by period within the contributor
+    cen <- w_all %>% group_by(spp, Sex) %>% mutate(dev = conc.wing.length - mean(conc.wing.length)) %>% ungroup() %>%
+      filter(as.character(src) == k)
+    data.frame(src = k, n = nrow(d), yr_min = span_src$yr_min[i], yr_max = span_src$yr_max[i], n_years = span_src$n_years[i],
+               n_site = span_src$n_site[i], n_spp = span_src$n_spp[i],
+               wing_col = paste(names(which(table(d$wing_col) > 0)), collapse = "/"),
+               estimate = cf[1], se = cf[2], ci_lo = cf[1] - 1.96 * cf[2], ci_hi = cf[1] + 1.96 * cf[2], t = cf[3],
+               mm_per_decade = cf[1] / SD_YEAR * 10, singular = isSingular(fit),
+               centred_dev_early = mean(cen$dev[cen$Year <= 2006]), n_early = sum(cen$Year <= 2006),
+               centred_dev_late = mean(cen$dev[cen$Year >= 2013]), n_late = sum(cen$Year >= 2013), row.names = NULL)
+  }))
+  print(spanning_slopes %>% select(src, n, yr_min, yr_max, estimate, ci_lo, ci_hi, t, centred_dev_early, centred_dev_late), digits = 3)
+
+  # --- species-specific slopes (fixed + random) from M3 (full) and M0 --------------
+  species_slopes <- function(fit, dat, name) {
+    fe <- fixef(fit)[["scaled_yr"]]; fe_se <- summary(fit)$coefficients["scaled_yr", "Std. Error"]
+    re <- ranef(fit, condVar = TRUE)
+    # lme4 expands (1 + scaled_yr || spp) into (1|spp) + (0 + scaled_yr|spp); locate the
+    # component that carries the scaled_yr column whichever way ranef() names it.
+    comp <- NULL
+    for (k in names(re)) if ("scaled_yr" %in% colnames(re[[k]])) comp <- re[[k]]
+    stopifnot(!is.null(comp))
+    pv <- attr(comp, "postVar"); jcol <- match("scaled_yr", colnames(comp))
+    # lme4 >= 2.0 merges the two || terms and returns postVar as a list of 1x1xn arrays
+    # (one per term); older versions return a q x q x n array.
+    re_var <- if (is.list(pv)) as.numeric(pv[["scaled_yr"]])
+              else if (length(dim(pv)) == 3) pv[jcol, jcol, ] else as.numeric(pv)
+    spp_info <- dat %>% group_by(spp) %>%
+      summarise(n = n(), yr_min = min(Year), yr_max = max(Year), n_src = n_distinct(src),
+                n_site = n_distinct(site), mean_wing = mean(conc.wing.length), .groups = "drop") %>%
+      mutate(spp = as.character(spp))
+    data.frame(model = name, spp = rownames(comp), ranef_yr = comp[["scaled_yr"]],
+               se_ranef = sqrt(re_var), stringsAsFactors = FALSE) %>%
+      mutate(slope = fe + ranef_yr, fixed = fe, se_fixed = fe_se,
+             se_total = sqrt(se_ranef^2 + se_fixed^2),
+             lo = slope - 1.96 * se_total, hi = slope + 1.96 * se_total,
+             mm_per_decade = slope / SD_YEAR * 10,
+             mm_per_decade_lo = lo / SD_YEAR * 10, mm_per_decade_hi = hi / SD_YEAR * 10) %>%
+      left_join(spp_info, by = "spp") %>%
+      mutate(pct_per_decade = mm_per_decade / mean_wing * 100) %>%
+      arrange(slope)
+  }
+  sl_M3 <- species_slopes(fits$M3, w_all, "M3"); sl_M3cc <- species_slopes(fits$M3_cc, w_cc, "M3_cc")
+  sl_M0 <- species_slopes(fits$M0, w_all, "M0")
+  slope_summary <- function(sl) list(
+    n_species = nrow(sl), n_negative = sum(sl$slope < 0),
+    n_excl_zero_negative = sum(sl$hi < 0), n_excl_zero_positive = sum(sl$lo > 0),
+    median_mm_per_decade = median(sl$mm_per_decade),
+    fixed_slope = sl$fixed[1], sd_random_slope = sd(sl$ranef_yr))
+  slopes <- list(generated = Sys.time(), M3 = sl_M3, M3_cc = sl_M3cc, M0 = sl_M0,
+                 summary = list(M3 = slope_summary(sl_M3), M3_cc = slope_summary(sl_M3cc), M0 = slope_summary(sl_M0)),
+                 sd_year = SD_YEAR,
+                 note = paste("slope = fixed scaled_yr + species random slope (lme4 REML; M3 = full controls on the full sample,",
+                              "M3_cc = complete cases, M0 = baseline); se_total adds the fixed-effect SE and the conditional SD of the",
+                              "BLUP in quadrature; 'excl. zero' uses slope +/- 1.96 se_total. The brms posteriors (Tiers 2-3) supersede these for the figure."))
+  saveRDS(slopes, out_path("controlled_wing_species_slopes.rds"))
+
+  # --- decision gate (provisional, Tier 1) -----------------------------------
+  g <- function(m, term = "scaled_yr") results %>% filter(model == m, term == !!term)
+  m0 <- g("M0"); m3 <- g("M3"); m3cc <- g("M3_cc")
+  m5w <- g("M5", "yr_within_site"); m5wcc <- g("M5_cc", "yr_within_site"); m5b <- g("M5", "yr_site_mean")
+  m5sw <- g("M5src", "yr_within_src"); m5sb <- g("M5src", "yr_src_mean")
+  m5sw_alt <- g("M5src_rsTotal", "yr_within_src"); m5w_alt <- g("M5_rsTotal", "yr_within_site")
+  m6 <- g("M6"); m7 <- g("M7"); mc <- g("M_carrano")
+  excl0 <- function(r) r$ci_hi < 0
+  scenario_full <- if (excl0(m3) && excl0(m5w)) "A" else "B"
+  scenario_cc   <- if (excl0(m3cc) && excl0(m5wcc)) "A" else "B"
+  decision_gate <- list(
+    tier = "1 (lme4 REML, Wald CI; provisional until the brms tiers run)",
+    rule = "Scenario A requires the controlled year effect (M3) AND the within-municipality year slope (M5, REWB) to exclude zero; otherwise B",
+    scenario_full_sample = scenario_full, scenario_complete_cases = scenario_cc,
+    scenario = if (scenario_full == scenario_cc) scenario_full else "B (samples disagree; see note)",
+    M0 = m0[, c("estimate", "ci_lo", "ci_hi", "t", "N")],
+    M3 = m3[, c("estimate", "ci_lo", "ci_hi", "t", "N", "mm_per_decade")],
+    M3_cc = m3cc[, c("estimate", "ci_lo", "ci_hi", "t", "N", "mm_per_decade")],
+    M5_within_site = m5w[, c("estimate", "ci_lo", "ci_hi", "t")], M5_within_site_cc = m5wcc[, c("estimate", "ci_lo", "ci_hi", "t")],
+    M5_within_site_rsTotal = m5w_alt[, c("estimate", "ci_lo", "ci_hi", "t")],
+    M5_between_site = m5b[, c("estimate", "ci_lo", "ci_hi", "t")],
+    M5src_within = m5sw[, c("estimate", "ci_lo", "ci_hi", "t")], M5src_within_rsTotal = m5sw_alt[, c("estimate", "ci_lo", "ci_hi", "t")],
+    M5src_between = m5sb[, c("estimate", "ci_lo", "ci_hi", "t")],
+    M6 = m6[, c("estimate", "ci_lo", "ci_hi", "t", "N")], M7 = m7[, c("estimate", "ci_lo", "ci_hi", "t", "N")],
+    M_carrano = mc[, c("estimate", "ci_lo", "ci_hi", "t", "N")],
+    M3_noanom = g("M3_noanom")[, c("estimate", "ci_lo", "ci_hi", "t", "N")],
+    M5src_within_noanom = g("M5src_noanom", "yr_within_src")[, c("estimate", "ci_lo", "ci_hi", "t")],
+    M5src_within_rsTotal_noanom = g("M5src_rsTotal_noanom", "yr_within_src")[, c("estimate", "ci_lo", "ci_hi", "t")],
+    share_of_M0_remaining_in_M3 = m3$estimate / m0$estimate,
+    share_of_M0_remaining_in_M3_cc = m3cc$estimate / m0$estimate,
+    jackknife = jk_summary)
+  message(sprintf("[gate] Tier-1 scenario: full = %s, cc = %s | M3 = %.3f [%.3f, %.3f] (cc %.3f [%.3f, %.3f]) | within-site = %.3f [%.3f, %.3f] | within-contributor = %.3f [%.3f, %.3f]",
+                  scenario_full, scenario_cc, m3$estimate, m3$ci_lo, m3$ci_hi, m3cc$estimate, m3cc$ci_lo, m3cc$ci_hi,
+                  m5w$estimate, m5w$ci_lo, m5w$ci_hi, m5sw$estimate, m5sw$ci_lo, m5sw$ci_hi))
+
+  before_after <- results %>% filter(year_term) %>%
+    select(model, label, term, estimate, se, ci_lo, ci_hi, t, N, n_spp, n_src, n_site, n_ind, sample,
+           mm_per_decade, mm_per_decade_lo, mm_per_decade_hi, pct_per_decade, singular, convergence_msg)
+
+  out <- list(
+    generated = Sys.time(), mode = "fast-lme4",
+    session = list(R = R.version.string, lme4 = as.character(packageVersion("lme4")),
+                   dplyr = as.character(packageVersion("dplyr")), optimizer = "bobyqa, calc.derivs = FALSE, REML"),
+    sd_year = SD_YEAR, mean_wing_mm = sample_sizes$mean_wing_mm,
+    sample_sizes = sample_sizes,
+    specs = bind_rows(lapply(names(SPECS), function(n) data.frame(model = n, label = SPECS[[n]]$label,
+                                                                   fixed = SPECS[[n]]$fx, random = SPECS[[n]]$re,
+                                                                   sample = SPECS[[n]]$data))),
+    table = results,             # all fixed effects, all models
+    before_after = before_after, # year terms only
+    varcomp = varcomp,
+    jackknife = jk, jackknife_summary = jk_summary,
+    spanning_contributor_slopes = spanning_slopes,
+    block_screen = as.data.frame(block_screen), anomalous_blocks = as.data.frame(anom_blocks),
+    decision_gate = decision_gate,
+    timings_sec = timings,
+    note = paste("lme4 REML re-fit of the primary wing model with artefact controls (REVISION_PLAN.md Phase 1, Tier 1).",
+                 "CIs are Wald (+/- 1.96 SE). mm_per_decade = estimate / SD(year) * 10 with SD(year) = 5.0199 (the scaling SD).",
+                 "Models without suffix use the full 8,478-record sample (altitude imputed from the nearest site, season 'unrecorded' for 6 undated records);",
+                 "'_cc' models use the 8,282 complete cases of REVISION_PLAN.md §0.",
+                 "No phylogenetic term in this tier; species intercepts absorb it. The brms tiers (--trees) are the inferential result."))
+  saveRDS(out, out_path("controlled_wing_results.rds"))
+  message("[write] ", out_path("controlled_wing_results.rds"), " and controlled_wing_species_slopes.rds")
+  print(before_after %>% select(model, term, estimate, ci_lo, ci_hi, t, N, mm_per_decade), digits = 3, row.names = FALSE)
+  quit(save = "no", status = 0)
+}
+
+# ===========================================================================
+# 4. Tiers 2-3 (and --smoke): brms with the phylogenetic term, Rubin-pooled
+# ===========================================================================
+suppressMessages({
+  library(brms); library(ape); library(MCMCglmm); library(prepR4pcm)
+  library(phytools); library(future.apply); library(posterior)
+})
+source(script_path("_sampling_config.R"))   # SAMPLING, SAMPLING_CONTROL (host-aware)
+if (MODE == "smoke") {
+  SAMPLING$chains <- 2L; SAMPLING$iter <- 400L; SAMPLING$warmup <- 200L
+  SAMPLING$cores <- 2L; SAMPLING$workers <- 1L
+  message("[smoke] chains = 2, iter = 400, warmup = 200, 1 tree, model M3 only. NOT A RESULT.")
+}
+# brms model set draws on the requested sample
+brms_sfx <- if (BRMS_SAMPLE == "cc") "_cc" else ""
+brms_spec_name <- function(nm) {
+  if (nm %in% c("M0", "M1")) return(if (BRMS_SAMPLE == "cc") paste0(nm, "_cc") else nm)
+  cand <- paste0(nm, brms_sfx); if (cand %in% names(SPECS)) cand else nm
+}
+
+# --- tree retrieval and species reconciliation (copied from atlantic_parallel.R) ---
+passer90$species_name <- gsub("_", " ", passer90$Binomial)
+ebird_synonyms <- c(
+  "Antilophia galeata"       = "Chiroxiphia galeata",
+  "Tachyphonus cristatus"    = "Loriotus cristatus",
+  "Pyrrhocoma ruficeps"      = "Thlypopsis pyrrhocoma",
+  "Pyriglena pernambucensis" = "Pyriglena leuconota",
+  "Tangara sayaca"           = "Thraupis sayaca",
+  "Tangara cayana"           = "Stilpnia cayana",
+  "Tangara palmarum"         = "Thraupis palmarum",
+  "Tangara peruviana"        = "Stilpnia peruviana",
+  "Dixiphia pipra"           = "Pseudopipra pipra",
+  "Tiaris fuliginosus"       = "Asemospiza fuliginosa"
+)
+hit <- passer90$species_name %in% names(ebird_synonyms)
+passer90$species_name[hit] <- ebird_synonyms[passer90$species_name[hit]]
+spp_data <- unique(passer90$species_name)
+
+# AvesData repo: the 100-tree dated sample sets. Use the copy already in
+# data/raw/AvesDataLite-main when AVESDATA_PATH is unset (avoids a 700 MB
+# download); otherwise fall back to clootl's downloader exactly as atlantic_parallel.R.
+if (!nzchar(Sys.getenv("AVESDATA_PATH")) || !dir.exists(Sys.getenv("AVESDATA_PATH"))) {
+  local_aves <- raw_path("AvesDataLite-main")
+  if (dir.exists(local_aves)) clootl::set_avesdata_repo_path(local_aves, overwrite = TRUE)
+  else clootl::get_avesdata_repo(path = raw_path())
+}
+.check <- pr_get_tree(spp_data, source = "clootl", n_tree = 1)
+if (length(.check$unmatched) > 0) {
+  message("Removing ", length(.check$unmatched), " species absent from eBird taxonomy: ",
+          paste(.check$unmatched, collapse = ", "))
+  spp_data <- setdiff(spp_data, .check$unmatched)
+}
+stopifnot(length(.check$unmatched) <= 1)
+got   <- pr_get_tree(spp_data, source = "clootl", n_tree = 100, cache = TRUE)
+trees <- got$tree
+clootl_version <- pr_cite_tree(got, format = "text")
+
+rec <- reconcile_tree(x = passer90, tree = trees[[1]], x_species = "species_name",
+                      fuzzy = TRUE, resolve = "flag")
+print(reconcile_summary(rec))
+aligned <- reconcile_apply(rec, data = passer90, tree = trees[[1]],
+                           species_col = "species_name", drop_unresolved = TRUE)
+# Binomial -> tip label map, applied to every analysis frame (incl. unknown-sex)
+name_map <- aligned$data %>% transmute(Binomial, species_name = gsub(" ", "_", species_name)) %>% distinct()
+attach_tree_names <- function(d) {
+  d %>% select(-any_of("species_name")) %>% inner_join(name_map, by = "Binomial") %>%
+    mutate(spp = factor(species_name)) %>%                # both grouping terms use matched names
+    select(-yr_site_mean, -yr_src_mean, -lat_spp_mean, -yr_within_site, -yr_within_src, -lat_within_spp) %>%
+    finish()                                              # re-derive Mundlak terms on the matched species set
+}
+norm_us   <- function(x) gsub(" ", "_", x)
+keep_tips <- norm_us(aligned$tree$tip.label)
+trees_pruned <- lapply(trees, function(t) {
+  t$tip.label <- norm_us(t$tip.label)
+  ape::keep.tip(t, intersect(keep_tips, t$tip.label))
+})
+class(trees_pruned) <- "multiPhylo"
+tree_samp <- sample(trees_pruned, N_TREES)        # seed set above; 50 on the server
+
+make_A <- function(tree) {
+  tree$tip.label <- gsub(" ", "_", tree$tip.label)
+  if (!ape::is.ultrametric(tree)) tree <- phytools::force.ultrametric(tree, method = "nnls")
+  inv <- inverseA(tree, nodes = "TIPS", scale = TRUE)
+  A   <- solve(inv$Ainv); rownames(A) <- rownames(inv$Ainv); A
+}
+
+priors <- c(prior(normal(71, 15), class = Intercept),
+            prior(normal(0, 10),  class = b),
+            prior(cauchy(0, 1),   class = sd),
+            prior(cauchy(0, 1),   class = sigma))
+
+brms_frames <- lapply(frames, attach_tree_names)
+brms_formula <- function(s) {
+  as.formula(paste("conc.wing.length ~ 1 +", s$fx, "+", s$re, "+ (1 | gr(species_name, cov = A))"))
+}
+fit_one <- function(tree, s) {
+  A <- make_A(tree)
+  brm(brms_formula(s), data = brms_frames[[s$data]], data2 = list(A = A),
+      family = gaussian(), prior = priors,
+      iter = SAMPLING$iter, warmup = SAMPLING$warmup, chains = SAMPLING$chains,
+      cores = SAMPLING$cores, backend = SAMPLING$backend, control = SAMPLING_CONTROL,
+      seed = 20240101)
+}
+
+# --- Rubin's rules pooling across trees (copied from atlantic_parallel.R, generalised
+# to every population-level parameter) ---
+# For each fixed effect: pooled estimate = mean of per-tree posterior means;
+# total variance = within-tree var (mean of per-tree posterior variances)
+# + between-tree var (variance of per-tree means) inflated by (1 + 1/m).
+# (Nakagawa & de Villemereuil 2019, Syst. Biol. 68:632-641.)
+pool_rubin <- function(fits, pars = NULL) {
+  m <- length(fits)
+  if (is.null(pars)) pars <- grep("^b_", variables(fits[[1]]), value = TRUE)
+  draws <- lapply(fits, function(f) as_draws_df(f)[, pars, drop = FALSE])
+  means <- t(sapply(draws, function(d) sapply(d, mean)))
+  vars  <- t(sapply(draws, function(d) sapply(d, var)))
+  if (m == 1) { means <- matrix(means, nrow = 1, dimnames = list(NULL, pars)); vars <- matrix(vars, nrow = 1, dimnames = list(NULL, pars)) }
+  qbar  <- colMeans(means)                 # pooled point estimate
+  ubar  <- colMeans(vars)                  # within-imputation variance
+  b     <- if (m > 1) apply(means, 2, var) else 0 * qbar   # between-tree variance (0 for one tree)
+  tot   <- ubar + (1 + 1/m) * b            # total variance
+  se    <- sqrt(tot)
+  data.frame(par = pars, estimate = qbar, se = se,
+             lower = qbar - 1.96*se, upper = qbar + 1.96*se, m_trees = m, row.names = NULL)
+}
+diag_one <- function(f) {
+  s <- summary(f)$fixed
+  data.frame(par = paste0("b_", rownames(s)), rhat = s$Rhat, bulk_ess = s$Bulk_ESS, tail_ess = s$Tail_ESS,
+             divergent = sum(nuts_params(f, pars = "divergent__")$Value), row.names = NULL)
+}
+
+plan(multisession, workers = SAMPLING$workers)
+brms_results <- list(); timings <- c(); model_files <- c()
+for (nm in BRMS_MODELS) {
+  sn <- brms_spec_name(nm); s <- SPECS[[sn]]; if (is.null(s)) stop("unknown model ", nm)
+  message(sprintf("[brms] %s (spec %s, N = %d) on %d tree(s): %s", nm, sn, nrow(brms_frames[[s$data]]), N_TREES, deparse1(brms_formula(s))))
+  t0 <- Sys.time()
+  fits <- future_lapply(tree_samp, fit_one, s = s, future.seed = TRUE)
+  timings[nm] <- as.numeric(difftime(Sys.time(), t0, units = "mins"))
+  pooled <- pool_rubin(fits) %>%
+    mutate(model = nm, spec = sn, label = s$label, N = nrow(brms_frames[[s$data]]),
+           year_term = sub("^b_", "", par) %in% YEAR_TERMS,
+           mm_per_decade = ifelse(year_term, estimate / SD_YEAR * 10, NA_real_),
+           mm_per_decade_lo = ifelse(year_term, lower / SD_YEAR * 10, NA_real_),
+           mm_per_decade_hi = ifelse(year_term, upper / SD_YEAR * 10, NA_real_))
+  diags <- bind_rows(lapply(seq_along(fits), function(i) cbind(tree = i, diag_one(fits[[i]]))))
+  brms_results[[nm]] <- list(pooled = pooled, diagnostics = diags, minutes = timings[nm])
+  print(pooled %>% select(par, estimate, lower, upper, mm_per_decade), digits = 3)
+  model_files[nm] <- if (MODE == "smoke") out_path("models", sprintf("controlled_smoke_%s.rda", nm))
+                     else out_path("models", sprintf("controlled_%s%s.rda", nm, brms_sfx))
+  rubin_summary <- pooled
+  save(fits, rubin_summary, diags, clootl_version, file = model_files[nm])
+  message("[write] ", model_files[nm], sprintf(" (%.1f min)", timings[nm]))
+}
+
+# --- species-slope posteriors from M3 (caterpillar figure) -------------------------
+species_posteriors <- NULL
+if ("M3" %in% BRMS_MODELS) {
+  load(model_files["M3"])
+  # slope_j = b_scaled_yr + r_spp[j, scaled_yr]; species-level effects are summarised on the
+  # posterior draws stacked across trees (they are not Rubin-pooled)
+  sl <- lapply(fits, function(fit) {
+    d <- as_draws_df(fit); rs <- grep("^r_spp__scaled_yr\\[", names(d), value = TRUE)
+    m <- as.matrix(d[, rs]) + d$b_scaled_yr
+    colnames(m) <- sub("^r_spp__scaled_yr\\[(.*),Intercept\\]$", "\\1", rs); m
+  })
+  sl <- do.call(rbind, sl)
+  species_posteriors <- data.frame(spp = colnames(sl), slope = colMeans(sl),
+                                   lo = apply(sl, 2, quantile, 0.025), hi = apply(sl, 2, quantile, 0.975),
+                                   p_negative = colMeans(sl < 0), row.names = NULL) %>%
+    mutate(mm_per_decade = slope / SD_YEAR * 10) %>% arrange(slope)
+  message(sprintf("[brms M3] species slopes: %d negative of %d, %d with 95%% interval < 0",
+                  sum(species_posteriors$slope < 0), nrow(species_posteriors), sum(species_posteriors$hi < 0)))
+}
+
+out <- list(generated = Sys.time(), mode = MODE, n_trees = N_TREES, models = BRMS_MODELS, sample = BRMS_SAMPLE,
+            sampling = SAMPLING, clootl_version = clootl_version,
+            n_species_tree = length(keep_tips),
+            results = brms_results,
+            pooled = bind_rows(lapply(brms_results, `[[`, "pooled")),
+            species_slopes_M3 = species_posteriors,
+            sd_year = SD_YEAR, mean_wing_mm = sample_sizes$mean_wing_mm, sample_sizes = sample_sizes,
+            session = list(R = R.version.string, brms = as.character(packageVersion("brms")),
+                           prepR4pcm = as.character(packageVersion("prepR4pcm")), clootl = as.character(packageVersion("clootl"))),
+            note = if (MODE == "smoke") "SMOKE TEST (1 tree, 2 chains, 400 iterations): code-path check only, NOT a result."
+                   else "Rubin-pooled across trees (Nakagawa & de Villemereuil 2019); intervals are pooled-SE normal intervals.")
+rds <- if (MODE == "smoke") out_path("controlled_wing_brms_smoke.rds") else out_path(sprintf("controlled_wing_brms_results%s.rds", brms_sfx))
+saveRDS(out, rds)
+message("[write] ", rds)
