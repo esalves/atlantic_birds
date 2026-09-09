@@ -1,7 +1,7 @@
 # Manuscript
 
 Quarto source for *"Shrinking body size and rising prey scarcity in Atlantic
-Forest birds over three decades of climate change."*
+Forest birds over 24 years of climate change."*
 
 ## Files
 
