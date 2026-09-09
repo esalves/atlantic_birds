@@ -23,15 +23,29 @@
 #   Tier 1  --fast-lme4 (default)  lme4 REML, no phylogeny, all models (M0..M7
 #           plus the finer ladder used in REVISION_PLAN.md §0), on BOTH samples
 #           (see SAMPLES). Under two minutes. Sets the decision gate provisionally.
-#   Tier 2  --trees 1              brms with the phylogenetic term on ONE tree,
+#   PHYLOGENETIC TIER  --trees N [--engine glmmTMB] (default engine for --trees)
+#           glmmTMB REML with the phylogenetic species intercept as a `propto`
+#           covariance structure (Williams, McGillycuddy, Drobniak, Bolker, Warton
+#           & Nakagawa 2025, bioRxiv 10.64898/2025.12.20.695312), fitted on the
+#           IDENTICAL 50 trees as the published brms analysis (correlation matrices
+#           cached from brm0_multiphylo.rda by _phylo_engine.R) and Rubin-pooled.
+#           glmmtmb_validation_wing.R shows this reproduces the published brms M0
+#           to 2-3 decimals (year -0.922 [-1.400, -0.444] vs -0.922 [-1.403, -0.440])
+#           in ~0.5 s per fit, so EVERY Tier-1 specification (39 specs, both
+#           samples) is carried across the trees, not just M0/M3/M5/M6.
+#           --models all (default) or a comma list, e.g. --models M0,M3,M5,M6.
+#           Writes controlled_wing_phylo_results.rds / _species_slopes.rds; the
+#           decision gate in that file is evaluated on the phylogenetic estimates.
+#   Tier 2  --trees 1 --engine brms   brms with the phylogenetic term on ONE tree,
 #           full chains/iterations from _sampling_config.R, to check that the
 #           Bayesian posteriors agree with REML (R-hat, bulk-ESS). ~1-2 h/model
-#           on the server.
-#   Tier 3  --trees 50             Rubin-pooled 50-tree fits ONLY for the
+#           on the server. Kept as the Bayesian cross-check (Totoro).
+#   Tier 3  --trees 50 --engine brms  Rubin-pooled 50-tree brms fits ONLY for the
 #           definitive models M0, M3, M5, M6 (the default brms model set;
 #           override with --models M0,M3). 8 models x 50 trees = 400 Stan fits
 #           would take hundreds of CPU hours and is NOT to be attempted.
-#   --sample full|cc               which sample the brms tiers use (default full).
+#   --sample full|cc               which sample the brms tiers use (default full;
+#           ignored by --engine glmmTMB, which fits both samples).
 #   --smoke                        LOCAL SMOKE TEST of the brms code path only:
 #           1 tree, chains = 2, iter = 400, warmup = 200, model M3 only,
 #           written to *_smoke.* files. Its numbers are NOT results.
@@ -81,18 +95,26 @@
 #   per-contributor year slopes for every contributor with >= 8 sampling years.
 #
 # INPUTS:  data/derived/passer90.rda, data/derived/passer90_allsex.rda,
+#          scripts/_phylo_engine.R + data/derived/phylo_A_50trees.rds (glmmTMB tier;
+#            the cache is built from output/models/brm0_multiphylo.rda on first use),
 #          scripts/_sampling_config.R (brms tiers), AvesDataLite (brms tiers)
 # OUTPUTS: output/controlled_wing_results.rds          (Tier 1; list, see $table,
 #            $before_after, $jackknife, $spanning_contributor_slopes, $decision_gate)
 #          output/controlled_wing_species_slopes.rds   (Tier 1; M3 and M0 slopes)
-#          output/controlled_wing_brms_results.rds     (Tiers 2-3; Rubin-pooled)
-#          output/models/controlled_<model>.rda        (Tiers 2-3; per-tree fits)
+#          output/controlled_wing_phylo_results.rds    (glmmTMB phylogenetic tier;
+#            $before_after, $table, $varcomp, $decision_gate, $comparison_tier1,
+#            $comparison_published_M0, $engine, $timings)
+#          output/controlled_wing_phylo_species_slopes.rds (glmmTMB tier; $M3, $M3_cc,
+#            $M0 pooled over trees, same columns as the Tier-1 file + tree_name)
+#          output/controlled_wing_brms_results.rds     (brms Tiers 2-3; Rubin-pooled)
+#          output/models/controlled_<model>.rda        (brms Tiers 2-3; per-tree fits)
 #          output/controlled_wing_brms_smoke.rds, output/models/controlled_smoke_M3.rda
 #                                                      (--smoke only)
 # RUN:  Rscript Analysis/scripts/atlantic_parallel_controlled.R --fast-lme4
-#       Rscript Analysis/scripts/atlantic_parallel_controlled.R --trees 1
-#       Rscript Analysis/scripts/atlantic_parallel_controlled.R --trees 50
-#       Rscript Analysis/scripts/atlantic_parallel_controlled.R --trees 50 --models M0,M3 --sample cc
+#       Rscript Analysis/scripts/atlantic_parallel_controlled.R --trees 50            # glmmTMB, all specs (~1 h)
+#       Rscript Analysis/scripts/atlantic_parallel_controlled.R --trees 50 --models M0,M3,M5,M6
+#       Rscript Analysis/scripts/atlantic_parallel_controlled.R --trees 1 --engine brms
+#       Rscript Analysis/scripts/atlantic_parallel_controlled.R --trees 50 --engine brms --models M0,M3 --sample cc
 #       Rscript Analysis/scripts/atlantic_parallel_controlled.R --smoke
 #       (works from the repo root, Analysis/, or Analysis/scripts/)
 #
@@ -126,10 +148,34 @@
 #   * mm_per_decade uses SD(year) = 5.0199 (the SD scaled_yr was actually
 #     standardised with, attr(passer90, "scaling")$year), not the 5.05 of the
 #     final sample (REVISION_NOTES_P0.md §2 effect_scale).
-#   * lme4 intervals are Wald (estimate +/- 1.96 SE) and REML; the brms tiers
-#     are the inferential result. lme4 has no phylogenetic term: the species
-#     intercept absorbs it (the plan's baseline reproduced the brms -0.92).
+#   * lme4 intervals are Wald (estimate +/- 1.96 SE) and REML. lme4 has no
+#     phylogenetic term: the species intercept absorbs it (the plan's baseline
+#     reproduced the brms -0.92). The glmmTMB phylogenetic tier adds the
+#     propto(0 + species_name | g, A) intercept on each of the 50 trees; its
+#     intervals are Rubin-pooled Wald intervals (pooled SE = sqrt(mean within-tree
+#     SE^2 + (1 + 1/m) between-tree variance)); `z` = estimate / pooled SE (the
+#     `t` column repeats `z` so Tier-1 consumers of $before_after keep working).
+#     Species names in that tier are the tree tip names (phylo_species_name();
+#     e.g. Tiaris_fuliginosus -> Asemospiza_fuliginosa); `spp` (the species
+#     random-slope grouping) uses the same names, a 1:1 relabelling of Binomial.
+#     Species absent from the trees (none in passer90 / passer90_allsex as of
+#     2026-09-09; Herpsilochmus_sellowi would be) are dropped with a message and
+#     listed in $engine$dropped_species. Mundlak means are re-derived after the
+#     relabelling (identical here because no species is dropped).
+#   * Species slopes in the glmmTMB tier: per tree slope_j = fixed + BLUP (SE in
+#     quadrature, species_slopes_phylo()); across trees slope = mean, SE =
+#     sqrt(mean(SE^2) + (1 + 1/m) var(slope)) (Rubin), same for ranef and its SE.
+#   * Informed restarts (glmmTMB tier): every spec has both an i.i.d. species
+#     intercept and the phylogenetic one (as the published brms model). From
+#     glmmTMB's default start a tree-dependent subset of fits stops on the i.i.d.
+#     side of that ridge (phylo SD ~ 0.1, non-PD Hessian, REML objective ~24 units
+#     WORSE than the phylogenetic side; year estimate identical to 3 decimals).
+#     Non-PD fits are restarted from the tree's own parameter layout with the
+#     propto scale at SD 20 and accepted only if PD and not worse in objective;
+#     $before_after carries converged (final), converged_default_start, n_retried,
+#     n_retry_accepted, and $per_model[[m]]$retry the per-tree objectives.
 # Session (Tier 1 run, 2026-09-09): R 4.6.0, lme4 2.0.1, dplyr 1.2.1.
+# glmmTMB tier (2026-09-09): glmmTMB 1.1.14 (CRAN; `propto` available), TMB per session.
 # brms tiers: brms 2.23.0, rstan 2.32.7 (local) / cmdstanr (server),
 # prepR4pcm 0.5.0.9000, clootl 0.1.4, phytools 2.5.2, MCMCglmm 2.36, ape 5.8.1.
 # ---------------------------------------------------------------------------
@@ -149,11 +195,15 @@ MODE <- if (!is.null(get_flag("--smoke"))) "smoke" else
         if (!is.null(get_flag("--trees"))) "trees" else "fast"
 N_TREES <- if (MODE == "trees") as.integer(get_flag("--trees")) else if (MODE == "smoke") 1L else 0L
 if (MODE == "trees" && (is.na(N_TREES) || N_TREES < 1L)) stop("--trees needs a positive integer")
-BRMS_MODELS <- if (MODE == "smoke") "M3" else strsplit(get_flag("--models", "M0,M3,M5,M6"), ",")[[1]]
+# --engine: glmmTMB (default for --trees; propto phylogenetic tier) or brms (Tiers 2-3; --smoke)
+ENGINE <- if (MODE == "smoke") "brms" else if (MODE == "trees") match.arg(get_flag("--engine", "glmmTMB"), c("glmmTMB", "brms")) else "lme4"
+BRMS_MODELS <- if (MODE == "smoke") "M3" else
+               strsplit(get_flag("--models", if (ENGINE == "glmmTMB") "all" else "M0,M3,M5,M6"), ",")[[1]]
 BRMS_SAMPLE <- match.arg(get_flag("--sample", "full"), c("full", "cc"))
 message(sprintf("[controlled] mode = %s%s", MODE,
-                if (MODE != "fast") sprintf(", trees = %d, models = %s, sample = %s", N_TREES,
-                                            paste(BRMS_MODELS, collapse = "/"), BRMS_SAMPLE) else ""))
+                if (MODE != "fast") sprintf(", engine = %s, trees = %d, models = %s, sample = %s", ENGINE, N_TREES,
+                                            paste(BRMS_MODELS, collapse = "/"),
+                                            if (ENGINE == "glmmTMB") "full + cc (all specs)" else BRMS_SAMPLE) else ""))
 
 # --- robust path resolution (repo layout: Analysis/{scripts,data,output,figures}) ---
 # Locate the Analysis/ directory regardless of getwd() (script may be run from the
@@ -372,6 +422,25 @@ lme4_formula <- function(s) as.formula(paste("conc.wing.length ~ 1 +", s$fx, "+"
 frames <- list(w_all = w_all, w_cc = w_cc, w_first = w_first, w_first_cc = w_first_cc,
                w_long = w_long, w_long_cc = w_long_cc, w_carrano = w_carrano, w_noanom = w_noanom,
                u_all = u_all, u_cc = u_cc)
+# Spec guard shared by the lme4 and glmmTMB tiers. Subset frames (E. Carrano alone):
+# (1 | ind) is not identifiable when every individual has one record, and a factor
+# with a single level (he used only the right-wing column) cannot enter the fixed
+# part. Drop them and say so in the label. The single-level test must work for
+# character AND factor columns: nlevels() of a character vector is 0, which silently
+# dropped Sex from every known-sex model (reviewer H1).
+guard_spec <- function(s, dat) {
+  if (grepl("ind", s$re) && nlevels(dat$ind) == nrow(dat)) {
+    s$re <- gsub("\\s*\\+\\s*\\(1 \\| ind\\)", "", s$re)
+    s$label <- paste(s$label, "[ring term dropped: no repeated individuals]")
+  }
+  for (fct in c("Sex", "wing_col", "season", "molt3")) {
+    if (grepl(paste0("\\b", fct, "\\b"), s$fx) && length(unique(na.omit(dat[[fct]]))) < 2) {
+      s$fx <- gsub(paste0("\\s*\\+\\s*\\b", fct, "\\b|\\b", fct, "\\b\\s*\\+\\s*"), "", s$fx)
+      s$label <- paste0(s$label, " [", fct, " dropped: single level]")
+    }
+  }
+  s
+}
 
 # ===========================================================================
 # 3. Tier 1: lme4 REML screening
@@ -402,22 +471,7 @@ tidy_lmer <- function(fit, name, s, dat) {
 if (MODE == "fast") {
   fits <- list(); rows <- list(); timings <- c()
   for (nm in names(SPECS)) {
-    s <- SPECS[[nm]]; dat <- frames[[s$data]]
-    # Subset frames (E. Carrano alone): (1 | ind) is not identifiable when every
-    # individual has one record, and a factor with a single level (he used only the
-    # right-wing column) cannot enter the fixed part. Drop them and say so in the label.
-    if (grepl("ind", s$re) && nlevels(dat$ind) == nrow(dat)) {
-      s$re <- gsub("\\s*\\+\\s*\\(1 \\| ind\\)", "", s$re)
-      s$label <- paste(s$label, "[ring term dropped: no repeated individuals]")
-    }
-    for (fct in c("Sex", "wing_col", "season", "molt3")) {
-      # Guard must work for character AND factor columns: nlevels() of a character
-      # vector is 0, which silently dropped Sex from every known-sex model (reviewer H1).
-      if (grepl(paste0("\\b", fct, "\\b"), s$fx) && length(unique(na.omit(dat[[fct]]))) < 2) {
-        s$fx <- gsub(paste0("\\s*\\+\\s*\\b", fct, "\\b|\\b", fct, "\\b\\s*\\+\\s*"), "", s$fx)
-        s$label <- paste0(s$label, " [", fct, " dropped: single level]")
-      }
-    }
+    s <- guard_spec(SPECS[[nm]], frames[[SPECS[[nm]]$data]]); dat <- frames[[s$data]]
     SPECS[[nm]] <- s
     t0 <- Sys.time()
     fit <- lmer(lme4_formula(s), data = dat, REML = TRUE, control = ctrl)
@@ -597,7 +651,342 @@ if (MODE == "fast") {
 }
 
 # ===========================================================================
-# 4. Tiers 2-3 (and --smoke): brms with the phylogenetic term, Rubin-pooled
+# 4. Phylogenetic tier, --engine glmmTMB (default for --trees N): every Tier-1
+#    specification with propto(0 + species_name | g, A) on each tree, Rubin-pooled
+# ===========================================================================
+if (ENGINE == "glmmTMB") {
+  # _phylo_engine.R uses out_path()/derived_path()/raw_path(), so it is sourced
+  # after the path helpers. It loads glmmTMB and provides phylo_species_name(),
+  # phylo_A_list(), fit_phylo_glmmtmb(), tidy_phylo_fit(), pool_rubin_df(),
+  # run_phylo_trees(), species_slopes_phylo(). Nothing from it is re-implemented here.
+  source(script_path("_phylo_engine.R"))
+  T_START <- Sys.time()
+
+  # --- species names on the tree; drop species the trees do not carry ----------------
+  cache_file <- derived_path("phylo_A_50trees.rds")
+  if (!file.exists(cache_file)) invisible(phylo_A_list(unique(phylo_species_name(passer90$Binomial)), n_trees = N_TREES))
+  tree_species <- if (file.exists(cache_file)) readRDS(cache_file)$species else character(0)
+  NOT_ON_TREE <- "Herpsilochmus_sellowi"           # known absentee; anything else missing is dropped too
+  dropped_species <- character(0)
+  attach_phylo_names <- function(d) {
+    d$species_name <- phylo_species_name(d$Binomial)
+    drop <- setdiff(unique(d$species_name), setdiff(tree_species, NOT_ON_TREE))
+    if (length(tree_species) == 0) drop <- intersect(unique(d$species_name), NOT_ON_TREE)
+    if (length(drop)) {
+      message("[phylo] dropping ", length(drop), " species absent from the trees: ", paste(drop, collapse = ", "))
+      dropped_species <<- union(dropped_species, drop)
+    }
+    d %>% filter(!species_name %in% drop) %>%
+      mutate(spp = factor(species_name)) %>%                    # species random slope on the same (tree) names
+      select(-yr_site_mean, -yr_src_mean, -lat_spp_mean, -yr_within_site, -yr_within_src, -lat_within_spp) %>%
+      finish()                                                  # re-derive Mundlak terms on the matched species set
+  }
+  phylo_frames <- lapply(frames, attach_phylo_names)
+  binomial_map <- bind_rows(lapply(phylo_frames, function(d) distinct(d, Binomial, species_name))) %>% distinct()
+  stopifnot(!any(duplicated(binomial_map$species_name)))       # relabelling is 1:1
+  stopifnot(nrow(phylo_frames$w_all) == nrow(w_all))           # no species lost on the primary frame
+
+  # --- which specs ------------------------------------------------------------------
+  PHYLO_MODELS <- if (identical(BRMS_MODELS, "all")) names(SPECS) else BRMS_MODELS
+  unknown_models <- setdiff(PHYLO_MODELS, names(SPECS))
+  if (length(unknown_models)) stop("unknown model(s): ", paste(unknown_models, collapse = ", "))
+  SLOPE_MODELS <- intersect(c("M0", "M3", "M3_cc"), PHYLO_MODELS)   # species slopes are taken from these fits
+  A_cache <- list()
+  A_for <- function(species) {                                  # one A_list per species set (subset frames differ)
+    key <- paste(sort(species), collapse = "|")
+    if (is.null(A_cache[[key]])) A_cache[[key]] <<- phylo_A_list(sort(species), n_trees = N_TREES)
+    A_cache[[key]]
+  }
+
+  # --- informed restart for trees that stop on the i.i.d. side of the species-intercept ridge ---
+  # Every spec carries BOTH an i.i.d. species intercept (1 | spp) and the phylogenetic one
+  # (propto), as the published brms model did. Their variances are nearly exchangeable, and
+  # from glmmTMB's default start (all log-SDs = 0) nlminb stops, on a tree-dependent subset
+  # of trees, at a point where the phylogenetic SD is ~0.1 and the Hessian is not positive
+  # definite (a saddle / local optimum: on M1a_src its REML objective is 24730.8 against
+  # 24707.2 on the phylogenetic side, so it is NOT the REML optimum). The fixed effects are
+  # identical to 3 decimals on both sides (probed 2026-09-09), so nothing inferential hangs
+  # on this, but the convergence flag and phylo_prop do. Remedy, using only engine functions:
+  # for each non-PD tree take that tree's own parameter layout (fit_phylo_glmmtmb(doFit =
+  # FALSE): the mapped theta entries encode the tree's Cholesky factor, so a start vector
+  # must be built PER TREE - a constant one silently replaces A by the identity), restart
+  # with the free propto scale at log(20) (~ the phylogenetic SD the converged trees reach),
+  # accept the refit only if its Hessian is PD AND its REML objective is not worse, and
+  # re-pool with pool_rubin_df(). Per-tree objectives on both sides are kept in $retry.
+  PHYLO_START_SD <- 20
+  retry_nonpd <- function(res, formula, data, A_list) {
+    t0 <- Sys.time()
+    obj0 <- vapply(res$fits, function(f) f$fit$objective, numeric(1))
+    retry <- data.frame(tree = seq_along(A_list), pdHess_default = res$varcomp$converged, objective_default = obj0,
+                        retried = FALSE, pdHess_final = res$varcomp$converged, objective_final = obj0, accepted = FALSE)
+    for (i in which(!res$varcomp$converged)) {
+      st <- fit_phylo_glmmtmb(formula, data, A_list[[i]], doFit = FALSE)
+      th <- st$parameters$theta; free <- which(!is.na(st$mapArg$theta))   # last free theta = propto scale
+      th[free[length(free)]] <- log(PHYLO_START_SD)
+      fit2 <- tryCatch(suppressWarnings(fit_phylo_glmmtmb(formula, data, A_list[[i]], start = list(theta = th))), error = function(e) NULL)
+      if (!is.null(fit2) && !isTRUE(fit2$sdr$pdHess)) {                 # second attempt: also shrink the i.i.d. species intercept start
+        th[free[1]] <- log(0.5)
+        fit2 <- tryCatch(suppressWarnings(fit_phylo_glmmtmb(formula, data, A_list[[i]], start = list(theta = th))), error = function(e) NULL)
+      }
+      retry$retried[i] <- TRUE
+      if (!is.null(fit2)) { retry$pdHess_final[i] <- isTRUE(fit2$sdr$pdHess); retry$objective_final[i] <- fit2$fit$objective }
+      if (!is.null(fit2) && isTRUE(fit2$sdr$pdHess) && fit2$fit$objective <= obj0[i] + 1e-6) {
+        retry$accepted[i] <- TRUE
+        td <- tidy_phylo_fit(fit2, tree = i)
+        res$fits[[i]] <- fit2
+        res$per_tree_fixed <- rbind(res$per_tree_fixed[res$per_tree_fixed$tree != i, ], td$fixed)
+        res$varcomp[res$varcomp$tree == i, names(td$varcomp)] <- td$varcomp
+      } else { retry$pdHess_final[i] <- res$varcomp$converged[i]; retry$objective_final[i] <- obj0[i] }
+    }
+    res$per_tree_fixed <- res$per_tree_fixed[order(res$per_tree_fixed$tree, res$per_tree_fixed$component), ]
+    res$pooled <- pool_rubin_df(res$per_tree_fixed)
+    res$varcomp_summary <- res$varcomp %>% summarise(across(where(is.numeric) & !tree, list(mean = mean, lo = ~quantile(.x, .025), hi = ~quantile(.x, .975))))
+    res$retry <- retry; res$secs_retry <- as.numeric(Sys.time() - t0, units = "secs"); res$secs <- res$secs + res$secs_retry
+    res
+  }
+
+  # --- fit every spec across the trees ---------------------------------------------
+  phylo_runs <- list(); rows <- list(); table_rows <- list(); vc_rows <- list(); ridge_rows <- list(); timings <- c(); errors <- list()
+  slope_per_tree <- list()
+  for (nm in PHYLO_MODELS) {
+    s <- guard_spec(SPECS[[nm]], phylo_frames[[SPECS[[nm]]$data]]); dat <- phylo_frames[[s$data]]
+    SPECS[[nm]] <- s
+    A_list <- A_for(levels(droplevels(dat$spp)))
+    f <- lme4_formula(s)                                        # same syntax in glmmTMB; propto term appended by the engine
+    # fits are kept transiently (objective values for the restart rule, species slopes), then dropped
+    res <- tryCatch(suppressWarnings(run_phylo_trees(f, dat, A_list, keep_fits = TRUE, verbose = FALSE)),
+                    error = function(e) e)
+    if (inherits(res, "error")) {
+      errors[[nm]] <- conditionMessage(res)
+      message(sprintf("[glmmTMB] %-20s FAILED: %s", nm, conditionMessage(res))); next
+    }
+    n_conv_default <- sum(res$varcomp$converged)
+    res <- retry_nonpd(res, f, dat, A_list)
+    if (nm %in% SLOPE_MODELS)                                   # per-tree species slopes now, while the fits exist
+      slope_per_tree[[nm]] <- bind_rows(lapply(seq_along(res$fits), function(i) cbind(tree = i, species_slopes_phylo(res$fits[[i]], "scaled_yr", "spp"))))
+    res$fits <- NULL
+    timings[nm] <- res$secs
+    phylo_runs[[nm]] <- res[c("pooled", "per_tree_fixed", "varcomp", "varcomp_summary", "n_trees", "secs", "secs_retry", "retry")]
+    n_conv <- sum(res$varcomp$converged); phylo_prop <- mean(res$varcomp$phylo_prop, na.rm = TRUE)
+    n_retried <- sum(res$retry$retried); n_accepted <- sum(res$retry$accepted)
+    # Ridge diagnostic (after the restarts). Trees are classed by which species-intercept term
+    # carries the variance: "phylo" (propto SD >= i.i.d. SD) or "iid". If any tree is still on
+    # the i.i.d. side, phylo_prop is bimodal and its mean is not interpretable; the year
+    # estimate by side is recorded so the reader can check it is the same. species_level_prop
+    # (phylo + i.i.d. species intercept variance over the total) is invariant to the side.
+    vc_t <- res$varcomp
+    spp_int_col <- grep("^spp\\.\\.Intercept\\.$", names(vc_t), value = TRUE)
+    sd_spp_int <- if (length(spp_int_col)) vc_t[[spp_int_col]] else 0
+    other_cols <- setdiff(names(vc_t)[sapply(vc_t, is.numeric)], c("tree", "sd_phylo", "sigma", "phylo_prop"))
+    tot_var <- vc_t$sd_phylo^2 + rowSums(as.matrix(vc_t[, other_cols, drop = FALSE])^2) + vc_t$sigma^2
+    vc_t$species_level_prop <- (vc_t$sd_phylo^2 + sd_spp_int^2) / tot_var
+    vc_t$mode <- ifelse(vc_t$sd_phylo^2 >= sd_spp_int^2, "phylo", "iid")
+    yr_main <- intersect(c("scaled_yr", "yr_within_site", "yr_within_src"), res$per_tree_fixed$par[res$per_tree_fixed$component == "cond"])[1]
+    yr_by_tree <- res$per_tree_fixed %>% filter(component == "cond", par == yr_main) %>% select(tree, estimate, se) %>%
+      left_join(vc_t %>% select(tree, mode, converged), by = "tree")
+    by_mode <- function(md, what) { x <- yr_by_tree[[what]][yr_by_tree$mode == md]; if (length(x)) mean(x) else NA_real_ }
+    ridge <- data.frame(model = nm, year_term = yr_main,
+                        n_trees = nrow(vc_t), n_phylo_mode = sum(vc_t$mode == "phylo"), n_iid_mode = sum(vc_t$mode == "iid"),
+                        pdHess_phylo_mode = sum(vc_t$converged[vc_t$mode == "phylo"]), pdHess_iid_mode = sum(vc_t$converged[vc_t$mode == "iid"]),
+                        yr_est_phylo_mode = by_mode("phylo", "estimate"), yr_est_iid_mode = by_mode("iid", "estimate"),
+                        yr_se_phylo_mode = by_mode("phylo", "se"), yr_se_iid_mode = by_mode("iid", "se"),
+                        yr_est_range_across_trees = diff(range(yr_by_tree$estimate)),
+                        sd_phylo_phylo_mode = mean(vc_t$sd_phylo[vc_t$mode == "phylo"]), sd_spp_int_iid_mode = mean(sd_spp_int[vc_t$mode == "iid"]),
+                        phylo_prop_phylo_mode = mean(vc_t$phylo_prop[vc_t$mode == "phylo"]),
+                        species_level_prop = mean(vc_t$species_level_prop), stringsAsFactors = FALSE)
+    ridge_rows[[nm]] <- ridge
+    phylo_runs[[nm]]$varcomp <- vc_t                            # per-tree table now carries mode + species_level_prop
+    cond <- res$pooled %>% filter(component == "cond")
+    tab <- data.frame(model = nm, label = s$label, term = cond$par,
+                      estimate = cond$estimate, se = cond$se, ci_lo = cond$lower, ci_hi = cond$upper,
+                      t = cond$z, z = cond$z,
+                      within_tree_var = cond$ubar, between_tree_var = cond$between_tree_var,
+                      N = nrow(dat), n_spp = nlevels(droplevels(dat$spp)), n_src = nlevels(droplevels(dat$src)),
+                      n_site = nlevels(droplevels(dat$site)),
+                      n_ind = if (grepl("ind", s$re)) nlevels(droplevels(dat$ind)) else NA_integer_,
+                      sample = s$data, fixed = s$fx, random = s$re,
+                      n_trees = res$n_trees, converged = n_conv, converged_default_start = n_conv_default,
+                      n_retried = n_retried, n_retry_accepted = n_accepted,
+                      secs = res$secs, secs_retry = res$secs_retry, phylo_prop = phylo_prop,
+                      species_level_prop = ridge$species_level_prop, n_phylo_mode = ridge$n_phylo_mode, n_iid_mode = ridge$n_iid_mode,
+                      row.names = NULL, stringsAsFactors = FALSE) %>%
+      mutate(year_term = term %in% YEAR_TERMS,
+             mm_per_decade    = ifelse(year_term, estimate / SD_YEAR * 10, NA_real_),
+             mm_per_decade_lo = ifelse(year_term, ci_lo / SD_YEAR * 10, NA_real_),
+             mm_per_decade_hi = ifelse(year_term, ci_hi / SD_YEAR * 10, NA_real_),
+             pct_per_decade   = mm_per_decade / sample_sizes$mean_wing_mm * 100)
+    table_rows[[nm]] <- tab; rows[[nm]] <- tab %>% filter(year_term)
+    # variance components: long format like the Tier-1 $varcomp, mean and 95 % range over trees
+    vcs <- res$varcomp %>% select(-tree, -converged, -phylo_prop)
+    vc_rows[[nm]] <- bind_rows(lapply(names(vcs), function(cn) data.frame(
+      model = nm, component = cn, sd = mean(vcs[[cn]], na.rm = TRUE),
+      sd_lo = unname(quantile(vcs[[cn]], .025, na.rm = TRUE)), sd_hi = unname(quantile(vcs[[cn]], .975, na.rm = TRUE)),
+      stringsAsFactors = FALSE))) %>%
+      bind_rows(data.frame(model = nm, component = "phylo_prop", sd = phylo_prop,
+                           sd_lo = unname(quantile(res$varcomp$phylo_prop, .025, na.rm = TRUE)),
+                           sd_hi = unname(quantile(res$varcomp$phylo_prop, .975, na.rm = TRUE))))
+    yr <- rows[[nm]]
+    message(sprintf("[glmmTMB] %-20s N=%5d  %s  | phylo %.2f | pdHess %d/%d (default start %d; %d restarted, %d accepted) | %.0fs (+%.0fs restarts)", nm, nrow(dat),
+                    paste(sprintf("%s=%.3f [%.3f, %.3f] z=%.2f", yr$term, yr$estimate, yr$ci_lo, yr$ci_hi, yr$z), collapse = " | "),
+                    phylo_prop, n_conv, res$n_trees, n_conv_default, n_retried, n_accepted, res$secs, res$secs_retry))
+  }
+  results <- bind_rows(table_rows); before_after <- bind_rows(rows); varcomp <- bind_rows(vc_rows); ridge <- bind_rows(ridge_rows)
+  retry_all <- bind_rows(lapply(names(phylo_runs), function(nm) cbind(model = nm, phylo_runs[[nm]]$retry)))
+  message(sprintf("[restart] %d of %d fits were non-PD from the default start; %d restarted, %d accepted (PD and REML objective not worse); %d fits remain non-PD. Mean objective gain on accepted restarts: %.2f",
+                  sum(!retry_all$pdHess_default), nrow(retry_all), sum(retry_all$retried), sum(retry_all$accepted), sum(!retry_all$pdHess_final),
+                  if (any(retry_all$accepted)) mean((retry_all$objective_default - retry_all$objective_final)[retry_all$accepted]) else NA_real_))
+  message(sprintf("[ridge] trees still on the i.i.d. side of the species-intercept ridge after restarts: %d of %d fits; max |year estimate, phylo side - iid side| = %.4f",
+                  sum(ridge$n_iid_mode), sum(ridge$n_trees), suppressWarnings(max(abs(ridge$yr_est_phylo_mode - ridge$yr_est_iid_mode), na.rm = TRUE))))
+
+  # --- species slopes (computed per tree inside the loop), pooled across trees ----------
+  pool_species_slopes <- function(nm) {
+    per_tree <- slope_per_tree[[nm]]; dat <- phylo_frames[[SPECS[[nm]]$data]]
+    if (is.null(per_tree)) return(NULL)
+    m <- length(unique(per_tree$tree))
+    fe <- before_after %>% filter(model == nm, term == "scaled_yr")
+    spp_info <- dat %>% group_by(species_name) %>%
+      summarise(Binomial = first(Binomial), n = n(), yr_min = min(Year), yr_max = max(Year), n_src = n_distinct(src),
+                n_site = n_distinct(site), mean_wing = mean(conc.wing.length), .groups = "drop")
+    # (summarise() evaluates sequentially: compute the pooled SEs before overwriting slope/ranef with their means)
+    per_tree %>% group_by(tree_name = spp) %>%
+      summarise(se_ranef = sqrt(mean(se_ranef^2) + (1 + 1/m) * var(ranef)),
+                se_total = sqrt(mean(se_total^2) + (1 + 1/m) * var(slope)),
+                slope_tree_min = min(slope), slope_tree_max = max(slope), n_trees = n(),
+                ranef_yr = mean(ranef), slope = mean(slope), .groups = "drop") %>%
+      mutate(model = nm, fixed = fe$estimate, se_fixed = fe$se,
+             lo = slope - 1.96 * se_total, hi = slope + 1.96 * se_total,
+             mm_per_decade = slope / SD_YEAR * 10, mm_per_decade_lo = lo / SD_YEAR * 10, mm_per_decade_hi = hi / SD_YEAR * 10) %>%
+      left_join(spp_info, by = c("tree_name" = "species_name")) %>%
+      mutate(spp = Binomial, pct_per_decade = mm_per_decade / mean_wing * 100) %>%   # `spp` = ABT Binomial as in the Tier-1 file
+      select(model, spp, ranef_yr, se_ranef, slope, fixed, se_fixed, se_total, lo, hi,
+             mm_per_decade, mm_per_decade_lo, mm_per_decade_hi, n, yr_min, yr_max, n_src, n_site, mean_wing, pct_per_decade,
+             tree_name, slope_tree_min, slope_tree_max, n_trees) %>%
+      arrange(slope) %>% as.data.frame()
+  }
+  slope_summary <- function(sl) if (is.null(sl)) NULL else list(
+    n_species = nrow(sl), n_negative = sum(sl$slope < 0),
+    n_excl_zero_negative = sum(sl$hi < 0), n_excl_zero_positive = sum(sl$lo > 0),
+    median_mm_per_decade = median(sl$mm_per_decade),
+    fixed_slope = sl$fixed[1], sd_random_slope = sd(sl$ranef_yr))
+  sl_M3 <- pool_species_slopes("M3"); sl_M3cc <- pool_species_slopes("M3_cc"); sl_M0 <- pool_species_slopes("M0")
+  if (!is.null(sl_M3)) message(sprintf("[glmmTMB M3] species slopes: %d of %d negative, %d intervals < 0, %d > 0, median %.2f mm/decade",
+                                       sum(sl_M3$slope < 0), nrow(sl_M3), sum(sl_M3$hi < 0), sum(sl_M3$lo > 0), median(sl_M3$mm_per_decade)))
+  slopes <- list(generated = Sys.time(), engine = sprintf("glmmTMB propto, %d trees, Rubin-pooled", N_TREES), n_trees = N_TREES,
+                 M3 = sl_M3, M3_cc = sl_M3cc, M0 = sl_M0,
+                 summary = list(M3 = slope_summary(sl_M3), M3_cc = slope_summary(sl_M3cc), M0 = slope_summary(sl_M0)),
+                 sd_year = SD_YEAR,
+                 note = paste("slope = pooled fixed scaled_yr + species random slope (glmmTMB REML with the phylogenetic propto",
+                              "species intercept, one fit per tree). Per tree: se_total = sqrt(SE_fixed^2 + conditional SD_BLUP^2);",
+                              "across trees: slope = mean, se = sqrt(mean(se^2) + (1 + 1/m) var(slope)) (Rubin). `spp` = ABT Binomial",
+                              "(as in controlled_wing_species_slopes.rds), `tree_name` = tip name used in the fit. M3 = full controls on",
+                              "the full sample, M3_cc = complete cases, M0 = baseline. Intervals are +/- 1.96 se_total."))
+  saveRDS(slopes, out_path("controlled_wing_phylo_species_slopes.rds"))
+
+  # --- decision gate (same rule as Tier 1, on the phylogenetic estimates) -------------
+  g <- function(m, term = "scaled_yr") { r <- results %>% filter(model == m, term == !!term); if (nrow(r)) r else NULL }
+  pick <- function(r, cols = c("estimate", "ci_lo", "ci_hi", "z", "N")) if (is.null(r)) NULL else r[, intersect(cols, names(r))]
+  excl0 <- function(r) !is.null(r) && r$ci_hi < 0
+  m0 <- g("M0"); m3 <- g("M3"); m3cc <- g("M3_cc")
+  m5w <- g("M5", "yr_within_site"); m5wcc <- g("M5_cc", "yr_within_site"); m5b <- g("M5", "yr_site_mean")
+  m5sw <- g("M5src", "yr_within_src"); m5sb <- g("M5src", "yr_src_mean")
+  m5sw_alt <- g("M5src_rsTotal", "yr_within_src"); m5w_alt <- g("M5_rsTotal", "yr_within_site")
+  gate_ok <- !is.null(m3) && !is.null(m5w)
+  scenario_full <- if (!gate_ok) "not evaluable (M3 or M5 not fitted)" else if (excl0(m3) && excl0(m5w)) "A" else "B"
+  scenario_cc   <- if (is.null(m3cc) || is.null(m5wcc)) "not evaluable" else if (excl0(m3cc) && excl0(m5wcc)) "A" else "B"
+  decision_gate <- list(
+    tier = sprintf("phylogenetic (glmmTMB propto, %d trees, Rubin-pooled Wald CI, REML)", N_TREES),
+    rule = "Scenario A requires the controlled year effect (M3) AND the within-municipality year slope (M5, REWB) to exclude zero; otherwise B",
+    scenario_full_sample = scenario_full, scenario_complete_cases = scenario_cc,
+    scenario = if (identical(scenario_full, scenario_cc)) scenario_full else paste0(scenario_full, " (full) / ", scenario_cc, " (cc)"),
+    M0 = pick(m0), M3 = pick(m3, c("estimate", "ci_lo", "ci_hi", "z", "N", "mm_per_decade")),
+    M3_cc = pick(m3cc, c("estimate", "ci_lo", "ci_hi", "z", "N", "mm_per_decade")),
+    M5_within_site = pick(m5w), M5_within_site_cc = pick(m5wcc), M5_within_site_rsTotal = pick(m5w_alt),
+    M5_between_site = pick(m5b),
+    M5src_within = pick(m5sw), M5src_within_rsTotal = pick(m5sw_alt), M5src_between = pick(m5sb),
+    M6 = pick(g("M6")), M7 = pick(g("M7")), M_carrano = pick(g("M_carrano")),
+    M3_noanom = pick(g("M3_noanom")),
+    M5src_within_noanom = pick(g("M5src_noanom", "yr_within_src")),
+    M5src_within_rsTotal_noanom = pick(g("M5src_rsTotal_noanom", "yr_within_src")),
+    share_of_M0_remaining_in_M3 = if (!is.null(m0) && !is.null(m3)) m3$estimate / m0$estimate else NA_real_,
+    share_of_M0_remaining_in_M3_cc = if (!is.null(m0) && !is.null(m3cc)) m3cc$estimate / m0$estimate else NA_real_)
+  if (gate_ok) message(sprintf("[gate] phylogenetic scenario: full = %s, cc = %s | M3 = %.3f [%.3f, %.3f] | within-site = %.3f [%.3f, %.3f]%s",
+                               scenario_full, scenario_cc, m3$estimate, m3$ci_lo, m3$ci_hi, m5w$estimate, m5w$ci_lo, m5w$ci_hi,
+                               if (!is.null(m5sw)) sprintf(" | within-contributor = %.3f [%.3f, %.3f]", m5sw$estimate, m5sw$ci_lo, m5sw$ci_hi) else ""))
+
+  # --- comparison with the Tier-1 lme4 estimates and the published brms M0 ------------
+  comparison_tier1 <- NULL; tier1_file <- out_path("controlled_wing_results.rds")
+  if (file.exists(tier1_file)) {
+    t1 <- readRDS(tier1_file)
+    comparison_tier1 <- before_after %>%
+      select(model, term, N, phylo_est = estimate, phylo_se = se, phylo_lo = ci_lo, phylo_hi = ci_hi, phylo_prop) %>%
+      inner_join(t1$before_after %>% select(model, term, N_lme4 = N, lme4_est = estimate, lme4_se = se, lme4_lo = ci_lo, lme4_hi = ci_hi),
+                 by = c("model", "term")) %>%
+      mutate(delta_est = phylo_est - lme4_est, se_ratio = phylo_se / lme4_se,
+             excl0_phylo = phylo_hi < 0 | phylo_lo > 0, excl0_lme4 = lme4_hi < 0 | lme4_lo > 0,
+             same_conclusion = excl0_phylo == excl0_lme4) %>% as.data.frame()
+    message(sprintf("[compare] vs Tier 1 (lme4): max |delta estimate| = %.3f (%s %s); SE ratio range %.2f-%.2f; %d/%d rows same exclude-zero verdict",
+                    max(abs(comparison_tier1$delta_est)),
+                    comparison_tier1$model[which.max(abs(comparison_tier1$delta_est))], comparison_tier1$term[which.max(abs(comparison_tier1$delta_est))],
+                    min(comparison_tier1$se_ratio), max(comparison_tier1$se_ratio), sum(comparison_tier1$same_conclusion), nrow(comparison_tier1)))
+  } else message("[compare] controlled_wing_results.rds not found: run --fast-lme4 first for the Tier-1 comparison")
+  comparison_published <- NULL; val_file <- out_path("glmmtmb_validation_wing.rds")
+  if (!is.null(m0) && file.exists(val_file)) {
+    v <- readRDS(val_file); br <- as.data.frame(v$brms_rubin)
+    par_col <- intersect(c("par", "term", "parameter"), names(br))[1]
+    br_yr <- br[grepl("scaled_yr", br[[par_col]]), , drop = FALSE]
+    est_col <- intersect(c("estimate", "Estimate", "mean"), names(br))[1]
+    lo_col <- intersect(c("lower", "l-95% CI", "Q2.5", "ci_lo"), names(br))[1]; hi_col <- intersect(c("upper", "u-95% CI", "Q97.5", "ci_hi"), names(br))[1]
+    if (nrow(br_yr) == 1 && !is.na(est_col)) {
+      comparison_published <- data.frame(
+        source = c("published brms M0 (brm0_multiphylo.rda, Rubin over 50 trees)", "glmmTMB validation refit of the brms data (glmmtmb_validation_wing.R)",
+                   sprintf("this script, M0, glmmTMB propto %d trees", N_TREES)),
+        estimate = c(br_yr[[est_col]], v$pooled$estimate[v$pooled$par == "scaled_yr"], m0$estimate),
+        ci_lo = c(if (!is.na(lo_col)) br_yr[[lo_col]] else NA, v$pooled$lower[v$pooled$par == "scaled_yr"], m0$ci_lo),
+        ci_hi = c(if (!is.na(hi_col)) br_yr[[hi_col]] else NA, v$pooled$upper[v$pooled$par == "scaled_yr"], m0$ci_hi),
+        phylo_prop = c(0.95, mean(v$varcomp$phylo_prop), m0$phylo_prop), stringsAsFactors = FALSE)
+      print(comparison_published, digits = 4)
+    }
+  }
+
+  total_secs <- as.numeric(Sys.time() - T_START, units = "secs")
+  out <- list(
+    generated = Sys.time(), mode = "trees", engine = list(
+      name = "glmmTMB", version = as.character(packageVersion("glmmTMB")), TMB = as.character(packageVersion("TMB")),
+      covstruct = "propto(0 + species_name | g, A): phylogenetic species intercept, A = per-tree species correlation matrix",
+      trees = sprintf("%d trees; correlation matrices cached from brm0_multiphylo.rda (data/derived/phylo_A_50trees.rds), i.e. the published brms trees", N_TREES),
+      pooling = "Rubin's rules over trees (Nakagawa & de Villemereuil 2019): estimate = mean; se^2 = mean(se^2) + (1 + 1/m) var(estimate)",
+      estimation = "REML; Wald intervals +/- 1.96 pooled SE; z = estimate / pooled SE (column t repeats z)",
+      restarts = sprintf("fits with a non-PD Hessian from glmmTMB's default start (i.i.d. side of the species-intercept ridge) are refitted from the tree's own parameter layout with the propto scale started at SD %g; accepted only if PD and the REML objective is not worse (per-tree record: $per_model[[model]]$retry, all models: $retry)", PHYLO_START_SD),
+      reference = "Williams, McGillycuddy, Drobniak, Bolker, Warton & Nakagawa 2025, bioRxiv 10.64898/2025.12.20.695312; validated on this data by glmmtmb_validation_wing.R",
+      engine_script = "scripts/_phylo_engine.R", dropped_species = dropped_species, binomial_to_tree_name = as.data.frame(binomial_map),
+      R = R.version.string, dplyr = as.character(packageVersion("dplyr")), host = Sys.info()[["nodename"]]),
+    n_trees = N_TREES, models = PHYLO_MODELS, errors = errors,
+    sd_year = SD_YEAR, mean_wing_mm = sample_sizes$mean_wing_mm, sample_sizes = sample_sizes,
+    specs = bind_rows(lapply(PHYLO_MODELS, function(n) data.frame(model = n, label = SPECS[[n]]$label, fixed = SPECS[[n]]$fx,
+                                                                   random = SPECS[[n]]$re, sample = SPECS[[n]]$data))),
+    table = results,             # all cond fixed effects, all models, pooled
+    before_after = before_after, # year terms only (+ n_trees, converged, secs, phylo_prop)
+    varcomp = varcomp,           # long: model, component, sd (mean over trees), sd_lo, sd_hi
+    ridge = ridge,               # per model: trees on the phylo vs i.i.d. side of the species-intercept ridge, year estimate by side
+    retry = retry_all,           # per model x tree: pdHess and REML objective from the default start and after the informed restart
+    per_model = phylo_runs,      # pooled (cond + disp), per_tree_fixed, varcomp per tree (+ mode, species_level_prop), varcomp_summary, retry, n_trees, secs
+    decision_gate = decision_gate,
+    comparison_tier1 = comparison_tier1, comparison_published_M0 = comparison_published,
+    timings_sec = timings, total_secs = total_secs,
+    note = paste("glmmTMB phylogenetic tier of the artefact-controlled wing model (REVISION_PLAN.md Phase 1).",
+                 "Every Tier-1 specification refitted with the propto phylogenetic species intercept on each of the",
+                 N_TREES, "trees of the published analysis and Rubin-pooled. CIs are pooled Wald (+/- 1.96 SE).",
+                 "mm_per_decade = estimate / SD(year) * 10 with SD(year) = 5.0199. Species names are tree tip names",
+                 "(phylo_species_name); no species dropped on 2026-09-09. Same samples and guards as Tier 1 (controlled_wing_results.rds)."))
+  saveRDS(out, out_path("controlled_wing_phylo_results.rds"))
+  message(sprintf("[write] %s and controlled_wing_phylo_species_slopes.rds (total %.1f min, %d models, %d fits)",
+                  out_path("controlled_wing_phylo_results.rds"), total_secs / 60, length(timings), sum(before_after$n_trees[!duplicated(before_after$model)])))
+  print(before_after %>% select(model, term, estimate, ci_lo, ci_hi, z, N, mm_per_decade, phylo_prop, converged, converged_default_start, secs), digits = 3, row.names = FALSE)
+  quit(save = "no", status = 0)
+}
+
+# ===========================================================================
+# 5. Tiers 2-3 (and --smoke), --engine brms: brms with the phylogenetic term, Rubin-pooled
 # ===========================================================================
 suppressMessages({
   library(brms); library(ape); library(MCMCglmm); library(prepR4pcm)

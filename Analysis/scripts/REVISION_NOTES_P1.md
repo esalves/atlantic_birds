@@ -351,3 +351,30 @@ zero: *Chiroxiphia pareola*, *Drymophila malura*. SD of the species random year 
 - *Also corrected.* §4's attribution of the jackknife offset to `finish()` (the cause
   was the dropped `Sex`); §7's smoke-test sentence (the run never reached Stan
   output; no smoke files exist).
+
+
+## 10. Phylogenetic tier (glmmTMB `propto`, 50 trees) — 2026-09-09 16:48
+
+Engine: `_phylo_engine.R` (see `GLMMTMB_ENGINE.md`); the 50 species correlation matrices are the
+published brms trees (`phylo_A_50trees.rds`). Run: `Rscript atlantic_parallel_controlled.R --trees 50
+--engine glmmTMB`, 39 specs × 50 trees, 3,924 s (median 74 s, max 219 s per spec); 50/50 trees
+converged for every spec except one tree of M5_cc. Output `controlled_wing_phylo_results.rds`
+(`$before_after`, `$decision_gate`, `$varcomp`, `$comparison_tier1`, `$comparison_published_M0`)
+and `controlled_wing_phylo_species_slopes.rds` (`$M3`, `$M3_cc`, `$M0`).
+
+Year terms (per SD-year, Rubin-pooled Wald 95 % CI): M0 −0.922 [−1.400, −0.444]; M1 −0.528 [−0.924, −0.133]; M2 −0.500 [−0.896, −0.104]; **M3 −0.371 [−0.777, +0.036]** (−0.74 mm/decade); M3_cc −0.285 [−0.648, +0.078] (−0.57 mm/decade); M4 −0.875 [−1.758, +0.007]; within-municipality (M5) −0.738 [−1.685, +0.209], rsTotal −0.402 [−0.816, +0.012]; within-contributor (M5src) −0.159 [−0.798, +0.481], between-contributor −1.290 [−2.421, −0.159]; within-contributor cc +0.026 [−0.578, +0.629]; M7 first captures −0.379 [−0.783, +0.025]; six long-running contributors +0.095 [−0.526, +0.715]; M3_noanom −0.432 [−0.815, −0.049]; M6 unknown-sex −0.690 [−1.206, −0.174]; M6_cc −0.587 [−1.124, −0.050]; phylo proportion 0.91–0.96.
+
+**Decision gate** (`$decision_gate`, same rule as Tier 1): **Scenario B** on the full sample and
+on the complete-case sample. **Comparison with Tier 1**: no year term differs from the lme4
+estimate by more than 0.002 (M0 −0.9221 vs −0.9217; M1 −0.5283 vs −0.5282; M3 −0.3709 vs −0.3704).
+**Comparison with the published brms M0**: −0.922 [−1.400, −0.444] vs −0.922 [−1.403, −0.440].
+**Species slopes** (fixed + BLUP, quadrature intervals; descriptive, not inference): M3 49 of 72
+negative, 9 intervals below zero, 2 above, median −0.54 mm/decade; M3_cc 49 / 9 / 2, −0.46;
+M0 54 / 14 / 2, −1.18. **Rows without a pooled CI**: M5_cc (one non-converged tree) and
+M_carrano (single contributor; no between-contributor variance); `$errors` records no cause,
+so the estimates are reported without intervals.
+
+The brms path is retained as `--engine brms`. Its single-tree M0 run on Totoro (cmdstanr,
+4 chains × 4,000 iterations, 55 min) agreed with glmmTMB; the ladder was stopped after M0 as
+redundant. The `--smoke` statement in §7 is superseded: the brms path has now been exercised once
+(M0) on the server, not locally.
