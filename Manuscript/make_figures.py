@@ -6,10 +6,14 @@ Figures produced here (saved to Manuscript/images/):
                                      BOTH periods drawn distinctly from period-unique sites,
                                      N records / sites / species per panel (revision 2026-09)
   fig-wingtrend.png           Fig 2  within-species(x sex)-centred wing length vs year, annual
-                                     means, the controlled M3 fit (lme4 fast tier) against the
-                                     uncontrolled M0 baseline, inset of wing records per year
+                                     means, the controlled M3 fit (glmmTMB phylogenetic mixed
+                                     model, Rubin-pooled over trees, when available; else lme4
+                                     fast tier) against the uncontrolled M0 baseline, plus a
+                                     lighter lme4 Tier-1 M3 comparison line, inset of records/yr
   fig-species-slopes.png      new    species-specific year slopes (caterpillar) from the
-                                     controlled M3 model, with the M0 slopes for comparison
+                                     controlled M3 model (glmmTMB phylogenetic tier when
+                                     available), with the M0 and lme4 Tier-1 M3 slopes shown
+                                     as comparison layers
   fig-trends.png              Fig 3  per-species wing & bill trajectories (early vs late) [unchanged]
   fig-variability.png         Fig 4  lnCVR forest plots, two panels (wing & bill)         [unchanged]
   fig-s-records-by-source.png Supp.  wing records per year stacked by contributor, with the
@@ -25,8 +29,10 @@ carry the numbers quoted in the manuscript:
   fig_records.csv                  <- data/derived/passer90.rda (live-only, known-sex, 73 spp)
   fig_map_sites.csv, fig_scalars   <- output/audit_sites.rds, audit_sources.rds, effect_scale.rds (P0)
   fig_contributor*.csv, fig_records_per_contributor_year.csv, fig_wingcol_by_year.csv (P0)
-  fig_controlled_before_after.csv  <- output/controlled_wing_results.rds (P1, lme4 fast tier)
-  fig_species_slopes.csv           <- output/controlled_wing_species_slopes.rds (P1)
+  fig_controlled_before_after.csv        <- output/controlled_wing_results.rds (P1, lme4 fast tier)
+  fig_species_slopes.csv                 <- output/controlled_wing_species_slopes.rds (P1)
+  fig_controlled_before_after_phylo.csv  <- output/controlled_wing_phylo_results.rds (P1, glmmTMB
+  fig_species_slopes_phylo.csv           <- output/controlled_wing_phylo_species_slopes.rds  phylo tier, optional)
 This script first tries to refresh those CSVs by calling
 `Rscript Analysis/scripts/make_figures.R export` (pass --no-export to skip); if
 Rscript is unavailable it uses the CSVs already on disk. Figures whose inputs
@@ -36,11 +42,19 @@ Figs 3 and 4 are unchanged from the submitted version and still read
 Analysis/data/derived/passer90_export.csv (written by update_descriptive_stats.R).
 Basemap geometry is read from Manuscript/data/south_america.geojson (committed, offline).
 
-The M3 fit in Fig 2 and the slopes in fig-species-slopes are the lme4 REML fast
-tier (Tier 1 of REVISION_PLAN.md Phase 1; Wald intervals, no phylogenetic term).
-When controlled_wing_brms_results.rds is present the export step also writes
-fig_species_slopes_brms_M3.csv / fig_controlled_before_after_brms.csv and this
-script uses them instead, relabelling the panels.
+Tier priority for the M3 fit in Fig 2 and the slopes in fig-species-slopes
+(2026-09 revision, GLMMTMB_ENGINE.md): lme4 REML fast tier (Tier 1 of
+REVISION_PLAN.md Phase 1; Wald intervals, no phylogenetic term) is the base
+layer and is always drawn as a lighter comparison line/markers once a higher
+tier is available. When controlled_wing_phylo_results.rds /
+controlled_wing_phylo_species_slopes.rds are present (glmmTMB propto,
+Rubin-pooled over the same 50 trees as the published brms model — see
+Williams et al. 2025 and glmmtmb_validation_wing.R), those become the primary
+fitted line / markers, labelled "glmmTMB phylogenetic mixed model, N trees,
+Rubin-pooled" with N read from the file (never hard-coded, so a partial dev
+run is never mislabelled as the full run). When controlled_wing_brms_results.rds
+(the Tier 2-3 Bayesian cross-check) is also present it takes priority over both
+and the panels are relabelled again accordingly.
 
 Run:  python3 make_figures.py            (from Manuscript/ or the repo root)
       python3 make_figures.py --no-export
@@ -203,19 +217,37 @@ print(f"fig-map: sites early {int((sites.n_early > 0).sum())}, late {int((sites.
 # Each record is expressed as its deviation from the species x sex mean wing length
 # (Sex is a fixed effect in every model), so species with different absolute sizes
 # are put on a common scale and the pooled-species artefact the referee objected to
-# (§2.3) is removed. The fitted lines are the year coefficients of the lme4 fast-tier
-# models (controlled_wing_results.rds$before_after): M0 = the published structure
-# (species + phylogeny intercepts/slopes, Sex, latitude) and M3 = M0 + contributor,
+# (§2.3) is removed. The fitted lines are the year coefficients of before_after
+# tables built the same way at every tier: M0 = the published structure (species +
+# phylogeny intercepts/slopes, Sex, latitude) and M3 = M0 + contributor,
 # municipality, wing-column proxy, longitude, altitude, season, moult and individual
 # terms. A line is beta * (Year - centre) / SD(year), centred on the sample mean year,
 # i.e. the marginal year effect holding every other term fixed.
-ba = fd_csv("fig_controlled_before_after.csv", required=False)
-ba_brms = fd_csv("fig_controlled_before_after_brms.csv", required=False, quiet=True) if ba is not None else None
-tier_label = "lme4 fast tier (Tier 1, REML, Wald 95% CI; brms phylogenetic fits pending)"
+#
+# Tier priority (2026-09 revision, GLMMTMB_ENGINE.md): lme4 Tier 1 is always read
+# and, once a higher tier is available, kept only as a lighter non-phylogenetic
+# comparison line; the glmmTMB phylogenetic tier (propto, Rubin-pooled over trees;
+# Williams et al. 2025, validated by glmmtmb_validation_wing.R) is promoted to the
+# primary fit when present; the brms Tier 2-3 Bayesian cross-check, if copied back
+# from Totoro, is promoted above that in turn.
+ba_lme4  = fd_csv("fig_controlled_before_after.csv", required=False)
+ba_phylo = fd_csv("fig_controlled_before_after_phylo.csv", required=False, quiet=True) if ba_lme4 is not None else None
+ba_brms  = fd_csv("fig_controlled_before_after_brms.csv", required=False, quiet=True) if ba_lme4 is not None else None
+ba = ba_lme4
+ba_compare = None   # lighter comparison line drawn alongside the primary fit, when available
+tier_label = "lme4 fast tier (Tier 1, REML, Wald 95% CI; phylogenetic fit pending)"
+if ba_phylo is not None:
+    ba_compare = ba_lme4
+    n_trees_phylo = S("phylo_n_trees", int, default=None)
+    tier_label = (f"glmmTMB phylogenetic mixed model, {n_trees_phylo} trees, Rubin-pooled (Wald 95% CI)"
+                  if n_trees_phylo is not None else "glmmTMB phylogenetic mixed model, Rubin-pooled (Wald 95% CI)")
+    ba = ba_phylo
 if ba_brms is not None:
     ba, tier_label = ba_brms, "brms, Rubin-pooled across phylogenetic trees (95% CrI)"
-def year_term(model, term="scaled_yr"):
-    r = ba[(ba.model == model) & (ba.term == term)]
+def year_term(df, model, term="scaled_yr"):
+    if df is None:
+        return None
+    r = df[(df.model == model) & (df.term == term)]
     if len(r) != 1:
         return None
     r = r.iloc[0]
@@ -234,9 +266,11 @@ gs = gridspec.GridSpec(2, 1, height_ratios=[1.35, 1], hspace=0.08)
 ax = fig.add_subplot(gs[0]); axz = fig.add_subplot(gs[1], sharex=ax)
 jit = (np.random.default_rng(1).random(len(w)) - 0.5) * 0.7
 ax.scatter(w.Year + jit, w.dev, s=5, alpha=0.07, color="#3A3A3A", edgecolors="none", zorder=1)
-m0 = m3 = None
+m0 = m3 = m3_compare = None
 if ba is not None:
-    m0, m3 = year_term("M0"), year_term("M3")
+    m0, m3 = year_term(ba, "M0"), year_term(ba, "M3")
+if ba_compare is not None:
+    m3_compare = year_term(ba_compare, "M3")
 for a in (ax, axz):
     a.errorbar(ann.Year, ann["mean"], yerr=1.96 * ann.se, fmt="o", ms=3.2, color="black", ecolor="#555555",
                elinewidth=0.8, capsize=1.5, zorder=4, label="annual mean ± 95% CI")
@@ -244,6 +278,10 @@ for a in (ax, axz):
     if m0:
         a.plot(yr_grid, m0["est"] * z, color="#777777", lw=1.6, ls="--", zorder=3,
                label=f"M0 baseline: {neg(f'{m0['mmd']:.2f}')} mm/decade [{neg(f'{m0['mmd_lo']:.2f}')}, {neg(f'{m0['mmd_hi']:.2f}')}]")
+    if m3_compare:
+        a.plot(yr_grid, m3_compare["est"] * z, color="#2E5090", lw=1.0, ls=":", alpha=0.55, zorder=2,
+               label=f"lme4 Tier-1 M3 (comparison): {neg(f'{m3_compare['mmd']:.2f}')} mm/decade "
+                     f"[{neg(f'{m3_compare['mmd_lo']:.2f}')}, {neg(f'{m3_compare['mmd_hi']:.2f}')}]")
     if m3:
         a.fill_between(yr_grid, m3["lo"] * z, m3["hi"] * z, color=INC, alpha=0.30, zorder=2, linewidth=0)
         a.plot(yr_grid, m3["est"] * z, color="#2E5090", lw=2.2, zorder=3,
@@ -251,6 +289,10 @@ for a in (ax, axz):
 if m3:
     for k in ("est", "lo", "hi", "mmd", "mmd_lo", "mmd_hi", "N"):
         note("fig-wingtrend", f"M3 {k}", m3[k]); note("fig-wingtrend", f"M0 {k}", m0[k])
+    note("fig-wingtrend", "M3 tier", tier_label)
+    if m3_compare:
+        for k in ("est", "lo", "hi", "mmd", "mmd_lo", "mmd_hi", "N"):
+            note("fig-wingtrend", f"M3_lme4_compare {k}", m3_compare[k])
 else:
     print("WARNING: fig-wingtrend drawn WITHOUT model lines (controlled results missing)")
 ax.set_ylim(w.dev.quantile(.005), w.dev.quantile(.995)); ax.tick_params(labelbottom=False)
@@ -281,17 +323,33 @@ if m3:
 # NEW FIG - species-specific year slopes (caterpillar) from the controlled model
 # ---------------------------------------------------------------------------
 # slope = fixed scaled_yr + species random slope; interval = +/- 1.96 * sqrt(SE_fixed^2 +
-# SD_BLUP^2) (lme4 fast tier; see controlled_wing_species_slopes.rds$note). Filled
-# markers: interval excludes zero. The M0 (baseline, uncontrolled) slope of each
-# species is drawn as a small hollow grey marker so the before/after shift is visible.
-sl = fd_csv("fig_species_slopes.csv", required=False)
-sl_brms = fd_csv("fig_species_slopes_brms_M3.csv", required=False, quiet=True) if sl is not None else None
+# SD_BLUP^2) — quadrature SE, same convention at every tier (see the source .rds
+# $note). Filled markers: interval excludes zero. The M0 (baseline, uncontrolled)
+# slope of each species is drawn as a small hollow grey marker, and (once a higher
+# tier is primary) the lme4 Tier-1 M3 slope as a light "x" marker, so the shift
+# across controls and across tiers is both visible.
+#
+# Tier priority mirrors Fig 2 (GLMMTMB_ENGINE.md): lme4 Tier 1 -> glmmTMB
+# phylogenetic tier (if present) -> brms Tier 2-3 (if present), each promoted over
+# the last as the primary caterpillar, with the lower tiers kept as comparison layers.
+sl_lme4  = fd_csv("fig_species_slopes.csv", required=False)
+sl_phylo = fd_csv("fig_species_slopes_phylo.csv", required=False, quiet=True) if sl_lme4 is not None else None
+sl_brms  = fd_csv("fig_species_slopes_brms_M3.csv", required=False, quiet=True) if sl_lme4 is not None else None
+sl = sl_lme4
 if sl is not None:
-    src_label = "lme4 fast tier (Tier 1; brms phylogenetic posteriors pending)"
+    src_label = "lme4 fast tier (Tier 1; phylogenetic fit pending)"
     d3 = sl[sl.model == "M3"].copy()
+    d3_lme4_compare = None
+    if sl_phylo is not None and {"spp", "mm_per_decade", "mm_per_decade_lo", "mm_per_decade_hi"} <= set(sl_phylo.columns):
+        d3_lme4_compare = d3.copy()
+        n_trees_phylo = S("phylo_n_trees", int, default=None)
+        src_label = (f"glmmTMB phylogenetic mixed model, {n_trees_phylo} trees, Rubin-pooled"
+                     if n_trees_phylo is not None else "glmmTMB phylogenetic mixed model, Rubin-pooled")
+        d3 = sl_phylo[sl_phylo.model == "M3"].copy()
     if sl_brms is not None and {"spp", "mm_per_decade", "mm_per_decade_lo", "mm_per_decade_hi"} <= set(sl_brms.columns):
         d3, src_label = sl_brms.copy(), "brms, Rubin-pooled across phylogenetic trees"
     d0 = sl[sl.model == "M0"].set_index("spp")
+    d3_cmp = d3_lme4_compare.set_index("spp") if d3_lme4_compare is not None else None
     d3 = d3.sort_values("mm_per_decade").reset_index(drop=True)
     y = np.arange(len(d3))
     excl = (d3.mm_per_decade_hi < 0) | (d3.mm_per_decade_lo > 0)
@@ -304,6 +362,9 @@ if sl is not None:
     if len(d0):
         ax.scatter(d0.reindex(d3.spp).mm_per_decade, y, s=12, facecolors="none", edgecolors="#8A8A8A",
                    linewidths=0.7, zorder=2, label="M0 baseline (uncontrolled) slope")
+    if d3_cmp is not None and len(d3_cmp):
+        ax.scatter(d3_cmp.reindex(d3.spp).mm_per_decade, y, s=14, marker="x", color="#2E5090", alpha=0.45,
+                   linewidths=0.8, zorder=2, label="lme4 Tier-1 M3 (comparison) slope")
     ax.hlines(y, d3.mm_per_decade_lo, d3.mm_per_decade_hi, colors=cols, lw=0.9, alpha=0.8, zorder=3)
     ax.scatter(d3.mm_per_decade[excl], y[excl], s=18, c=cols[excl], edgecolors=cols[excl], zorder=4)
     ax.scatter(d3.mm_per_decade[~excl], y[~excl], s=18, facecolors="white", edgecolors=cols[~excl], linewidths=1.0, zorder=4)
@@ -322,6 +383,7 @@ if sl is not None:
     for k, v in [("n species", len(d3)), ("n negative", n_neg), ("n excl zero negative", n_excl_neg),
                  ("n excl zero positive", n_excl_pos), ("median mm/decade", float(d3.mm_per_decade.median()))]:
         note("fig-species-slopes", k, v)
+    note("fig-species-slopes", "tier", src_label)
     ttl = (f"Species-specific wing-length trends under full controls (M3)\n{src_label}\n"
            f"{n_neg} of {len(d3)} slopes negative; {n_excl_neg} negative and {n_excl_pos} positive intervals exclude zero; "
            f"median {neg(f'{d3.mm_per_decade.median():.2f}')} mm/decade")
@@ -332,6 +394,8 @@ if sl is not None:
                Line2D([0], [0], marker="o", color=INC, lw=0, label="positive slope"),
                Line2D([0], [0], marker="o", color="none", markerfacecolor="white", markeredgecolor="black", label="interval includes zero"),
                Line2D([0], [0], marker="o", color="none", markerfacecolor="none", markeredgecolor="#8A8A8A", markersize=4, label="M0 baseline slope")]
+    if d3_cmp is not None and len(d3_cmp):
+        handles.append(Line2D([0], [0], marker="x", color="#2E5090", lw=0, alpha=0.55, label="lme4 Tier-1 M3 (comparison) slope"))
     ax.legend(handles=handles, loc="lower right", frameon=False, fontsize=7)
     fig.tight_layout(); fig.savefig(f"{OUT}/fig-species-slopes.png", bbox_inches="tight"); plt.close(fig)
     print(f"fig-species-slopes: {len(d3)} species, {n_neg} negative, {n_excl_neg}/{n_excl_pos} excl. zero (neg/pos)")

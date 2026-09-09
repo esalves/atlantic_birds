@@ -8,11 +8,16 @@
 #                    installed), so every table it needs is flattened here:
 #                    the record-level analytical sample (passer90.rda), the
 #                    Phase 0 audit tables (audit_sites.rds, audit_sources.rds),
-#                    the effect-scale constants (effect_scale.rds) and the
+#                    the effect-scale constants (effect_scale.rds), the
 #                    Phase 1 lme4 fast-tier results (controlled_wing_results.rds,
-#                    controlled_wing_species_slopes.rds). Missing inputs are
-#                    skipped with a message, never fabricated; make_figures.py
-#                    then skips the figures that depend on them.
+#                    controlled_wing_species_slopes.rds) and, when present, the
+#                    Phase 1 glmmTMB phylogenetic tier (controlled_wing_phylo_
+#                    results.rds, controlled_wing_phylo_species_slopes.rds) which
+#                    make_figures.py promotes over the lme4 tier as the primary
+#                    fitted line / species-slope layer (2026-09 revision; see
+#                    GLMMTMB_ENGINE.md). Missing inputs are skipped with a
+#                    message, never fabricated; make_figures.py then skips the
+#                    figures that depend on them or falls back a tier.
 #   (b) "noarthro" / "arthro" (or no mode, = both) -> regenerate the drmSEM
 #                    result figures from the saved Analysis/output/*.rds WITHOUT
 #                    refitting any model (reads drmsem_results_<mode>.rds, which
@@ -32,7 +37,10 @@
 #
 # INPUTS:  data/derived/passer90.rda
 #          output/audit_sites.rds, output/audit_sources.rds, output/effect_scale.rds
-#          output/controlled_wing_results.rds, output/controlled_wing_species_slopes.rds
+#          output/controlled_wing_results.rds, output/controlled_wing_species_slopes.rds     (lme4 Tier 1)
+#          output/controlled_wing_phylo_results.rds,                                         (glmmTMB phylo tier,
+#            output/controlled_wing_phylo_species_slopes.rds                                  if present; optional)
+#          output/controlled_wing_brms_results.rds                                           (brms Tier 2-3, optional)
 #          output/drmsem_results_<mode>.rds                      (drmSEM figures)
 # OUTPUTS: output/figure_data/fig_records.csv                  record-level sample
 #          output/figure_data/fig_map_sites.csv                coordinate sites x period
@@ -40,8 +48,10 @@
 #          output/figure_data/fig_records_per_contributor_year.csv
 #          output/figure_data/fig_contributor_table.csv
 #          output/figure_data/fig_wingcol_by_year.csv
-#          output/figure_data/fig_controlled_before_after.csv  Phase 1 year terms
-#          output/figure_data/fig_species_slopes.csv           Phase 1 species slopes (M3, M3_cc, M0)
+#          output/figure_data/fig_controlled_before_after.csv        Phase 1 year terms (lme4)
+#          output/figure_data/fig_species_slopes.csv                 Phase 1 species slopes (lme4; M3, M3_cc, M0)
+#          output/figure_data/fig_controlled_before_after_phylo.csv  Phase 1 year terms (glmmTMB phylo, if present)
+#          output/figure_data/fig_species_slopes_phylo.csv           Phase 1 species slopes (glmmTMB phylo, if present)
 #          output/figure_data/fig_scalars.csv                  key = value constants
 #          figures/drmsem_*_<mode>.png (+ Manuscript/images/fig-drmsem.png)
 #
@@ -169,14 +179,46 @@ export_figure_data <- function() {
       add_scalar(paste("slopes", m, k, sep = "."), s$summary[[m]][[k]], "controlled_wing_species_slopes.rds")
   } else skip(f)
 
-  # --- brms Rubin-pooled results (Tiers 2-3), if the server run has been copied back ---
+  # --- Phase 1 phylogenetic tier (glmmTMB propto, Rubin-pooled over trees) --------
+  # Default engine per REVISION_PLAN.md / GLMMTMB_ENGINE.md (Williams et al. 2025):
+  # glmmTMB propto reproduces the published 50-tree brms wing model to 2-3 decimals
+  # in seconds instead of hours (glmmtmb_validation_wing.R). When this file exists,
+  # make_figures.py promotes it over the lme4 fast tier as the primary fitted line /
+  # species-slope layer, keeping lme4 as a lighter non-phylogenetic comparison layer.
+  # `$n_trees` in the file (not hard-coded here) is what actually appears in the
+  # panel labels, so a partial/dev run is never mislabelled as the full 50-tree run.
+  f <- out_path("controlled_wing_phylo_results.rds")
+  if (file.exists(f)) {
+    r <- readRDS(f)
+    wcsv(r$before_after, "fig_controlled_before_after_phylo.csv")
+    add_scalar("phylo_available", TRUE, "controlled_wing_phylo_results.rds")
+    add_scalar("phylo_mode", r$mode, "controlled_wing_phylo_results.rds")
+    add_scalar("phylo_engine_name", r$engine$name, "controlled_wing_phylo_results.rds")
+    add_scalar("phylo_engine_version", r$engine$version, "controlled_wing_phylo_results.rds")
+    add_scalar("phylo_n_trees", r$n_trees, "controlled_wing_phylo_results.rds")
+    add_scalar("phylo_generated", format(r$generated), "controlled_wing_phylo_results.rds")
+    add_scalar("phylo_sd_year", r$sd_year, "controlled_wing_phylo_results.rds")
+    add_scalar("phylo_mean_wing_mm", r$mean_wing_mm, "controlled_wing_phylo_results.rds")
+    add_scalar("phylo_decision_gate_scenario", r$decision_gate$scenario, "controlled_wing_phylo_results.rds")
+    models_present <- if (!is.null(r$before_after)) paste(sort(unique(r$before_after$model)), collapse = ";") else ""
+    add_scalar("phylo_models_present", models_present, "controlled_wing_phylo_results.rds")
+  } else message("  (no controlled_wing_phylo_results.rds yet: figures fall back to the lme4 fast tier)")
+  f <- out_path("controlled_wing_phylo_species_slopes.rds")
+  if (file.exists(f)) {
+    s <- readRDS(f)
+    wcsv(bind_rows(s$M3, s$M3_cc, s$M0), "fig_species_slopes_phylo.csv")
+    for (m in names(s$summary)) for (k in names(s$summary[[m]]))
+      add_scalar(paste("slopes_phylo", m, k, sep = "."), s$summary[[m]][[k]], "controlled_wing_phylo_species_slopes.rds")
+  } else message("  (no controlled_wing_phylo_species_slopes.rds yet: caterpillar figure falls back to the lme4 fast tier)")
+
+  # --- brms Rubin-pooled results (Tiers 2-3, Bayesian cross-check), if the server run has been copied back ---
   f <- out_path("controlled_wing_brms_results.rds")
   if (file.exists(f)) {
     b <- readRDS(f)
     if (!is.null(b$species_slopes_M3)) wcsv(b$species_slopes_M3, "fig_species_slopes_brms_M3.csv")
     if (!is.null(b$before_after))      wcsv(b$before_after, "fig_controlled_before_after_brms.csv")
     add_scalar("brms_available", TRUE, "controlled_wing_brms_results.rds")
-  } else message("  (no controlled_wing_brms_results.rds yet: figures are labelled as the lme4 fast tier)")
+  } else message("  (no controlled_wing_brms_results.rds yet: brms Tier 2-3 cross-check not shown)")
 
   wcsv(bind_rows(scal), "fig_scalars.csv")
   invisible(fd)

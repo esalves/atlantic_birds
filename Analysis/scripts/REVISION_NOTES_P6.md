@@ -139,3 +139,90 @@ clipped at the axis and printed as text.
   now needs R on the path (or pre-existing CSVs) — not edited here.
 - **`update_descriptive_stats.R`** still writes `passer90_export.csv` for Figs 3–4;
   once those figures are revised it can be retired in favour of `fig_records.csv`.
+
+---
+
+## 5. Upgrade to the glmmTMB phylogenetic tier (2026-09-09, later same day)
+
+Per `GLMMTMB_ENGINE.md` / REVISION_PLAN.md, glmmTMB's `propto` covariance
+structure (Williams, McGillycuddy, Drobniak, Bolker, Warton & Nakagawa 2025,
+bioRxiv 10.64898/2025.12.20.695312) is now the default phylogenetic engine and
+supersedes brms as the primary fitted line wherever it has run, validated
+against the published 50-tree brms wing model to 2–3 decimals in
+`glmmtmb_validation_wing.R`. This section replaces the "pending brms" wording
+in §1 above.
+
+**What changed**
+
+- `make_figures.R` (export mode) gained a block that reads
+  `controlled_wing_phylo_results.rds` / `controlled_wing_phylo_species_slopes.rds`
+  (E1's output; `--engine glmmTMB` phylogenetic tier) and writes
+  `fig_controlled_before_after_phylo.csv` / `fig_species_slopes_phylo.csv`,
+  plus scalars (`phylo_n_trees`, `phylo_engine_name`, `phylo_generated`,
+  `phylo_decision_gate_scenario`, `phylo_models_present`, …). The pre-existing
+  lme4 (Tier 1) and brms (Tier 2–3) blocks are unchanged.
+- `make_figures.py` now has a three-tier priority for the Fig. 2 fit line and
+  the species-slope caterpillar: **lme4 Tier 1** (always read; kept as a
+  lighter comparison layer once a higher tier exists) → **glmmTMB phylogenetic
+  tier** (promoted to primary when `fig_controlled_before_after_phylo.csv` /
+  `fig_species_slopes_phylo.csv` exist) → **brms Tier 2–3** (promoted above
+  that in turn, unchanged from before). The panel label is built as
+  `f"glmmTMB phylogenetic mixed model, {n_trees} trees, Rubin-pooled"` with
+  `n_trees` read from `fig_scalars.csv` (`phylo_n_trees`), **never hard-coded**,
+  so a partial run is never mislabelled as the full 50-tree run.
+- Fig. 2: the lme4 Tier-1 M3 line is drawn as a thin dotted comparison line
+  (`ls=":", alpha=0.55`) alongside the primary (phylo or brms) M3 band/line.
+  Fig. species-slopes: the lme4 Tier-1 M3 slope is drawn as a light "×" marker
+  per species alongside the primary caterpillar, in addition to the existing
+  hollow-grey M0 baseline marker.
+
+**IMPORTANT — what is actually on disk right now (verified 2026-09-09 15:29)**
+
+`controlled_wing_phylo_results.rds` / `controlled_wing_phylo_species_slopes.rds`
+are **E1's 2-tree dev/debug run** (`generated` 2026-09-09 15:02:03,
+`n_trees = 2`), not the mandated 50-tree run. Per E1's own report, the full
+`--trees 50 --engine glmmTMB` run was launched but force-terminated after
+completing 5 of 39 specs (M0, M1a_src, M1b_site, M1, M0_cc); it was **not**
+written back to these files, so M3/M5/M6/species-slopes on disk are still the
+2-tree numbers. The figures therefore currently read, and correctly label,
+**"glmmTMB phylogenetic mixed model, 2 trees, Rubin-pooled"** — this is not a
+placeholder or a mistake, it is what the dynamic label is supposed to say given
+what is on disk. The 2-tree M3 (−0.371 [−0.777, +0.035], 8,478 records) is
+already visually indistinguishable from the lme4 Tier-1 M3 (−0.370
+[−0.775, +0.034]) in both regenerated figures, consistent with the validation
+claim, but it is **not** the 50-tree pooled estimate and must not be read as
+"the" phylogenetic result in the manuscript text.
+
+**No further P6 action is needed once E1 finishes the 50-tree run**: re-running
+`Rscript Analysis/scripts/make_figures.R export` (or
+`.venv-massreport/bin/python3 Manuscript/make_figures.py`, which calls it) will
+pick up the new `.rds` files automatically and the panel label will read
+"50 trees" on its own, because the tree count is read from the file, not typed
+into either script.
+
+**Verification run** (this session, `.venv-massreport/bin/python3
+Manuscript/make_figures.py`, 2026-09-09 15:29): both figures regenerated
+without error; `fig_panel_numbers.csv` confirms
+`fig-wingtrend,M3 tier,"glmmTMB phylogenetic mixed model, 2 trees, Rubin-pooled (Wald 95% CI)"`
+and `fig-species-slopes,tier,"glmmTMB phylogenetic mixed model, 2 trees, Rubin-pooled"`;
+the M3 fit line (solid blue) and the lme4 Tier-1 comparison line (dotted) overlap
+almost exactly in `fig-wingtrend.png`; the caterpillar shows the lme4 "×"
+markers sitting on top of the phylo circles for nearly every species in
+`fig-species-slopes.png`.
+
+**For P1 / Synthesis**: once the full 50-tree run lands in
+`controlled_wing_phylo_results.rds` / `controlled_wing_phylo_species_slopes.rds`,
+re-run `make_figures.py` and re-check `fig_panel_numbers.csv` before quoting
+Fig. 2 / the caterpillar numbers in `index.qmd` — do not hand-edit the caption
+numbers, read them from that CSV.
+
+
+## Update 2026-09-09 16:5x — 50-tree files landed, figures regenerated
+
+`controlled_wing_phylo_results.rds` / `..._species_slopes.rds` were rewritten by the full
+`--trees 50 --engine glmmTMB` run (`$generated` 16:48:02). `make_figures.py` was re-run with no
+code change; `fig_panel_numbers.csv` now records `fig-wingtrend` M0 −0.922 [−1.400, −0.444] and
+M3 −0.371 [−0.777, +0.036] (−0.74 mm/decade, N = 8,478) and `fig-species-slopes` 72 species,
+49 negative, 9/2 excluding zero (neg/pos), both labelled "glmmTMB phylogenetic mixed model,
+50 trees, Rubin-pooled". The 2-tree wording in the section above describes the state before
+this update and is retained as history.
