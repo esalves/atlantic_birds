@@ -109,3 +109,226 @@ phylo/effects caches, and `../figures/drmsem_*_{arthro,noarthro}.png` (8 figures
 regenerated 2026-06-18 from the saved results via
 `../scripts/make_figures.R`, so they match the current result data). The earlier
 drmSEM-only curated doc is retained in `../../archive/atlantic_drmsem_results.md`.
+
+---
+
+## Revision diagnostics, fast tier (2026-09)
+
+**Added 2026-09-09** in response to the referee report (`REVISION_PLAN.md`; status
+in `REVISION_STATUS.md`; per-phase notes `../scripts/REVISION_NOTES_P*.md`).
+Everything in this section is a **fast-tier result: `lme4` / `glmmTMB` REML with
+Wald ± 1.96 SE intervals and no phylogenetic term** (species intercepts absorb
+it; the lme4 baseline reproduces the brms −0.92 to two decimals). The 50-tree
+brms runs on Totoro (`atlantic_parallel_controlled.R --trees 50`,
+`atlantic_bivariate_wing_mass.R --trees 50`, `atlantic_variance_sigma.R --trees 50`)
+are pending and are the inferential results; the numbers below fix the
+qualitative picture but not the final intervals. §1–§5 above are the June 2026
+published-baseline narrative and are **qualified, not replaced**, by this section.
+
+Units as above: β per SD-year (SD = 5.020 yr; × 1.992 for per decade), mean wing
+71.13 mm, live-only 73 species / 12,571 records / 8,478 wing records, 1995–2018.
+
+### R1. Provenance audit (`audit_*.rds`, `effect_scale.rds`)
+
+- **42 contributors** hold the wing records; **6 span both the early (≤ 2006) and
+  late (≥ 2013) periods** (2,828 of 8,478 records). The wing column populated —
+  a protocol proxy — flips **87.4 % right-wing early → 67.5 % unspecified late**.
+- Of 139 named localities in the quartile comparison **6** occur in both periods
+  (684 records); municipalities 15 of 99 (1,728 records); coordinate sites 4 of
+  233. Later records are further north and higher (mean latitude −24.8° → −21.9°,
+  median altitude 175 → 489 m).
+- Individuals: 927 ringed birds have > 1 record (1,813 repeats); recapture share
+  4.8 % → 12.3 %. Season shifts (DJF 12.6 % → 21.6 % of wing captures); sex ratio
+  45.6 → 48.7 % female.
+- Effect scale of the published wing trend: −0.92 per SD-year = **−1.83 mm/decade
+  = −2.58 %/decade = −4.2 mm (−5.9 %, 95 % CI −9.0 to −2.8 %) over 1995–2018**.
+  Mass −0.0073 → −1.44 %/decade, −3.3 % over record [−7.4, +1.0]. Isometric
+  expectation for −5.9 % wing: −16.7 % mass.
+
+### R2. Controlled wing trend (`controlled_wing_results.rds`; Phase 1, Tier 1)
+
+Corrected 2026-09-09: an earlier version of this section quoted a 12:02 rds produced
+with `Sex` silently dropped from every known-sex model (REVISION_REVIEW.md H1–H3); the
+guard was fixed, `--fast-lme4` re-run, and every number below is from the regenerated
+rds (`$generated` 12:35:53, `Sex` a fixed effect in all 35 known-sex specs), which
+left the decision-gate reading unchanged. The 12:35 files are quotable at Tier-1 status.
+
+| Model (cumulative) | β_year | 95 % CI | N | mm/decade |
+|---|---:|---|---:|---:|
+| M0 baseline (published structure) | −0.922 | [−1.400, −0.444] | 8,478 | −1.84 |
+| M1 + (1\|contributor) + (1\|municipality) | −0.528 | [−0.923, −0.134] | 8,478 | −1.05 |
+| M2 + wing column + longitude + altitude | −0.500 | [−0.894, −0.105] | 8,478 | −1.00 |
+| **M3 + season + moult + (1\|individual)** | **−0.370** | **[−0.775, +0.034]** | 8,478 | **−0.74 [−1.54, +0.07]** |
+| M3 on complete cases | −0.284 | [−0.643, +0.075] | 8,282 | −0.57 |
+| M4 = M3 + contributor year slopes | −0.873 | [−1.750, +0.004] | 8,478 | −1.74 |
+| M5 within-municipality year (Mundlak) | −0.735 | [−1.679, +0.209] | 8,478 | −1.46 |
+| M5src within-contributor year (Mundlak) | −0.157 | [−0.797, +0.482] | 8,478 | −0.31 |
+| M5src_cc within-contributor, complete cases | +0.028 | [−0.573, +0.628] | 8,282 | +0.06 |
+| M6 unknown-sex records, M3 structure (no Sex term) | **−0.684** | **[−1.196, −0.172]** | 3,532 | −1.36 |
+| M7 first wing captures only | −0.379 | [−0.781, +0.024] | 7,791 | −0.75 |
+| M3, six long-running contributors only | +0.101 | [−0.517, +0.718] | 3,017 | +0.20 |
+| E. Carrano alone (1,040 records, 1996–2017) | −0.029 | [−0.266, +0.208] | 1,040 | −0.06 |
+| M3 without 6 anomalous contributor×site×year blocks | −0.428 | [−0.808, −0.048] | 8,285 | −0.85 |
+
+Key points:
+- **Contributor and municipality intercepts remove roughly half of the wing
+  decline; the full control set leaves ~40 % of the baseline with an interval
+  that includes zero** (`share_of_M0_remaining_in_M3` = 0.40; complete cases 0.31).
+  Decision gate on this tier: **Scenario B** on both samples (REVISION_PLAN §2),
+  provisional until the brms tiers run.
+- The within-contributor slope overlaps zero in every specification (−0.41 to
+  +0.03 across variants); the between-contributor component carries the signal
+  (−1.29 [−2.41, −0.16]). The three largest spanning contributors show no trend
+  (E. Carrano −0.008 [−0.25, +0.24]; A. Ross −0.29 [−1.28, +0.69]; M. Alves −0.07
+  [−0.47, +0.32]); the two negative within-contributor series come from late blocks
+  sitting 9–12 mm below species × sex means (C. Fontana São Francisco de Paula
+  2016–17, A. Piratelli Itu 2016) — data-quality observations, not phenotypes.
+- Much of the plan's "season attenuates the trend" step was a **sample change**:
+  dropping 190 altitude-NA records (103 = E. Carrano 1996–99 Ilha Rasa) and 6
+  undated records moves M1 from −0.53 to −0.34 by itself. Season is a strong wing
+  predictor (M3_cc: MAM +0.59, JJA +0.40, SON +0.54 mm vs DJF) but barely moves the
+  year slope on a fixed sample.
+- **Two results cut the other way and must be reported**: the unknown-sex
+  replication keeps a clear decline under full controls (M6 above; its baseline is
+  flat, −0.016, so the controls *reveal* the trend there — the mirror image of the
+  known-sex pattern), and removing the six sign-blind anomalous blocks makes M3
+  exclude zero. Leave-one-contributor-out: M3 ranges −0.54 … −0.26, most negative
+  without E. Carrano (4 of 42 refits exclude zero).
+- Species slopes (M3, lme4 BLUP quadrature intervals — descriptive, not inference):
+  49 of 72 negative, 9 intervals below zero and 2 above, median −0.56 mm/decade
+  (M0: 56 of 72, 17 / 2, median −1.18).
+
+### R3. Multi-trait table (`multitrait_results.rds`, `multitrait_table.md`; lme4 REML)
+
+| Trait (n) | M0 baseline | + contributor + municipality | fully controlled (M3) | within-contributor |
+|---|---|---|---|---|
+| log body mass (11,256) | −0.0072 [−0.0165, +0.0021] | −0.0056 [−0.0164, +0.0051] | −0.0045 [−0.0138, +0.0047] | −0.0031 [−0.0102, +0.0039] |
+| bill width (3,209) | **+0.24 [0.06, 0.42]** | **−0.02 [−0.17, +0.13]** | −0.02 [−0.17, +0.14] | +0.03 [−0.18, +0.23] |
+| bill length (7,697) | −0.00 [−0.11, +0.10] | +0.16 [−0.02, +0.34] | +0.17 [−0.02, +0.36] | +0.14 [−0.13, +0.41] |
+| tail length (8,872) | +0.28 [−0.27, +0.83] | +0.30 [−0.19, +0.80] | +0.25 [−0.28, +0.77] | +0.24 [−0.21, +0.70] |
+| tarsus length (4,361) | **+0.42 [0.26, 0.59]** | +0.26 [−0.06, +0.58] | +0.26 [−0.08, +0.59] | +0.26 [−0.16, +0.68] |
+| wing (8,478; cross-ref, R2 is authoritative) | −0.92 [−1.40, −0.44] | −0.53 [−0.92, −0.13] | −0.30 [−0.66, +0.06] | +0.02 [−0.58, +0.62] |
+
+Key points:
+- **Every baseline trend that excluded zero (wing, bill width, tarsus) has a
+  zero-including interval once contributor and municipality intercepts are added;
+  every within-contributor slope includes zero.** Body mass is flat in every
+  specification (diurnal gain **+0.404 % per hour [0.291, 0.516], t 7.02**, n 8,345;
+  year slope with hour −0.0063, t −0.99).
+- **The bill-width increase (§1 above, +0.24 [0.06, 0.43]) is a contributor-composition
+  effect**: only **2 of 22** bill-width contributors span both periods (A. Piratelli,
+  M. Alves; 620 of 3,209 records); with contributor alone the sign flips (−0.24,
+  t −3.4). The Allen's-rule reading is not supported and is to be retracted.
+- **Isometry on shared records** (7,577 records with both traits, 72 species;
+  `bivariate_fast_lme4.rds`): with contributor + site intercepts the wing slope
+  excludes zero (−0.55 [−0.97, −0.13]) and the mass slope does not (−0.0027
+  [−0.0135, +0.0081]) — but the **difference of the two year slopes is
+  −0.92 %/decade [−3.27, +1.43]** (joint glmmTMB, z −0.77) and the isometry
+  contrast (mass − 3·wing) +3.90 [−0.07, +7.88] (z 1.93; +2.01 [−1.47, +5.48] with
+  lon + alt + season). The §1 statement "wings shorter at constant mass" is a
+  consistent direction, **not a demonstrated departure from isometry**; the mass
+  interval is ~2.5× the wing interval (residual SD 3.7 % vs 2.2 %).
+
+### R4. Variance (`variance_results.rds`; glmmTMB `dispformula`, metafor)
+
+| Analysis | k / N | estimate | 95 % CI |
+|---|---:|---:|---|
+| lnCVR pooled per species (§2 definition, reproduced) | k 54 | +0.184 | [+0.034, +0.334], I² 93.6 % |
+| lnCVR within sex (species × sex cells, n ≥ 5) | k 71 | +0.187 | [+0.048, +0.325] |
+| **lnCVR within species × sex × contributor (n ≥ 5)** | k 15 | **−0.249** | [−0.515, +0.017] |
+| lnCVR E. Carrano only (n ≥ 5) | k 7 | −0.429 | [−0.698, −0.159] |
+| σ model S0: `sigma ~ year` (no controls) | N 8,282 | **+9.6 %/decade** | [+6.3, +13.1] |
+| **σ model S3: + (1\|contributor) + (1\|site) in σ, M3 mean** | N 8,282 | **−6.3 %/decade** | [−13.5, +1.4] |
+| σ model S6: S3 + (1\|species) in σ | N 8,282 | +3.4 %/decade | [−4.7, +12.2] |
+| σ model S7: S3 + record temperature in σ (N 7,651) | | year −6.8 [−14.0, +1.0]; **tmean −0.7 % per SD [−8.7, +8.1]** | |
+
+Key points:
+- The CV rise is real as a description of the pooled data and is not a sex-ratio
+  artefact (holds within sex), but **it vanishes, and turns negative, within the same
+  measurer**, and the continuous σ model gives no consistent sign once contributor
+  and site intercepts enter σ (−6 % to +3 %/decade, all intervals spanning zero).
+- The mechanism the referee predicted is visible: contributors per species-period
+  cell **3.7 → 5.5** (45 of 61 species gain contributors, 7 lose; Wilcoxon p 5e-8);
+  the between-contributor share of within-cell variance rises from a median of
+  0.25 to 0.45. Residual SD differs 0.45- to 2.5-fold between contributors.
+- Temperature has **no effect on residual variance** once contributor and site are
+  in σ (S7), so the §2 "warmer → less variable" drmSEM path (−0.193, no
+  provenance terms) should not be carried forward as a headline; the Phase 3 brms
+  distributional model on Totoro is the primary variance evidence.
+- Side effect for the mean: the heteroscedastic S3 fit shrinks the controlled mean
+  year slope on the same records from −0.32 [−0.69, +0.04] to −0.15 [−0.35, +0.05].
+
+### R5. ATLANTIC ANTS litter-ant richness index (`ants_results.rds`; Phase 4a, full run)
+
+Region-matched replacement context for the trophic axis. 62,020 standardised
+records → **855 campaign events** (393 Winkler / 462 pitfall; 61 contributor
+files, 293 localities, every year 1994–2018). glmmTMB negative-binomial richness
+per campaign with contributor + locality + site intercepts, Method × log(effort),
+habitat; year on the bird scale.
+
+| Model | N | β per SD-yr [95 % CI] | % per decade |
+|---|---:|---|---|
+| naive | 855 | −0.269 [−0.330, −0.208] | −41.5 |
+| **pooled with provenance controls (headline)** | 855 | **−0.113 [−0.187, −0.039]** | **−20.1 [−31.1, −7.4]** |
+| effort as offset | 855 | +0.041 [−0.051, +0.133] | +8.5 (sign flips) |
+| within-contributor (Mundlak) | 855 | −0.126 [−0.203, −0.050] | −22.2 |
+| leave PERD out (within) | 802 | −0.055 (SE 0.047) | −10.5, CI includes 0 |
+| abundance (67 campaigns, 45 PERD; within) | 67 | −0.282 [−0.724, +0.161] | null |
+
+Key points:
+- With controls, litter-ant richness per standardised campaign declined
+  **~20 %/decade (CI 7–31 %)**, half the naive slope — the contributor controls
+  matter in the same direction as for the birds.
+- **Not robust**: the offset effort model flips the sign (richness scales as
+  effort^0.3–0.4, so the offset is the wrong form, but the sensitivity stands);
+  about half the within-contributor signal comes from one programme (PERD) whose
+  protocol changed within the series; the five ≥ 6-year programmes disagree in sign
+  (+0.10, −0.39, −0.03, −0.47, +0.28); abundance is null. Effort and site fields
+  mean different things in different contributor files (trap IDs, per-record codes,
+  campaign totals).
+- Wording rule: **"litter-ant richness per standardised sample", never prey biomass
+  or availability**; context, not evidence of declining prey. The drmSEM arthropod
+  node is dropped rather than rebuilt from it.
+
+### R6. PREDICTS trend retired (Phase 4e)
+
+The §3 arthropod result ("×0.25 of baseline", n = 63,150) cannot support a
+temporal claim and is **retired**: `dat_no_grassland.rds` holds 56 studies of which
+**53 are single-calendar-year** snapshots (three span two adjacent years); only
+**17 studies / 6,270 rows** fall in Atlantic Forest ecoregions (1998–2009); there is
+no within-study temporal information to model. The "shallower without ants"
+sentence was a logic error (no-ants β −1.22 [−1.29, −1.15] vs −1.40 [−1.46, −1.34]
+with ants: ants steepened the pooled slope). Fitted objects and data are archived
+under `../../archive/predicts/` (README there); `arthropod_estimates.rds` and
+`fig-arthropods.png` follow once `index.qmd` stops reading them. The drmSEM
+(`atlantic_drmsem.R` v4) now refuses `INCLUDE_ARTHRO = TRUE` without an explicit
+override, adds a contributor intercept on the wing node, and is supplementary /
+exploratory with an authorship disclosure; its §3 numbers (2026-06-15 fit) are
+superseded and await the v4 Totoro run.
+
+### R7. Also from this session (bearing on §3–§4)
+
+- **Climate at the sampled localities** (`climate_trends.rds`, 357 localities,
+  year random effect): annual mean T **+0.246 °C/decade [+0.076, +0.415]**
+  (+0.57 °C over 1995–2018); warm-quarter Tmax +0.235 [−0.014, +0.484]; SPEI-12
+  −0.256 [−0.617, +0.105]; precipitation −44.7 mm/decade [−123.1, +33.7]. Warming
+  supported, **no drying trend**. Record-level r(Year, temperature) = 0.30, mostly
+  between-locality (0.32) rather than within (0.13): later sampling happened at
+  warmer places.
+- **Diet interaction** (§4; `diet_lme4_results.rds`): lme4 reproduces the published
+  +0.66 (+0.665, t 2.93); family terms do not change it; **contributor + municipality
+  intercepts halve it to +0.321 [−0.015, +0.658], t 1.87**. The substantive point
+  (insectivores show no steeper decline; slope at Diet-Inv 100 ≈ 0 in every
+  specification) survives; the size of the frugivore/omnivore contrast does not.
+
+### Provenance (this section)
+
+`audit_{sources,sites,individuals,season,traits}.rds`, `effect_scale.rds` (P0);
+`controlled_wing_results.rds`, `controlled_wing_species_slopes.rds` (P1 — regenerated
+12:35:53 after the H1 fix, `Sex` included; supersedes the 12:02 files); `multitrait_results.rds`, `multitrait_table.md`,
+`bivariate_fast_lme4.rds` (P2); `variance_results.rds` (P3, mode `fast`);
+`ants_results.{rds,md}`, `ants_annual_index.rds` (P4a); `../../archive/predicts/README.md`
+(P4e); `climate_trends.rds`, `diet_lme4_results.rds`, `diet_distribution.rds` (P5);
+`figure_data/*.csv` (P6). Smoke-test files (`bivariate_smoke_results.rds`,
+`models/bivariate_smoke.rda`) are wiring checks and carry no results. Independent
+re-run of every fast path: `../scripts/REVISION_REVIEW.md`.

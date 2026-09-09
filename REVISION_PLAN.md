@@ -20,8 +20,9 @@ The referee is right on the two points that matter most, and the data confirm it
    periods, contributing 2,828 of 8,478 wing records. The wing column that was
    populated (`Wing_length_right` vs the unspecified `Wing_length`) is a protocol
    proxy and it flips over time: **87 % right-wing early → 67 % unspecified late.**
-2. **Spatial turnover (referee §2.2).** Of 140 named localities in the quartile
-   comparison, **7** occur in both periods (795 of 5,240 records). At municipality
+2. **Spatial turnover (referee §2.2).** Of 139 named localities in the quartile
+   comparison, **6** occur in both periods (684 of 5,240 records; corrected
+   2026-09-09 by the P0 audit, which no longer counts missing locality as a level). At municipality
    level, 15 of 99 (1,728 of 5,240 records). Species × municipality combinations
    present in both periods: 61 of 821.
 
@@ -109,7 +110,7 @@ Key revelations across traits:
 Consequences for the plan:
 
 - The PREDICTS trend must go (Phase 4, §7). PREDICTS cannot support it and no
-  amount of re-modelling changes that: 54 of 56 studies are single-year snapshots.
+  amount of re-modelling changes that: 53 of 56 studies are single-year snapshots.
   The trophic axis is kept by replacing it with region-matched ATLANTIC ANTS and
   GBIF occupancy indices, fitted with contributor, site, method and effort terms.
 - The primary model must be re-fit with provenance, site, season and individual
@@ -166,7 +167,8 @@ posteriors), records per year and per contributor per year, and explain the 73 �
 
 SD(year) = 5.05, so −0.92 per SD-year is **−0.18 mm/yr = −1.8 mm/decade = 2.6 %
 per decade**, about −4.2 mm (−5.9 %) across 1995–2018. Mass: −0.0073 log units per
-SD-year = −1.4 %/decade, −3.3 % over the record, interval to −7.6 %. Isometric
+SD-year = −1.4 %/decade, −3.3 % over the record, interval −7.4 % to +1.0 % (exact
+exponentiation; P0 audit). Isometric
 expectation for a 5.9 % wing decline is ≈ −17 % mass, so departure from isometry
 holds. Report all of this in mm/decade and %, tabulate against Jirinec et al.
 2021, Weeks et al. 2020, Ryding et al. 2024, and delete "modest" everywhere. If
@@ -232,9 +234,11 @@ enlargement for heat dissipation (citing Ryding et al. 2024). **This finding is 
 Evidence that option (a) is not viable on PREDICTS: `dat_no_grassland` = 56 studies
 from 41 sources, 725 sites, 23 sampling methods, 5 biomes, 26 ecoregions; **only 12
 studies (1,652 of 63,150 rows) fall in Atlantic Forest ecoregions**, spanning
-1998–2009; the largest single study (Cabra 2006, Colombia) is 11,310 rows; 54 of 56
-studies have `yr_min == yr_max`. There is no within-study temporal information to
-model. The "shallower without ants" sentence is a logic error and goes regardless.
+1998–2009; the largest single study (Cabra 2006, Colombia) is 11,310 rows; 53 of 56
+studies have a single calendar year of `Sample_midpoint` (31 of 56 by start/end
+dates; P4ef re-derivation). Under the five Atlantic Forest biome ecoregions
+(mangroves excluded) the subset is 17 studies / 6,270 rows, not the 12 / 1,652 of the
+first name-pattern count. There is no within-study temporal information to model. The "shallower without ants" sentence is a logic error and goes regardless.
 Because removing arthropods altogether would delete the paper's trophic axis, §7
 below documents the search for a substitute and Phase 4 implements it: a
 region-matched ATLANTIC ANTS index and GBIF occupancy trends, both with
@@ -509,7 +513,7 @@ claim still leaves the title and abstract.
   Monitora: fruit-feeding butterflies in Atlantic Forest federal UCs 2014–2022.
 - **4e. Retire the PREDICTS trend.** Archive `brm_arthro_abund*.rda`,
   `brm_no_grass*.rda`, `dat_*.rds` under `archive/predicts/` with a README
-  (54 of 56 studies single-year; 12 Atlantic Forest studies, 1998–2009). Delete
+  (53 of 56 studies single-year; 17 Atlantic Forest studies, 1998–2009). Delete
   Fig. 5 and the "shallower without ants" sentence.
 - **4f. drmSEM.** Supplement only, exploratory; `INCLUDE_ARTHRO` node rebuilt
   from 4a/4b (locality × year) or dropped; contributor intercept on the wing
@@ -673,7 +677,7 @@ files or APIs, not abstracts.
 | Lewinsohn et al. 2022 appraisal (Biol. Lett.; Figshare table) | 75 Brazilian trend cases | 23 terrestrial Atlantic Forest cases; only 4 quantitative with ≥3 years inside our window: Rio Doce Chrysomelidae 2001–2016 (1 site), Rio Doce Ichneumonidae 2000–2008 (3 sites), Serra do Japi Nymphalidae 2011–2021 (2 sites, **unpublished**, Freitas), Ribeirão Preto bees 1990–2020 (1 urban fragment) | Useful as a citation list and for collaboration requests; none is a regional series. |
 | PELD datasets on GBIF/SiBBr | 220 PELD datasets | Atlantic Forest insect sets are all ≤2 years (MANP Hymenoptera 2018–19, Lepidoptera 2015–16; Rio Doce ants/beetles 2001–02) | Not temporal. |
 | ICMBio Programa Monitora | Fruit-feeding butterflies, 2 campaigns/yr, federal UCs since 2014 | Not on GBIF; only Brasília (Cerrado) 2017–2019 published | Request from ICMBio; overlaps only 2014–2018. |
-| PREDICTS (current) | 63,150 rows, 56 studies, South America | 12 AF studies, 1998–2009, 54/56 single-year | Retire. |
+| PREDICTS (current) | 63,150 rows, 56 studies, South America | 17 AF-ecoregion studies (6,270 rows), 1998–2009, 53/56 single-year | Retire. |
 
 Recommendation adopted in Phase 4: ATLANTIC ANTS index (4a) as the primary
 region-matched arthropod context, GBIF occupancy (4b) as the annual indicator,
@@ -686,3 +690,16 @@ Working files from the search (scratch, not in the repo): the ATLANTIC ANTS zip
 and metadata PDF, Lewinsohn SM3 spreadsheet, InsectChange data paper text, seed
 rain Zenodo archive, and the R profiling scripts `ants_contrib.R` /
 `ants_contrib2.R`. Fold the profiling into `atlantic_ants_index.R` in Phase 4.
+
+
+---
+
+## 8. Execution log
+
+- 2026-09-09: Phases 0–7 (gate-independent parts) executed by the agent workflow; see
+  `REVISION_STATUS.md`, `Analysis/scripts/REVISION_NOTES_P*.md` and
+  `Analysis/scripts/REVISION_REVIEW.md`. Plan numbers corrected from the agents'
+  re-derivations: localities 139/6/684; mass lower bound −7.4 %; PREDICTS 53/56
+  single-year and 17 AF-ecoregion studies. Decision gate provisionally Scenario B on
+  the lme4 tier; brms tiers pending on Totoro. Reviewer issue H1 (Sex dropped from
+  Phase 1 fast-tier fits) fixed the same day; Phase 1 outputs regenerated.
