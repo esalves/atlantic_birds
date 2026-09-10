@@ -65,10 +65,10 @@ fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.8, 5.8), gridspec_kw={"width_ra
 # ===========================================================================
 
 items = [
-    # M1a Parsimonious Tier
+    # Atlantic Forest (Observer control)
     {
-        "y": 6.2,
-        "label": "M1a: Observed wing length (ΔL)",
+        "y": 5.2,
+        "label": "Observed wing length (ΔL)",
         "sublabel": "Observer control · 7,577 shared records",
         "est": s["m1a_wing_pct_decade"],
         "lo": s["m1a_wing_lower"],
@@ -80,8 +80,8 @@ items = [
         "mfc": "#2B6CB0"
     },
     {
-        "y": 5.2,
-        "label": "M1a: Observed body mass (ΔM)",
+        "y": 4.2,
+        "label": "Observed body mass (ΔM)",
         "sublabel": "Observer control · stable body mass",
         "est": s["m1a_mass_pct_decade"],
         "lo": s["m1a_mass_lower"],
@@ -93,8 +93,8 @@ items = [
         "mfc": "#C53030"
     },
     {
-        "y": 4.2,
-        "label": "M1a: Expected isometric mass",
+        "y": 3.2,
+        "label": "Expected isometric mass",
         "sublabel": "M ∝ L³ (expected: 3 × ΔL)",
         "est": s["m1a_isometric_mass_expected"],
         "lo": s["m1a_isometric_mass_expected_lower"],
@@ -106,9 +106,9 @@ items = [
         "mfc": "white"
     },
     {
-        "y": 3.0,
-        "label": "M1a Isometry contrast (ΔM − 3ΔL)",
-        "sublabel": "Parsimonious (z = 2.35, p = 0.019; excludes 0)",
+        "y": 2.0,
+        "label": "Geometric isometry contrast (ΔM − 3ΔL)",
+        "sublabel": "Observer control (z = 2.35, p = 0.019; excludes 0)",
         "est": s["m1a_iso_contrast"],
         "lo": s["m1a_iso_lower"],
         "hi": s["m1a_iso_upper"],
@@ -117,20 +117,6 @@ items = [
         "ms": 7.5,
         "ls": "-",
         "mfc": "#2F855A"
-    },
-    # M1 Comparison Tier
-    {
-        "y": 1.9,
-        "label": "M1 Isometry contrast (ΔM − 3ΔL)",
-        "sublabel": "Both controls (z = 1.95, p = 0.051; 86% site overlap)",
-        "est": s["m1_iso_contrast"],
-        "lo": s["m1_iso_lower"],
-        "hi": s["m1_iso_upper"],
-        "color": "#805AD5", # Purple
-        "marker": "D",
-        "ms": 6.5,
-        "ls": ":",
-        "mfc": "white"
     },
     # Amazon Benchmark
     {
@@ -165,13 +151,13 @@ items = [
 ax1.axvline(0, color="#718096", lw=1.0, ls="--", zorder=1)
 
 # Shaded grouping bands
-ax1.axhspan(3.7, 6.7, color="#F7FAFC", alpha=0.9, zorder=0) # M1a data
-ax1.axhspan(1.4, 3.5, color="#F0FFF4", alpha=0.9, zorder=0) # Isometry contrasts
+ax1.axhspan(2.7, 5.7, color="#F7FAFC", alpha=0.9, zorder=0) # Measurements & expected
+ax1.axhspan(1.4, 2.6, color="#F0FFF4", alpha=0.9, zorder=0) # Isometry contrast
 ax1.axhspan(-0.6, 1.3, color="#FFF5F5", alpha=0.9, zorder=0) # Amazon
 
 # Group headers
-ax1.text(-13.8, 6.65, "M1a Parsimonious model (Observer only):", fontsize=8.5, fontweight="bold", color="#2D3748")
-ax1.text(-13.8, 3.45, "Geometric Isometry Contrasts (ΔM − 3ΔL):", fontsize=8.5, fontweight="bold", color="#22543D")
+ax1.text(-13.8, 5.65, "Atlantic Forest (Observer control · 7,577 shared records):", fontsize=8.5, fontweight="bold", color="#2D3748")
+ax1.text(-13.8, 2.50, "Geometric Isometry Contrast (ΔM − 3ΔL):", fontsize=8.5, fontweight="bold", color="#22543D")
 ax1.text(-13.8, 1.25, "Central Amazon benchmark (Jirinec et al. 2021):", fontsize=8.5, fontweight="bold", color="#742A2A")
 
 for it in items:
@@ -189,15 +175,15 @@ for it in items:
     ax1.text(it["hi"] + 0.35, y, val_str, fontsize=7.6, color=it["color"], va="center", ha="left", fontweight="bold")
 
 ax1.set_xlim(-14.2, 12.0)
-ax1.set_ylim(-0.7, 7.0)
+ax1.set_ylim(-0.7, 6.0)
 ax1.set_yticks([])
 ax1.spines["left"].set_visible(False)
 ax1.set_xlabel("Rate of change (% per decade) · 95% Confidence Interval", fontsize=8.8)
-ax1.set_title("A. Decadal rates and geometric isometry contrasts", fontsize=10.5, fontweight="bold", loc="left", pad=10)
+ax1.set_title("A. Decadal rates and geometric isometry contrast", fontsize=10.5, fontweight="bold", loc="left", pad=10)
 
 # Annotation for M1a excluding zero
 ax1.annotate("Rejects isometry (p = 0.019)\n(Mass loss less than L³ -> stoutening)",
-             xy=(s["m1a_iso_lower"], 3.0), xytext=(3.0, 2.40),
+             xy=(s["m1a_iso_lower"], 2.0), xytext=(3.0, 1.60),
              arrowprops=dict(arrowstyle="->", color="#276749", lw=1.2),
              fontsize=7.6, fontweight="bold", color="#276749",
              bbox=dict(boxstyle="round,pad=0.25", facecolor="#E6FFFA", edgecolor="#38B2AC", lw=0.8))
@@ -256,28 +242,12 @@ w_a, h_a = 2 * np.sqrt(5.991 * vals_a)
 
 ellipse_a = Ellipse(xy=(mu_wa, mu_ma), width=w_a, height=h_a, angle=theta_a,
                     facecolor="#38A169", alpha=0.22, edgecolor="#276749", lw=2.0,
-                    zorder=4, label="M1a 95% confidence ellipse (Observer only)")
+                    zorder=4, label="Atlantic Forest 95% confidence ellipse (Observer control)")
 ax2.add_patch(ellipse_a)
 ax2.scatter(mu_wa, mu_ma, s=75, color="#276749", edgecolors="white", linewidths=1.4, zorder=5)
 
-# Ellipse for M1 (Both controls)
-mu_w1, mu_m1 = s["m1_wing_pct_decade"], s["m1_mass_pct_decade"]
-se_w1, se_m1 = s["m1_se_wing"], s["m1_se_mass"]
-cov_mat_1 = np.array([[se_w1**2, 0.024], [0.024, se_m1**2]])
-vals_1, vecs_1 = np.linalg.eigh(cov_mat_1)
-order_1 = vals_1.argsort()[::-1]
-vals_1, vecs_1 = vals_1[order_1], vecs_1[:, order_1]
-theta_1 = np.degrees(np.arctan2(*vecs_1[:, 0][::-1]))
-w_1, h_1 = 2 * np.sqrt(5.991 * vals_1)
-
-ellipse_1 = Ellipse(xy=(mu_w1, mu_m1), width=w_1, height=h_1, angle=theta_1,
-                    facecolor="none", edgecolor="#805AD5", lw=1.6, ls="--",
-                    zorder=4, label="M1 95% confidence ellipse (Observer + Site)")
-ax2.add_patch(ellipse_1)
-ax2.scatter(mu_w1, mu_m1, s=60, color="#805AD5", marker="D", edgecolors="white", linewidths=1.2, zorder=5)
-
 # Annotations
-ax2.annotate(f"M1a (Observer only)\nWing: {neg(mu_wa)}%/dec\nMass: {neg(mu_ma)}%/dec\n(Mass retained -> stoutening)",
+ax2.annotate(f"Atlantic Forest (Observer control)\nWing: {neg(mu_wa)}%/dec\nMass: {neg(mu_ma)}%/dec\n(Mass retained -> stoutening)",
              xy=(mu_wa, mu_ma), xytext=(mu_wa - 3.4, mu_ma + 3.4),
              arrowprops=dict(arrowstyle="->", color="#276749", lw=1.3),
              fontsize=7.8, fontweight="bold", color="#1C4532",
@@ -307,9 +277,7 @@ legend_elements = [
     Line2D([0], [0], color="#1A202C", lw=2.0, label="Geometric isometry line (y = 3x)"),
     Line2D([0], [0], color="#718096", lw=1.1, ls=":", label="Equal rate line (y = x)"),
     Line2D([0], [0], marker="o", color="none", markerfacecolor="#276749", markeredgecolor="white",
-           markersize=7.5, label="M1a Atlantic Forest (Observer only)"),
-    Line2D([0], [0], marker="D", color="none", markerfacecolor="#805AD5", markeredgecolor="white",
-           markersize=6.5, label="M1 Atlantic Forest (Observer + Site)"),
+           markersize=7.5, label="Atlantic Forest (Observer control)"),
     Line2D([0], [0], marker="s", color="none", markerfacecolor="#319795", markeredgecolor="white",
            markersize=7.5, label="Central Amazon (Jirinec et al. 2021)"),
     Line2D([0], [0], marker="o", color="none", markerfacecolor="#718096", markeredgecolor="#4A5568",

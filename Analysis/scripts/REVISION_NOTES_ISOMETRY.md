@@ -29,6 +29,8 @@
 | **Central Amazon wing** | Jirinec et al. (2021) | **+0.90%** | [+0.20%, +1.60%] | Longer wings (decoupled) |
 | **Central Amazon mass** | Jirinec et al. (2021) | **−1.80%** | [−2.50%, −1.10%] | Systematic mass loss |
 
+*Note on Fig-Isometry*: The figure (`fig-isometry.png`) plots solely the parsimonious observer model (**M1a**) against the Central Amazon benchmark, avoiding visual clutter and eliminating the overcontrolled crossed model from the primary plot. The crossed M1 model is retained in table `@tbl-mass-allometry` and text as a sensitivity check.
+
 ---
 
 ## 2. Sampling Hierarchy Audit & Collinearity
