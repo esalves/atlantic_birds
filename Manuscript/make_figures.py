@@ -543,4 +543,10 @@ fig.tight_layout(); fig.savefig(f"{OUT}/fig-s-wingcol.png", bbox_inches="tight")
 note("fig-s-wingcol", "prop right early", p_right_early); note("fig-s-wingcol", "prop generic late", p_generic_late)
 
 pd.DataFrame(panel_numbers).to_csv(os.path.join(FD, "fig_panel_numbers.csv"), index=False)
+
+# Regenerate bivariate isometry figure
+iso_script = os.path.join(HERE, "make_isometry_figure.py")
+if os.path.exists(iso_script):
+    subprocess.run([sys.executable, iso_script], cwd=HERE)
+
 print("figures written to", OUT, "| panel numbers ->", os.path.join(FD, "fig_panel_numbers.csv"))
