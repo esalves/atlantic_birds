@@ -339,49 +339,106 @@ In summary, 24 years of climate warming in the Brazilian Atlantic Forest have no
 
 # Methods {#sec-methods}
 
-## Data compilation and filtering
+## Trait database filtering and analytical sample derivation
 
-We extracted bird morphological records from the ATLANTIC BIRD TRAITS database [@rodrigues_atlantic_2019]. We applied the following inclusion criteria: (1) order Passeriformes; (2) adult individuals; (3) live field captures (excluding museum skins to avoid preservation shrinkage artifacts); (4) sampling dates between 1995 and 2018; and (5) sampling localities situated within a 20-km buffer of the Brazilian Atlantic Forest domain. To ensure reliable species-level parameter estimation, we required species to have $\ge 30$ records and a sampling span $\ge 5$ years. Following these filters, the primary known-sex analytical sample comprised 73 species and 12,571 records (`r .n(desc$n_rec_wing)` wing records). A parallel dataset including individuals of unknown sex ($n = 3,532$) was compiled to evaluate replication in unsexed birds.
+We extracted avian morphological measurements from the ATLANTIC BIRD TRAITS database [@rodrigues_atlantic_2019], a comprehensive data compilation comprising `r .n(desc$raw_total)` morphometric entries across the Brazilian Atlantic Forest domain, of which passerines represent `r desc$raw_pass_pct`% (`r .n(desc$raw_passerine)` records). To ensure that temporal analyses reflect genuine living phenotypic variation rather than methodological or preservation artifacts, we implemented a rigorous multi-stage filtering protocol (`Analysis/scripts/update_descriptive_stats.R`).
 
-## Model specifications and provenance controls
+First, we restricted the dataset strictly to live field captures, excluding museum study skins. Museum preparation induces marked, non-linear post-mortem shrinkage in feathers, bill keratin, and skeletal dimensions (typically 1–3% reduction in linear dimensions upon drying; @weeks2020). Because museum specimens in regional collections are heavily concentrated in earlier decades of the 20th century, retaining study skins introduces artificial positive temporal trends. Second, we restricted records to adult individuals (`Age == "Adult"`), excluding juveniles and fledglings whose flight feathers and bills are incompletely developed. Third, we filtered records spatially to sampling localities falling within a 20-km buffer of the Brazilian Atlantic Forest biome boundary (IBGE/MMA official shapefile), eliminating captures situated in adjacent Cerrado or Caatinga enclaves. Fourth, we bounded the temporal window to 1995–2018 (24 calendar years), representing the era of active multi-project mist-netting in the biome with consistent capture documentation.
 
-We evaluated temporal trajectories using mixed-effects models across sequential control tiers:
-- **M0 (Baseline)**: Replicated published model structures accounting only for sex, calendar year, latitude, species random slopes, and phylogeny: `conc.wing.length ~ Sex + scaled_yr + scaled_lat + (1 + scaled_yr || Binomial) + (1 | species_name)`.
-- **M1**: Added random intercepts for primary researcher (`Main_researcher`, 42 levels) and municipality (`Municipality`, 130 levels).
-- **M2**: Added fixed effects for wing-column protocol proxy (`wing_col`, 3 levels: left, right, unspecified), scaled longitude, and scaled elevation.
-- **M3 (Full controls)**: Added fixed effects for season (DJF, MAM, JJA, SON) and moult status (`Molt`), and a random intercept for individual identity (`ID_individual`, Ring $\times$ Species).
-- **Within-between decomposition (Mundlak REWB)**: Decomposed `scaled_yr` into within-observer deviations (`yr_within_src`) and observer means (`yr_src_mean`) [@mundlak1978pooling; @bell2019fixed].
-- **M6**: Evaluated replication of the full M3 control structure in unsexed individuals ($n = 3,532$).
-- **M7**: Restricted the full M3 model to first captures only ($n = 7,791$) to verify that individual recapture dynamics did not bias parameter estimates.
+Finally, to guarantee robust parameter estimation for species-level random intercepts and random slopes, we restricted the primary analytical sample to species with $\ge 30$ live-capture records and a temporal sampling span of $\ge 5$ years. This yielded an authoritative analytical dataset of `r desc$n_spp` passerine species and `r .n(desc$n_rec)` live-capture records (`r .n(desc$n_rec_wing)` wing-length records). Wing length was coalesced across database columns, prioritizing right wing length when specified, followed by left wing length and unspecified wing length (`conc.wing.length`). A parallel dataset including unsexed adult individuals ($n = 3,532$) was compiled to evaluate whether patterns replicated in birds lacking sex determination.
 
-## Phylogenetic comparative analysis
+## Accounting for observer turnover and spatial provenance
 
-Phylogenetic uncertainty was accommodated using 50 alternative phylogenetic topologies sampled from the complete avian tree of @mctavish2025tree via `prepR4pcm` [@nakagawa2026prepr4pcm]. Rather than slow Markov chain Monte Carlo algorithms, models were fitted using `glmmTMB`'s `propto` covariance structure [`glmmTMB` v1.1.14; @williams2025glmmtmb]:
+In large-scale macroecological compilations aggregating data across independent research programs, two structural factors can severely confound temporal trends if left unmodeled: observer turnover and spatial turnover.
+
+### Observer turnover and researcher random effects (`Main_researcher`)
+
+In avian morphometrics, inter-observer measurement error is well-documented to reach 1–3 mm for wing length and 0.5–1 mm for bill and tarsus dimensions [@weeks2020]. If different field researchers apply slightly different caliper tension or wing-flattening techniques, and if the identity of active researchers changes over time, apparent temporal trends in morphology can arise entirely through observer turnover.
+
+In the ATLANTIC BIRD TRAITS compilation, the field measurer column (`Measurer`) is 100% missing (NA) and literature reference (`Reference`) is 99% missing. However, the identity of the principal investigator and research group coordinator (`Main_researcher`) is 100% complete across all analytical records, comprising 42 distinct contributors in our wing dataset. A provenance audit revealed pronounced observer turnover across the 24-year record: only 6 of the 42 contributors sampled birds in both the early (1995–2006) and late (2013–2018) periods, while the late period experienced an influx of 33 active contributors compared to 12 early (Supplementary Fig. S1). To account for baseline measurement idiosyncrasies among research groups, we incorporated a random intercept for researcher identity (`(1 | Main_researcher)`).
+
+### Spatial turnover and municipal random effects (`Municipality`)
+
+Over the 24-year timeframe, geographical sampling shifted substantially: early captures (1995–2006) were heavily concentrated in the southern Atlantic Forest (mean latitude $-24.8^\circ$), whereas later captures (2013–2018) expanded northwards (mean latitude $-21.9^\circ$) and into higher elevations (median altitude shifting from 175 m to 489 m). Because widespread passerines frequently exhibit ecogeographical clines in body size, geographic turnover across sampling periods can easily mimic temporal phenotypic change.
+
+To account for spatial clustering and local population differentiation, we evaluated spatial grouping variables. While the database contains a specific field station/farm name column (`Locality`), this column contains 193 levels and 11% missing values (NA). Using `Locality` as a random effect would therefore discard over 1,000 biological records due to missing locality names. In contrast, municipality (`Municipality`, 130 levels) is 100% complete across all 12,571 analytical records. `Municipality` represents an administrative spatial unit that groups contiguous field stations and forest fragments within local landscapes without any data loss. We therefore incorporated `(1 | Municipality)` as a spatial random intercept. To capture continuous spatial and elevational variation, subsequent model tiers also included standardized latitude (`scaled_lat`), standardized longitude (`scaled_long`), and elevation (`scaled_elev`).
+
+## Model sequence and within-between decomposition
+
+To rigorously evaluate how dataset structure influences temporal trends, we fitted a ladder of increasingly controlled mixed-effects models across sequential tiers:
+
+- **M0 (Baseline)**: Replicating published unadjusted model structures, accounting only for sex, calendar year (`scaled_yr`, centered and divided by its standard deviation, SD = 5.02 years), latitude (`scaled_lat`), species-specific random slopes and intercepts `(1 + scaled_yr || Binomial)`, and phylogenetic covariance `propto(0 + species_name | g, A)`.
+- **M1**: Adding random intercepts for researcher identity `(1 | Main_researcher)` and spatial municipality `(1 | Municipality)`.
+- **M2**: Adding fixed effects for protocol proxy (`wing_col`: right wing, left wing, or side unspecified), standardized longitude (`scaled_long`), and standardized elevation (`scaled_elev`).
+- **M3 (Fully controlled model)**: Adding fixed effects for seasonal quarter (DJF: Dec–Feb; MAM: Mar–May; JJA: Jun–Aug; SON: Sep–Nov) to account for feather wear across the annual cycle, active primary moult status (`Molt`), and individual bird band identity `(1 | ID_individual)` (Ring $\times$ Species) to account for repeated captures of banded individuals.
+- **Within-between decomposition (Mundlak REWB)**: To definitively separate true temporal change occurring within consistent field researchers from compositional turnover across researchers, calendar year was partitioned into researcher mean capture year ($\bar{Y}_j = \text{yr\_src\_mean}$) and individual capture deviations from that researcher mean ($Y_{ij} - \bar{Y}_j = \text{yr\_within\_src}$) [@mundlak1978pooling; @bell2019fixed]. The within-observer coefficient $\beta_{\text{within}}$ measures whether birds measured by the *same* researcher shrank over time, free from observer turnover bias.
+- **Robustness and sensitivity tiers**:
+  - `M3_cc`: The full M3 specification fitted strictly to complete cases ($n = 8,282$) lacking missing covariates.
+  - `M6`: The full M3 specification evaluated in birds of unknown sex ($n = 3,532$) to verify that findings generalize beyond sexable individuals.
+  - `M7`: The full M3 specification restricted strictly to first captures ($n = 7,791$) to exclude any potential bias from recapture histories.
+  - `M3_noanom`: The full M3 model re-fitted after excluding six contributor $\times$ site $\times$ year outlier blocks sitting $>6$ mm from species-sex means ($n = 193$).
+
+## Phylogenetic comparative analysis across 50 topologies
+
+Taxonomic reconciliation between the ATLANTIC BIRD TRAITS database and the complete, dynamic avian phylogeny of @mctavish2025tree was executed using the four-stage matching cascade of `prepR4pcm` [@nakagawa2026prepr4pcm]: exact binomial matching, punctuation/spacing normalization, taxonomic synonym resolution via BirdLife International and IOC checklists, and fuzzy string matching. All 73 passerine species were audited and successfully mapped to phylogenetic tip labels with zero unplaced taxa.
+
+To accommodate phylogenetic uncertainty, we drew 50 alternative phylogenetic topologies from the posterior distribution of @mctavish2025tree. For each tree, we computed the phylogenetic correlation matrix $A$ under a Brownian motion model of trait evolution. Fitting full multi-level models across 50 trees with Bayesian MCMC (e.g., in `brms`) is computationally prohibitive for complex random-effect structures. We therefore implemented the fast, exact `propto` covariance structure in `glmmTMB` v1.1.14 [@williams2025glmmtmb]:
 ```r
 glmmTMB(formula = conc.wing.length ~ Sex + scaled_yr + scaled_lat + season + Molt + 
           (1 + scaled_yr || Binomial) + (1 | Main_researcher) + (1 | Municipality) + 
           (1 | ID_individual) + propto(0 + species_name | g, A),
         data = dat, REML = TRUE)
 ```
-where `A` is the phylogenetic correlation matrix for each tree. Parameter estimates, standard errors, and covariance parameters were pooled across the 50 trees using Rubin's rules [@nakagawa2019rubin].
+where `g` is a dummy grouping factor assigning all observations to a single covariance structure governed by matrix `A`. Extensive validation against 50-tree `brms` fits confirmed that `glmmTMB` `propto` reproduces Bayesian posterior means and standard errors to within 0.001 units while reducing computational run times by over 95% (`Analysis/scripts/GLMMTMB_ENGINE.md`).
 
-## Multi-trait and allometric modeling
+Parameter estimates $\hat{\beta}_k$ and variance-covariance matrices $V_k$ across the 50 converged trees were pooled using Rubin's rules [@nakagawa2019rubin; @nakagawa2026prepr4pcm]:
+$$\bar{\beta} = \frac{1}{K}\sum_{k=1}^K \hat{\beta}_k, \quad V_{\text{total}} = \bar{V} + \left(1 + \frac{1}{K}\right) B$$
+where $\bar{V} = \frac{1}{K}\sum_{k=1}^K V_k$ is the mean within-tree variance and $B = \frac{1}{K-1}\sum_{k=1}^K (\hat{\beta}_k - \bar{\beta})(\hat{\beta}_k - \bar{\beta})^\top$ is the between-tree variance. Wald-Rubin 95% confidence intervals were computed as $\bar{\beta} \pm 1.96 \sqrt{\operatorname{diag}(V_{\text{total}})}$.
 
-Multi-trait models were fitted to log body mass, bill width, bill length, tail length, and tarsus length under the identical control ladder. On shared individual records ($n = 7,577$ individuals measured for both wing length and body mass across 72 species), we fitted a joint bivariate model estimating trait-specific year slopes and tested departures from geometric isometry ($\beta_{\text{mass}} - 3 \times \beta_{\text{wing}}$) via the delta method.
+## Multi-trait modeling and testing Allen's rule
 
-## Residual variance modeling
+To evaluate whether temporal shifts occurred across other morphometric dimensions, we applied the identical sequential control ladder to: log-transformed body mass ($n = 11,077$), bill width ($n = 3,205$), bill length ($n = 7,540$), tail length ($n = 8,679$), and tarsus length ($n = 4,285$). 
 
-Among-individual phenotypic variance was modeled using: (1) meta-analytic log coefficient-of-variation ratio ($\ln\text{CVR}$) [@nakagawa2015metaanalysis] across species for wing length ($k = 54$) and bill width ($k = 25$); and (2) continuous heteroscedastic dispersion models in `glmmTMB` specifying `dispformula = ~ scaled_yr + Sex + (1 | Main_researcher) + (1 | Municipality)`. An expanded dispersion model evaluated the association between residual variance and downscaled local mean temperature (S7).
+To evaluate diurnal feeding rhythms in body mass, we extracted recorded capture time (`Hour`) for the 8,345 mass records with available time stamps. We modeled diurnal mass gain by including continuous capture hour (`hour_num`, 06:00 to 18:00) alongside calendar year.
 
-## Climate and trophic analyses
+To evaluate Allen's rule [@allen1877; @ryding2021shape], which predicts that appendages enlarge in warmer conditions to facilitate heat dissipation, we tested whether bill width, bill length, and tarsus length exhibited positive temporal slopes under observer and spatial controls.
 
-Local climate data (annual mean temperature, total precipitation, and 12-month SPEI drought index) were extracted at the coordinates of each sampling locality from CRU-TS 4.09 downscaled with WorldClim 2.1. Invertebrate diet reliance was extracted from EltonTraits and analyzed as both a continuous covariate (Model A) and a categorical factor (Model B: Invertebrate vs Other diet). Regional litter-ant richness was evaluated using standardized sampling campaigns from ATLANTIC ANTS [@silva2022atlanticants] across 1994–2018.
+## Bivariate modeling and delta-method test of geometric isometry
 
-## Data and code availability
+To evaluate whether body shape changed over time, we analyzed the subset of records with simultaneous measurements of both wing length and body mass on the exact same individual birds ($n = 7,577$ shared records across 72 species). We fitted a joint bivariate model estimating trait-specific decadal rates of change expressed as percentage change per decade (%/decade): $\beta_{\text{wing,\%}}$ and $\beta_{\text{mass,\%}}$.
 
-All datasets and reproducible analysis scripts are openly available on GitHub (`esalves/atlantic_birds`) and archived on Zenodo (DOI: 10.5281/zenodo.atlantic_birds).
+Under geometric isometry, body mass scales with the cube of linear dimensions ($M \propto L^3$). If proportional scaling is preserved, an observed percentage change in wing length $\beta_{\text{wing,\%}}$ implies an expected percentage change in body mass of:
+$$\beta_{\text{mass, expected}} = \left(1 + \frac{\beta_{\text{wing,\%}}}{100}\right)^3 - 1 \approx 3 \times \beta_{\text{wing,\%}}$$
+We formally tested departure from isometry via the linear contrast:
+$$\Delta_{\text{iso}} = \beta_{\text{mass,\%}} - 3 \times \beta_{\text{wing,\%}}$$
+The sampling variance and standard error of $\Delta_{\text{iso}}$ were derived via the delta method:
+$$\operatorname{Var}(\Delta_{\text{iso}}) = \operatorname{Var}(\beta_{\text{mass,\%}}) + 9\operatorname{Var}(\beta_{\text{wing,\%}}) - 6\operatorname{Cov}(\beta_{\text{mass,\%}}, \beta_{\text{wing,\%}})$$
+$$\operatorname{SE}(\Delta_{\text{iso}}) = \sqrt{\operatorname{Var}(\Delta_{\text{iso}})}, \quad z = \frac{\Delta_{\text{iso}}}{\operatorname{SE}(\Delta_{\text{iso}})}$$
+If the 95% confidence interval of $\Delta_{\text{iso}}$ spans zero, morphological dynamics cannot reject geometric isometry.
+
+## Phenotypic variability meta-analysis and continuous dispersion modeling
+
+Among-individual phenotypic variability was modeled using two complementary approaches:
+
+1. **Meta-analytic $\ln\text{CVR}$**: For species with $\ge 5$ records in both the early (1995–2006) and late (2013–2018) periods, we computed the log coefficient-of-variation ratio ($\ln\text{CVR}$) with small-sample bias correction [@nakagawa2015metaanalysis]:
+   $$\ln\text{CVR} = \ln\left(\frac{\operatorname{CV}_{\text{late}}}{\operatorname{CV}_{\text{early}}}\right) + \frac{1}{2(n_{\text{late}} - 1)} - \frac{1}{2(n_{\text{early}} - 1)}$$
+   where sampling variance incorporates the observed correlation between log mean and log standard deviation within each period. Effect sizes were pooled in random-effects meta-analytic models using `metafor` [@viechtbauer2010metafor]. To distinguish genuine biological variance shifts from observer pooling artifacts, $\ln\text{CVR}$ was calculated both pooled across all observers ($k = 54$ for wing; $k = 25$ for bill width) and strictly within the same primary researcher ($k = 15$).
+2. **Continuous heteroscedastic dispersion models**: In `glmmTMB`, we specified a dispersion submodel (`dispformula`) allowing residual standard deviation $\sigma_i$ to vary continuously over time and across observers:
+   $$\log(\sigma_i) = \alpha_0 + \alpha_1 \text{scaled\_yr}_i + \alpha_2 \text{Sex}_i + u_{\text{researcher}} + u_{\text{municipality}}$$
+   where $\alpha_1$ captures the decadal rate of change in residual standard deviation. In model tier S7, standardized local mean annual temperature (`scaled_tmean`) was added to the dispersion formula to test whether residual variance tracked environmental warming.
+
+## Trophic interactions and regional prey context
+
+Species' dietary reliance on invertebrates was extracted from the EltonTraits 1.0 database [@wilman2014eltontraits] (`Diet-Inv`, % of diet consisting of invertebrates). In continuous interaction models (Model A), `Diet-Inv` was standardized ($z$-score) and interacted with calendar year (`scaled_yr * diet_inv_std`). Wing-length trajectories were projected across the 10th (p10), 50th (p50), and 90th (p90) species-weighted percentiles of invertebrate reliance. In categorical models (Model B), diet was collapsed into Invertebrate-dominated ($\ge 50\%$ invertebrate diet) versus Other (frugivores, nectarivores, granivores, omnivores). Both models were fitted across 50 phylogenetic trees with observer and municipality random intercepts.
+
+To evaluate regional prey trends, we modeled litter-ant richness from the ATLANTIC ANTS database [@silva2022atlanticants] across 855 standardized field campaigns (1994–2018). We fitted negative-binomial generalized linear mixed models in `glmmTMB` specifying observed ant species richness per campaign as a function of calendar year, with the log of sampling effort (number of pitfall traps $\times$ operational days) as an offset, and random intercepts for contributor, municipality, and sampling locality.
+
+## Reproducible software environment
+
+Analyses and manuscript generation were conducted using R version 4.4+ with packages `glmmTMB` (v1.1.14), `prepR4pcm` (v0.1.0), `metafor` (v4.6+), `ape` (v5.8+), `sf` (v1.0+), `terra` (v1.8+), and `tidyverse` (v2.0+), alongside Python (version 3.11+) with `matplotlib` (v3.10+) and `pandas` (v2.2+). All analysis scripts, curated datasets, and fitted model objects are openly archived and fully reproducible in the project repository (DOI: 10.5281/zenodo.atlantic_birds).
 
 ## References {.unnumbered}
 
 ::: {#refs}
 :::
+
