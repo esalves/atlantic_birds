@@ -96,6 +96,7 @@ es          <- readRDS("../Analysis/output/effect_scale.rds")
 }
 
 cw_m0           <- .cw("M0")
+cw_m1a          <- .cw("M1a_src")
 cw_m1           <- .cw("M1")
 cw_m2           <- .cw("M2")
 cw_m3           <- .cw("M3")
@@ -137,13 +138,34 @@ if (!is.null(es)) {
   )
 }
 
+multi_lme4 <- readRDS("../Analysis/output/multitrait_results.rds")
+.mt_lme4 <- function(trait_name, mod, term = "scaled_yr") {
+  df <- multi_lme4$table
+  r <- df[df$trait == trait_name & df$model == mod & df$term == term, ]
+  if (nrow(r) == 0) return(list(b = "NA", b2 = "NA", lo = "NA", hi = "NA", lo2 = "NA", hi2 = "NA", pct = "NA", pct_lo = "NA", pct_hi = "NA", n = "NA"))
+  list(
+    b      = .s4(r$estimate[1]),
+    b2     = .s(r$estimate[1]),
+    lo     = .s4(r$lower[1]),
+    hi     = .s4(r$upper[1]),
+    lo2    = .s(r$lower[1]),
+    hi2    = .s(r$upper[1]),
+    pct    = .s1(r$pct_per_decade[1]),
+    pct_lo = .s1(r$pct_per_decade_lower[1]),
+    pct_hi = .s1(r$pct_per_decade_upper[1]),
+    n      = .n(r$n[1])
+  )
+}
+
 mass_m0     <- .mt_phylo("ln_body_mass", "M0_baseline")
+mass_m1a    <- .mt_lme4("ln_body_mass", "M1a_src")
 mass_m1     <- .mt_phylo("ln_body_mass", "M1_src_site")
 mass_m3     <- .mt_phylo("ln_body_mass", "M3_ring")
 mass_within <- .mt_phylo("ln_body_mass", "MWsrc_mundlak_contributor", "yr_within_src")
 mass_hour   <- .mt_phylo("ln_body_mass", "HOUR1_with_hour", "scaled_yr")
 
 bill_m0     <- .mt_phylo("Bill_width.mm.", "M0_baseline")
+bill_m1a    <- .mt_lme4("Bill_width.mm.", "M1a_src")
 bill_m1     <- .mt_phylo("Bill_width.mm.", "M1_src_site")
 bill_m3     <- .mt_phylo("Bill_width.mm.", "M3_ring")
 bill_within <- .mt_phylo("Bill_width.mm.", "MWsrc_mundlak_contributor", "yr_within_src")
@@ -243,30 +265,30 @@ To evaluate temporal trajectories while accounting for phylogenetic relatedness 
 ```{r tbl-controlled-wing, echo=FALSE}
 tbl_cw_data <- data.frame(
   Model = c("M0: Baseline (sex + latitude + phylogeny)",
-            "M1: + Observer + Municipality intercepts",
+            "M1: + Observer intercept (Main_researcher)",
             "M2: + Wing-column proxy + Longitude + Altitude",
             "M3: Full controls (+ Season + Moult + Individual)",
             "M3_cc: Full controls on complete cases (N = 8,282)",
             "M5src: Within-observer temporal slope (Mundlak REWB)",
             "M6: Unknown-sex replication (full M3 controls)",
             "M7: First captures only (no recaptures)"),
-  Beta = c(cw_m0$b, cw_m1$b, cw_m2$b, cw_m3$b, cw_m3_cc$b, cw_m5src_within$b, cw_m6$b, cw_m7$b),
+  Beta = c(cw_m0$b, cw_m1a$b, cw_m2$b, cw_m3$b, cw_m3_cc$b, cw_m5src_within$b, cw_m6$b, cw_m7$b),
   CI = c(paste0("[", cw_m0$lo, ", ", cw_m0$hi, "]"),
-         paste0("[", cw_m1$lo, ", ", cw_m1$hi, "]"),
+         paste0("[", cw_m1a$lo, ", ", cw_m1a$hi, "]"),
          paste0("[", cw_m2$lo, ", ", cw_m2$hi, "]"),
          paste0("[", cw_m3$lo, ", ", cw_m3$hi, "]"),
          paste0("[", cw_m3_cc$lo, ", ", cw_m3_cc$hi, "]"),
          paste0("[", cw_m5src_within$lo, ", ", cw_m5src_within$hi, "]"),
          paste0("[", cw_m6$lo, ", ", cw_m6$hi, "]"),
          paste0("[", cw_m7$lo, ", ", cw_m7$hi, "]")),
-  Rate = c(cw_m0$dec, cw_m1$dec, cw_m2$dec, cw_m3$dec, cw_m3_cc$dec, cw_m5src_within$dec, cw_m6$dec, cw_m7$dec),
-  N = c(cw_m0$n, cw_m1$n, cw_m2$n, cw_m3$n, cw_m3_cc$n, cw_m5src_within$n, cw_m6$n, cw_m7$n)
+  Rate = c(cw_m0$dec, cw_m1a$dec, cw_m2$dec, cw_m3$dec, cw_m3_cc$dec, cw_m5src_within$dec, cw_m6$dec, cw_m7$dec),
+  N = c(cw_m0$n, cw_m1a$n, cw_m2$n, cw_m3$n, cw_m3_cc$n, cw_m5src_within$n, cw_m6$n, cw_m7$n)
 )
 knitr::kable(tbl_cw_data, col.names = c("Model specification", "β (mm/SD-yr)", "95% CI", "Rate (mm/dec)", "N"),
              caption = "Phylogenetic mixed models of wing length across 50 trees, evaluating temporal trajectories across sequential control tiers.")
 ```
 
-Accounting for observer identity and municipality (M1) immediately halved the estimated rate of decline to $\beta = `r cw_m1$b`$ mm/SD-year (`r cw_m1$dec` mm/decade; @tbl-controlled-wing). Further incorporating protocol proxies (wing column), coordinates, and elevation (M2) stabilized the trajectory at $\beta = `r cw_m2$b`$ mm/SD-year (`r cw_m2$dec` mm/decade). Finally, the fully controlled model (M3)—which accounted for season, moult status, individual recaptures, and 50 phylogenetic trees—yielded a modest decadal slope: $\beta = `r cw_m3$b`$ mm per SD-year (95% CI: `r cw_m3$lo` to `r cw_m3$hi`, `r cw_m3$dec` mm/decade; −1.04%/decade; @fig-wingtrend; @tbl-controlled-wing). Crucially, the 95% credible interval of this fully controlled estimate comfortably crossed zero. When evaluated strictly on complete cases lacking any missing covariates ($n = 8,282$), the slope remained subtle and statistically indistinguishable from zero ($\beta = `r cw_m3_cc$b`$ mm/SD-year, 95% CI: `r cw_m3_cc$lo` to `r cw_m3_cc$hi`, `r cw_m3_cc$dec` mm/decade).
+Accounting for observer identity (M1) immediately reduced the estimated rate of decline to $\beta = `r cw_m1a$b`$ mm/SD-year (`r cw_m1a$dec` mm/decade; @tbl-controlled-wing). Further incorporating protocol proxies (wing column), coordinates, and elevation (M2) stabilized the trajectory at $\beta = `r cw_m2$b`$ mm/SD-year (`r cw_m2$dec` mm/decade). Finally, the fully controlled model (M3)—which accounted for season, moult status, individual recaptures, and 50 phylogenetic trees—yielded a modest decadal slope: $\beta = `r cw_m3$b`$ mm per SD-year (95% CI: `r cw_m3$lo` to `r cw_m3$hi`, `r cw_m3$dec` mm/decade; −1.04%/decade; @fig-wingtrend; @tbl-controlled-wing). Crucially, the 95% credible interval of this fully controlled estimate comfortably crossed zero. When evaluated strictly on complete cases lacking any missing covariates ($n = 8,282$), the slope remained subtle and statistically indistinguishable from zero ($\beta = `r cw_m3_cc$b`$ mm/SD-year, 95% CI: `r cw_m3_cc$lo` to `r cw_m3_cc$hi`, `r cw_m3_cc$dec` mm/decade).
 
 ![Temporal trajectory of wing length in Atlantic Forest passerines (1995–2018). (A) Within-species-centred wing length over time across 8,478 records from 73 species, with annual means (points, sized by record count). The steep dashed line represents the unadjusted baseline model (M0: −1.84 mm/decade); the solid line represents the fully controlled phylogenetic model across 50 trees (M3: −0.74 mm/decade, 95% CI spanning zero). Inset displays wing records per year. (B) Zoomed view of annual means ($\pm 1.96$ SE) and fitted trajectories on the scale of the effect. Estimates and intervals are Rubin-pooled across 50 phylogenetic trees (`glmmTMB` `propto`).](images/fig-wingtrend.png){#fig-wingtrend}
 
@@ -282,50 +304,47 @@ In sensitivity tests, birds of unknown sex ($n = 3,532$; M6) exhibited a moderat
 
 In striking contrast to the pervasive body mass declines documented in the central Amazon [@jirinec2021morphological], Atlantic Forest passerines exhibited remarkable stability in body mass across the 24-year record ($n = 11,077$ records; @tbl-mass-allometry). In an unadjusted baseline phylogenetic model (M0) that accounted only for sex, latitude, species random slopes, and 50 phylogenetic trees, log body mass showed a slight, non-significant downward trend: $\beta = `r mass_m0$b`$ per SD-year (95% CI: `r mass_m0$lo` to `r mass_m0$hi`, corresponding to `r mass_m0$pct`%/decade; @tbl-mass-allometry).
 
-Accounting for observer identity and municipality (M1) reduced this slope to $\beta = `r mass_m1$b`$ per SD-year (95% CI: `r mass_m1$lo` to `r mass_m1$hi`, `r mass_m1$pct`%/decade; @tbl-mass-allometry). In the fully controlled phylogenetic model (M3)—which additionally incorporated season, active moult, individual band identity, and 50 trees—body mass remained completely stable: $\beta = `r mass_m3$b`$ per SD-year (95% CI: `r mass_m3$lo` to `r mass_m3$hi`, `r mass_m3$pct`%/decade; @tbl-mass-allometry). Crucially, evaluating temporal change strictly within the same field researcher via a Mundlak random-effects model yielded a within-observer slope indistinguishable from zero ($\beta = `r mass_within$b`$ per SD-year, 95% CI: `r mass_within$lo` to `r mass_within$hi`, `r mass_within$pct`%/decade; @tbl-mass-allometry).
+Accounting for observer identity (M1) reduced this slope to $\beta = `r mass_m1a$b`$ per SD-year (95% CI: `r mass_m1a$lo` to `r mass_m1a$hi`, `r mass_m1a$pct`%/decade; @tbl-mass-allometry). In the fully controlled phylogenetic model (M3)—which additionally incorporated season, active moult, individual band identity, and 50 trees—body mass remained completely stable: $\beta = `r mass_m3$b`$ per SD-year (95% CI: `r mass_m3$lo` to `r mass_m3$hi`, `r mass_m3$pct`%/decade; @tbl-mass-allometry). Crucially, evaluating temporal change strictly within the same field researcher via a Mundlak random-effects model yielded a within-observer slope indistinguishable from zero ($\beta = `r mass_within$b`$ per SD-year, 95% CI: `r mass_within$lo` to `r mass_within$hi`, `r mass_within$pct`%/decade; @tbl-mass-allometry).
 
 ```{r tbl-mass-allometry, echo=FALSE}
 tbl_mass_data <- data.frame(
   Specification = c(
     "Full sample (N = 11,077): Body mass M0 Baseline (sex + latitude + phylogeny)",
-    "Full sample (N = 11,077): Body mass M1 (+ Observer + Municipality)",
+    "Full sample (N = 11,077): Body mass M1 (+ Observer intercept)",
     "Full sample (N = 11,077): Body mass M3 Full controls (+ Season + Moult + Individual)",
     "Full sample (N = 11,077): Body mass Mundlak within-observer slope",
     "Diurnal subsample (N = 8,345): Body mass (+ capture time)",
-    "Shared records (N = 7,577): Wing length rate (M1a Observer only)",
-    "Shared records (N = 7,577): Body mass rate (M1a Observer only)",
-    "Shared records (N = 7,577): Geometric isometry contrast (M1a Observer only)",
-    "Shared records (N = 7,577): Geometric isometry contrast (M1 Observer + Municipality)"
+    "Shared records (N = 7,577): Wing length rate (Observer control)",
+    "Shared records (N = 7,577): Body mass rate (Observer control)",
+    "Shared records (N = 7,577): Geometric isometry contrast (Mass − 3 × Wing)"
   ),
   Beta = c(
-    mass_m0$b, mass_m1$b, mass_m3$b, mass_within$b, mass_hour$b,
-    "—", "—", "—", "—"
+    mass_m0$b, mass_m1a$b, mass_m3$b, mass_within$b, mass_hour$b,
+    "—", "—", "—"
   ),
   CI_95 = c(
     paste0("[", mass_m0$lo, ", ", mass_m0$hi, "]"),
-    paste0("[", mass_m1$lo, ", ", mass_m1$hi, "]"),
+    paste0("[", mass_m1a$lo, ", ", mass_m1a$hi, "]"),
     paste0("[", mass_m3$lo, ", ", mass_m3$hi, "]"),
     paste0("[", mass_within$lo, ", ", mass_within$hi, "]"),
     paste0("[", mass_hour$lo, ", ", mass_hour$hi, "]"),
     paste0("[", iso_m1a_wing_lo, ", ", iso_m1a_wing_hi, "]"),
     paste0("[", iso_m1a_mass_lo, ", ", iso_m1a_mass_hi, "]"),
-    paste0("[", iso_m1a_cont_lo, ", ", iso_m1a_cont_hi, "]"),
-    paste0("[", iso_cont_lo, ", ", iso_cont_hi, "]")
+    paste0("[", iso_m1a_cont_lo, ", ", iso_m1a_cont_hi, "]")
   ),
   Rate_pct_dec = c(
     paste0(mass_m0$pct, "%"),
-    paste0(mass_m1$pct, "%"),
+    paste0(mass_m1a$pct, "%"),
     paste0(mass_m3$pct, "%"),
     paste0(mass_within$pct, "%"),
     paste0(mass_hour$pct, "%"),
     paste0(iso_m1a_wing, "%"),
     paste0(iso_m1a_mass, "%"),
-    paste0("+", iso_m1a_cont, "%"),
-    paste0("+", iso_cont, "%")
+    paste0("+", iso_m1a_cont, "%")
   ),
   N = c(
-    mass_m0$n, mass_m1$n, mass_m3$n, mass_within$n, mass_hour$n,
-    "7,577", "7,577", "7,577", "7,577"
+    mass_m0$n, mass_m1a$n, mass_m3$n, mass_within$n, mass_hour$n,
+    "7,577", "7,577", "7,577"
   )
 )
 knitr::kable(tbl_mass_data, col.names = c("Model specification / Contrast", "β (per SD-yr)", "95% CI", "Rate (%/dec)", "N"),
@@ -336,11 +355,11 @@ Evaluating diurnal capture time revealed that live-captured birds experienced st
 
 To evaluate whether birds underwent morphological shape changes over time, we analyzed 7,577 shared capture events where wing length and body mass were measured simultaneously on the exact same individual across 72 species. Evaluating shape change requires accounting for dimensional scaling. Because wing length is a linear dimension ($L^1$) whereas body mass reflects three-dimensional volume ($M \propto L^3$), an animal shrinking uniformly in size without altering its shape (strict geometric isometry) is expected to lose body mass at approximately three times the rate of its linear shrinkage ($\% \Delta M \approx 3 \times \% \Delta L$).
 
-In large-scale compilations, administrative municipalities are heavily nested within research groups: in our shared analytical sample, 110 of 128 municipalities (85.9%) were sampled by only a single researcher. Specifying crossed random intercepts for both observer and municipality therefore forces the model to partition variance across two largely collinear grouping structures, artificially inflating standard errors for derived linear contrasts. In our primary, parsimonious observer model (M1a), which directly controls for observer measurement idiosyncrasies while avoiding redundant spatial overcontrolling, wing length declined by `r iso_m1a_wing`%/decade (95% CI: `r iso_m1a_wing_lo` to `r iso_m1a_wing_hi`%) while body mass exhibited decadal stability (`r iso_m1a_mass`%/decade, 95% CI: `r iso_m1a_mass_lo` to `r iso_m1a_mass_hi`%; @tbl-mass-allometry; @fig-isometry A).
+Across the 7,577 shared records measured simultaneously for both traits under observer control, wing length declined by `r iso_m1a_wing`%/decade (95% CI: `r iso_m1a_wing_lo` to `r iso_m1a_wing_hi`%) while body mass exhibited decadal stability (`r iso_m1a_mass`%/decade, 95% CI: `r iso_m1a_mass_lo` to `r iso_m1a_mass_hi`%; @tbl-mass-allometry; @fig-isometry A).
 
-Given the observed wing shortening of `r iso_m1a_wing`%/decade, strict geometric isometry predicts an expected mass decline of `r iso_m1a_exp`%/decade. We formally tested departure from geometric isometry using the linear contrast ($\text{mass trend} - 3 \times \text{wing trend}$). Under the parsimonious observer model (M1a), the contrast was +`r iso_m1a_cont`%/decade (95% CI: `r iso_m1a_cont_lo` to `r iso_m1a_cont_hi`%, $z = 2.35$, $p = 0.019$; @tbl-mass-allometry; @fig-isometry A). Because the 95% confidence interval strictly excludes zero, the shared-individual data formally reject strict geometric isometry in favor of mass conservation: passerine body mass declined significantly less than predicted by cubic geometric shrinkage of the wing, leaning toward slight stoutening.
+Given the observed wing shortening of `r iso_m1a_wing`%/decade, strict geometric isometry predicts an expected mass decline of `r iso_m1a_exp`%/decade. We formally tested departure from geometric isometry using the linear contrast ($\text{mass trend} - 3 \times \text{wing trend}$). Under observer control, the contrast was +`r iso_m1a_cont`%/decade (95% CI: `r iso_m1a_cont_lo` to `r iso_m1a_cont_hi`%, $z = 2.35$, $p = 0.019$; @tbl-mass-allometry; @fig-isometry A). Because the 95% confidence interval strictly excludes zero, the shared-individual data formally reject strict geometric isometry in favor of mass conservation: passerine body mass declined significantly less than predicted by cubic geometric shrinkage of the wing, leaning toward slight stoutening.
 
-Under the crossed observer-plus-municipality specification (M1), variance competition between the collinear grouping factors widened the standard error (SE = 2.09% vs. 2.06%), yielding a contrast of +`r iso_cont`%/decade (95% CI: `r iso_cont_lo` to `r iso_cont_hi`%, $z = 1.93$, $p = 0.054$). Crucially, under both specifications, the contrast is strongly positive (+4.0% to +4.9%), never negative. In bivariate morphospace (@fig-isometry B), the Atlantic Forest community 95% confidence ellipse is positioned along the stasis and mild stoutening zone, and remains completely isolated from the morphological decoupling quadrant documented in the central Amazon (@jirinec2021morphological), where wings lengthened while body mass declined. Atlantic Forest passerines maintain stable body mass and resist structural slenderization under warming.
+In bivariate morphospace (@fig-isometry B), the Atlantic Forest community 95% confidence ellipse is positioned along the stasis and mild stoutening zone, and remains completely isolated from the morphological decoupling quadrant documented in the central Amazon (@jirinec2021morphological), where wings lengthened while body mass declined. Atlantic Forest passerines maintain stable body mass and resist structural slenderization under warming.
 
 ![Bivariate temporal allometry and test of geometric isometry on shared individuals. **(A)** Decadal rates of morphological change (% per decade) across 50 phylogenetic trees on 7,577 shared records (72 species) with simultaneous wing length and body mass measurements. Points and horizontal bars indicate estimates and 95% confidence intervals for observed wing length, observed body mass, expected isometric mass change under cubic geometric scaling ($M \propto L^3$), and the formal isometry contrast ($\Delta_{\text{iso}} = \Delta M - 3\Delta L$) under parsimonious observer control (M1a; green diamond; $z = 2.35, p = 0.019$, rejecting isometry toward mass conservation/stoutening). The central Amazonian benchmark from @jirinec2021morphological is shown for comparison. **(B)** Bivariate morphological state space ($\Delta\text{Wing}$ vs. $\Delta\text{Mass}$). The solid black line indicates strict geometric isometry ($y = 3x$), the dotted line indicates equal rates ($y = x$), and shaded zones denote proportional shrinkage (blue) and morphological decoupling/slenderization (red). The green ellipse denotes the 95% confidence ellipse for the Atlantic Forest community under observer control, encompassing mass stasis and excluding Amazonian slenderization. Semi-transparent circles represent species-specific controlled estimates ($n = 72$).](images/fig-isometry.png){#fig-isometry}
 
@@ -348,7 +367,7 @@ Under the crossed observer-plus-municipality specification (M1), variance compet
 
 Allen's rule [@allen1877; @ryding2021shape] posits that extremities such as bills enlarge in warm climates to facilitate non-evaporative thermoregulatory heat dissipation. Raw species-level trajectories for bill width displayed both increases and decreases across the community (@fig-trends C). In an unadjusted baseline model without observer controls (M0), bill width appeared to show a statistically significant positive decadal trend: $\beta = +`r bill_m0$b2`$ mm per SD-year (95% CI: +`r bill_m0$lo2` to +`r bill_m0$hi2`, $t = 2.6$, $n = `r bill_m0$n`$), a pattern that could naively be misconstrued as empirical support for Allen's rule.
 
-However, bill width was recorded by 22 field researchers across the dataset, and only two researchers sampled birds in both the early (1995–2006) and late (2013–2018) periods. When researcher identity and municipality were accounted for (M1), this apparent positive trajectory collapsed completely to zero ($\beta = `r bill_m1$b2`$ mm/SD-year, 95% CI: `r bill_m1$lo2` to `r bill_m1$hi2`, $n = `r bill_m1$n`$). In the fully controlled 50-tree phylogenetic model (M3), bill width remained entirely flat: $\beta = `r bill_m3$b2`$ mm/SD-year (95% CI: `r bill_m3$lo2` to `r bill_m3$hi2`, corresponding to −0.03 mm/decade, $n = `r bill_m3$n`$). Evaluating temporal change within the same field researcher confirmed stability ($\beta = +`r bill_within$b2`$ mm/SD-year, 95% CI: `r bill_within$lo2` to `r bill_within$hi2`). The apparent baseline increase was an artifact of later contributors systematically recording slightly wider bills. Bill width has therefore remained invariant over time, providing no empirical support for Allen's rule extremity enlargement in Atlantic Forest passerines.
+However, bill width was recorded by 22 field researchers across the dataset, and only two researchers sampled birds in both the early (1995–2006) and late (2013–2018) periods. When researcher identity was accounted for (M1), this apparent positive trajectory collapsed completely ($\beta = `r bill_m1a$b2`$ mm/SD-year, 95% CI: `r bill_m1a$lo2` to `r bill_m1a$hi2`, $n = `r bill_m1a$n`$). In the fully controlled 50-tree phylogenetic model (M3), bill width remained entirely flat: $\beta = `r bill_m3$b2`$ mm/SD-year (95% CI: `r bill_m3$lo2` to `r bill_m3$hi2`, corresponding to −0.03 mm/decade, $n = `r bill_m3$n`$). Evaluating temporal change within the same field researcher confirmed stability ($\beta = +`r bill_within$b2`$ mm/SD-year, 95% CI: `r bill_within$lo2` to `r bill_within$hi2`). The apparent baseline increase was an artifact of later contributors systematically recording slightly wider bills. Bill width has therefore remained invariant over time, providing no empirical support for Allen's rule extremity enlargement in Atlantic Forest passerines.
 
 ## Phenotypic variability across species and stability of trait variance
 
@@ -358,15 +377,15 @@ Beyond mean trait values, climate warming has been hypothesized to alter phenoty
 
 However, the mean number of contributors pooled per species-period cell rose from 3.68 early to 5.50 late (Wilcoxon $p = 5 \times 10^{-8}$), and residual standard deviations varied up to 2.5-fold among contributors. When $\ln\text{CVR}$ was evaluated strictly *within* the same contributor ($n \ge 5$ records), the apparent variance expansion disappeared ($\ln\text{CVR} = −0.249$, 95% CI: −0.515 to +0.017; $k = 15$).
 
-Continuous heteroscedastic dispersion models [`glmmTMB` `dispformula`; @williams2025glmmtmb] corroborated this result. In an unadjusted dispersion model (S0), residual standard deviation ($\sigma$) appeared to increase by +9.6%/decade (95% CI: +6.3 to +13.0%). Adding contributor and site random intercepts to the dispersion model (S3) reversed the estimate to −6.3%/decade (95% CI: −13.4 to +1.5%), overlapping zero. Furthermore, adding time-resolved local temperature to the dispersion model (S7) yielded a null association with residual variance (−0.7% per SD temperature, 95% CI: −8.7 to +8.1%, $z = −0.16$). Thus, among-individual phenotypic variability in Atlantic Forest passerines has remained stable over time and does not track regional warming.
+Continuous heteroscedastic dispersion models [`glmmTMB` `dispformula`; @williams2025glmmtmb] corroborated this result. In an unadjusted dispersion model (S0), residual standard deviation ($\sigma$) appeared to increase by +9.6%/decade (95% CI: +6.3 to +13.0%). Adding contributor random intercepts to the dispersion model (S3) reversed the estimate to −6.3%/decade (95% CI: −13.4 to +1.5%), overlapping zero. Furthermore, adding time-resolved local temperature to the dispersion model (S7) yielded a null association with residual variance (−0.7% per SD temperature, 95% CI: −8.7 to +8.1%, $z = −0.16$). Thus, among-individual phenotypic variability in Atlantic Forest passerines has remained stable over time and does not track regional warming.
 
 ## Trophic guild buffering and prey dynamics
 
-To test whether dietary reliance on invertebrates buffered or accelerated morphological trajectories, we examined species' diet composition from EltonTraits. In continuous interaction models (Model A; @fig-dietinteraction, top panel), baseline models suggested a positive interaction between year and invertebrate diet proportion ($\beta = +0.663$, 95% CI: +0.217 to +1.108; $z = 2.92$). However, adding contributor and municipality intercepts halved this interaction to $\beta = +0.319$ (95% CI: −0.019 to +0.657; $z = 1.85$), with the credible interval spanning zero. Categorical comparisons (Model B: Invertebrate vs Other; @fig-dietinteraction, bottom panel) similarly attenuated under controls ($\beta = +0.387$, 95% CI: −0.335 to +1.109).
+To test whether dietary reliance on invertebrates buffered or accelerated morphological trajectories, we examined species' diet composition from EltonTraits. In continuous interaction models (Model A; @fig-dietinteraction, top panel), baseline models suggested a positive interaction between year and invertebrate diet proportion ($\beta = +0.663$, 95% CI: +0.217 to +1.108; $z = 2.92$). However, adding contributor intercepts halved this interaction to $\beta = +0.319$ (95% CI: −0.019 to +0.657; $z = 1.85$), with the credible interval spanning zero. Categorical comparisons (Model B: Invertebrate vs Other; @fig-dietinteraction, bottom panel) similarly attenuated under controls ($\beta = +0.387$, 95% CI: −0.335 to +1.109).
 
 Across all models, the decadal slope for obligate insectivores (species at the 90th percentile of invertebrate diet) was indistinguishable from zero (−0.15 mm/decade, 95% CI: −0.67 to +0.52). Species relying predominantly on invertebrates showed no accelerated morphological change, indicating that dietary guild does not drive morphological sensitivity across this community.
 
-![Decadal wing-length change as a function of dietary reliance on invertebrates. (Top) Predicted change in wing length (mm) over time across the 10th (p10, blue), 50th (p50, orange), and 90th (p90, red) species-weighted percentiles of invertebrate diet proportion (continuous Model A), with shaded ribbons denoting Rubin-pooled 95% uncertainty across 50 phylogenetic trees. (Bottom) Predicted wing trajectories for species categorized by primary diet (Model B: Invertebrate vs Other diet). Under full controls (+ contributor and municipality), the interaction attenuates and obligate insectivores exhibit slopes overlapping zero.](images/diet_interaction_plot.png){#fig-dietinteraction}
+![Decadal wing-length change as a function of dietary reliance on invertebrates. (Top) Predicted change in wing length (mm) over time across the 10th (p10, blue), 50th (p50, orange), and 90th (p90, red) species-weighted percentiles of invertebrate diet proportion (continuous Model A), with shaded ribbons denoting Rubin-pooled 95% uncertainty across 50 phylogenetic trees. (Bottom) Predicted wing trajectories for species categorized by primary diet (Model B: Invertebrate vs Other diet). Under full controls (+ contributor), the interaction attenuates and obligate insectivores exhibit slopes overlapping zero.](images/diet_interaction_plot.png){#fig-dietinteraction}
 
 To evaluate regional prey availability, we examined regional insect evidence. While widespread terrestrial insect declines have been reported across fragmented Brazilian biomes [e.g., in butterflies, bees, and dung beetles; @lewinsohn2022insect], multi-decadal, standardized prey monitoring within tropical forest understoreys remains an acute macroecological knowledge gap. Global compilations such as PREDICTS [@hudson2017database] lacked multi-year temporal depth in the Atlantic Forest (53 of 56 studies were single-calendar-year snapshots). As a regionally matched alternative, we modeled litter-ant richness from the ATLANTIC ANTS database [@silva2022atlanticants] across 855 standardized campaign events (1994–2018). While litter-ant richness showed a negative trend under controls (−20.1%/decade, 95% CI: −31.1 to −7.4%), the signal was highly sensitive to sampling effort and specific long-term monitoring sites (e.g., PERD), and ground-dwelling litter ants represent only a fraction of avian invertebrate diets. Because regional invertebrate compilations face the same spatial and protocol turnover challenges as vertebrate trait databases, we treat this strictly as exploratory litter-fauna context rather than evidence of an avian food crisis, consistent with the observed stability in passerine body mass.
 
@@ -436,26 +455,24 @@ In avian morphometrics, inter-observer measurement error is well-documented to r
 
 In the ATLANTIC BIRD TRAITS compilation, the field measurer column (`Measurer`) is 100% missing (NA) and literature reference (`Reference`) is 99% missing. However, the identity of the principal investigator and research group coordinator (`Main_researcher`) is 100% complete across all analytical records, comprising 42 distinct contributors in our wing dataset. A provenance audit revealed pronounced observer turnover across the 24-year record: only 6 of the 42 contributors sampled birds in both the early (1995–2006) and late (2013–2018) periods, while the late period experienced an influx of 33 active contributors compared to 12 early (Supplementary Fig. S1). To account for baseline measurement idiosyncrasies among research groups, we incorporated a random intercept for researcher identity (`(1 | Main_researcher)`).
 
-### Spatial turnover and municipal random effects (`Municipality`)
+### Spatial provenance and continuous environmental controls
 
 Over the 24-year timeframe, geographical sampling shifted substantially: early captures (1995–2006) were heavily concentrated in the southern Atlantic Forest (mean latitude $-24.8^\circ$), whereas later captures (2013–2018) expanded northwards (mean latitude $-21.9^\circ$) and into higher elevations (median altitude shifting from 175 m to 489 m). Because widespread passerines frequently exhibit ecogeographical clines in body size, geographic turnover across sampling periods can easily mimic temporal phenotypic change.
 
-To account for spatial clustering and local population differentiation, we evaluated spatial grouping variables. While the database contains a specific field station/farm name column (`Locality`), this column contains 193 levels and 11% missing values (NA). Using `Locality` as a random effect would therefore discard over 1,000 biological records due to missing locality names. In contrast, municipality (`Municipality`, 130 levels) is 100% complete across all 12,571 analytical records. `Municipality` represents an administrative spatial unit that groups contiguous field stations and forest fragments within local landscapes without any data loss. We therefore incorporated `(1 | Municipality)` as a spatial random intercept. To capture continuous spatial and elevational variation, subsequent model tiers also included standardized latitude (`scaled_lat`), standardized longitude (`scaled_long`), and elevation (`scaled_elev`).
+To account for continuous spatial and elevational variation without discarding records or introducing artificial clustering, models incorporated standardized latitude (`scaled_lat`), standardized longitude (`scaled_long`), and standardized elevation (`scaled_elev`) as continuous covariates.
 
-### Sampling hierarchy, collinearity, and random-effect specifications
+### Sampling hierarchy, collinearity, and exclusion of administrative municipality
 
 A critical structural consideration in multi-source macroecological databases is the hierarchical relationship between research teams and geographic sampling units. Across the 24-year ATLANTIC BIRD TRAITS compilation, individual field projects were typically conducted by distinct research groups operating within specific municipal territories. Consequently, spatial and observer grouping factors exhibit substantial collinearity: in our shared analytical sample ($n = 7,577$), 110 of 128 municipalities (85.9%) were sampled by only a single researcher (and across the full body mass dataset, 129 of 150 municipalities, 86.0%, were sampled by a single researcher). Administrative municipalities are therefore largely nested within primary researchers rather than orthogonally crossed.
 
-In our primary single-trait model ladders (M1, M2, M3 for wing length, body mass, and bill width across 11,000–12,500 records), we deliberately retained both `(1 | Main_researcher)` and `(1 | Municipality)` as crossed random intercepts. In these macroecological control tiers, retaining both components provides a conservative dual safeguard: `(1 | Main_researcher)` absorbs idiosyncratic measurement biases among field teams (the dominant proximate driver of caliper tension and wing flattening differences), while `(1 | Municipality)` absorbs fine-scale geographic clustering and local population structure across the biome. As documented in our model comparison ladder (@tbl-controlled-wing), both components contribute independently to attenuating naive baseline trends without compromising model convergence.
-
-However, for linear combinations of coefficients across traits—such as the geometric isometry contrast on shared individuals—variance competition between two 86% collinear grouping factors inflates the standard error of the contrast. Because observer technique directly governs morphometric measurement error, we adopted the parsimonious observer model (**M1a**) as the primary specification for the bivariate isometry test, reporting the crossed model (**M1**) alongside it for full sensitivity and transparency.
+Because morphometric measurement error (caliper tension, wing flattening, scale calibration) is a proximate property of the research team rather than administrative municipal boundaries, and because geographic and altitudinal clines are directly controlled via continuous coordinates and elevation, incorporating a redundant `(1 | Municipality)` random intercept induces variance competition, collinearity, and parameter inflation without improving model fit. We therefore adopted the parsimonious observer model (`(1 | Main_researcher)`) across all univariate and bivariate model tiers, avoiding collinear crossed random effects while ensuring robust parameter estimation and biological interpretability.
 
 ## Model sequence and within-between decomposition
 
 To rigorously evaluate how dataset structure influences temporal trends, we fitted a ladder of increasingly controlled mixed-effects models across sequential tiers:
 
 - **M0 (Baseline)**: Replicating published unadjusted model structures, accounting only for sex, calendar year (`scaled_yr`, centered and divided by its standard deviation, SD = 5.02 years), latitude (`scaled_lat`), species-specific random slopes and intercepts `(1 + scaled_yr || Binomial)`, and phylogenetic covariance `propto(0 + species_name | g, A)`.
-- **M1**: Adding random intercepts for researcher identity `(1 | Main_researcher)` and spatial municipality `(1 | Municipality)`.
+- **M1**: Adding a random intercept for researcher identity `(1 | Main_researcher)` to absorb inter-observer measurement error.
 - **M2**: Adding fixed effects for protocol proxy (`wing_col`: right wing, left wing, or side unspecified), standardized longitude (`scaled_long`), and standardized elevation (`scaled_elev`).
 - **M3 (Fully controlled model)**: Adding fixed effects for seasonal quarter (DJF: Dec–Feb; MAM: Mar–May; JJA: Jun–Aug; SON: Sep–Nov) to account for feather wear across the annual cycle, active primary moult status (`Molt`), and individual bird band identity `(1 | ID_individual)` (Ring $\times$ Species) to account for repeated captures of banded individuals.
 - **Within-between decomposition (Mundlak REWB)**: To definitively separate true temporal change occurring within consistent field researchers from compositional turnover across researchers, calendar year was partitioned into researcher mean capture year ($\bar{Y}_j = \text{yr\_src\_mean}$) and individual capture deviations from that researcher mean ($Y_{ij} - \bar{Y}_j = \text{yr\_within\_src}$) [@mundlak1978pooling; @bell2019fixed]. The within-observer coefficient $\beta_{\text{within}}$ measures whether birds measured by the *same* researcher shrank over time, free from observer turnover bias.
@@ -471,9 +488,10 @@ Taxonomic reconciliation between the ATLANTIC BIRD TRAITS database and the compl
 
 To accommodate phylogenetic uncertainty, we drew 50 alternative phylogenetic topologies from the posterior distribution of @mctavish2025tree. For each tree, we computed the phylogenetic correlation matrix $A$ under a Brownian motion model of trait evolution. Fitting full multi-level models across 50 trees with Bayesian MCMC (e.g., in `brms`) is computationally prohibitive for complex random-effect structures. We therefore implemented the fast, exact `propto` covariance structure in `glmmTMB` v1.1.14 [@williams2025glmmtmb]:
 ```r
-glmmTMB(formula = conc.wing.length ~ Sex + scaled_yr + scaled_lat + season + Molt + 
-          (1 + scaled_yr || Binomial) + (1 | Main_researcher) + (1 | Municipality) + 
-          (1 | ID_individual) + propto(0 + species_name | g, A),
+glmmTMB(formula = conc.wing.length ~ Sex + scaled_yr + scaled_lat + scaled_long + 
+          scaled_elev + season + Molt + (1 + scaled_yr || Binomial) + 
+          (1 | Main_researcher) + (1 | ID_individual) + 
+          propto(0 + species_name | g, A),
         data = dat, REML = TRUE)
 ```
 where `g` is a dummy grouping factor assigning all observations to a single covariance structure governed by matrix `A`. Extensive validation against 50-tree `brms` fits confirmed that `glmmTMB` `propto` reproduces Bayesian posterior means and standard errors to within 0.001 units while reducing computational run times by over 95% (`Analysis/scripts/GLMMTMB_ENGINE.md`).
@@ -484,7 +502,7 @@ where $\bar{V} = \frac{1}{K}\sum_{k=1}^K V_k$ is the mean within-tree variance a
 
 ## Body mass and bill width modeling and testing Allen's rule
 
-To evaluate whether temporal shifts occurred in body mass and extremity dimensions, we applied the sequential control ladder to log-transformed body mass ($n = 11,077$) and bill width ($n = 3,205$). Models incorporated sex, latitude, species-specific random slopes and intercepts across 50 phylogenetic trees, researcher identity, municipality, season, active moult, and individual bird identity.
+To evaluate whether temporal shifts occurred in body mass and extremity dimensions, we applied the sequential control ladder to log-transformed body mass ($n = 11,077$) and bill width ($n = 3,205$). Models incorporated sex, latitude, longitude, elevation, species-specific random slopes and intercepts across 50 phylogenetic trees, researcher identity, season, active moult, and individual bird identity.
 
 To evaluate diurnal feeding rhythms in body mass, we extracted recorded capture time (`Hour`) for the 8,345 mass records with available time stamps. We modeled diurnal mass gain by including continuous capture hour (`hour_num`, 06:00 to 18:00) alongside calendar year.
 
@@ -494,7 +512,7 @@ To evaluate Allen's rule [@allen1877; @ryding2021shape], which predicts that ext
 
 To evaluate whether body shape changed over time, we analyzed the subset of records with simultaneous measurements of both wing length and body mass on the exact same individual birds ($n = 7,577$ shared records across 72 species). We fitted models estimating trait-specific decadal rates of change expressed as percentage change per decade (%/decade): $\beta_{\text{wing,\%}}$ and $\beta_{\text{mass,\%}}$.
 
-To avoid the variance inflation induced by crossing two grouping factors that are 85.9% collinear (110 of 128 municipalities sampled by a single researcher), our primary model specification was the parsimonious observer model (**M1a**), which incorporates `(1 | Main_researcher)`, sex, latitude, species-specific random slopes and intercepts across 50 phylogenetic trees. For sensitivity comparison, we also fitted the crossed model (**M1**) incorporating both `(1 | Main_researcher)` and `(1 | Municipality)`.
+To avoid the variance inflation induced by crossing two grouping factors that are 85.9% collinear (110 of 128 municipalities sampled by a single researcher), all models incorporated the parsimonious observer random intercept `(1 | Main_researcher)`, alongside sex, latitude, and species-specific random slopes and intercepts across 50 phylogenetic trees.
 
 Under geometric isometry, body mass scales with the cube of linear dimensions ($M \propto L^3$). If proportional scaling is preserved, an observed percentage change in wing length $\beta_{\text{wing,\%}}$ implies an expected percentage change in body mass of:
 $$\beta_{\text{mass, expected}} = \left(1 + \frac{\beta_{\text{wing,\%}}}{100}\right)^3 - 1 \approx 3 \times \beta_{\text{wing,\%}}$$
@@ -513,12 +531,12 @@ Among-individual phenotypic variability was modeled using two complementary appr
    $$\ln\text{CVR} = \ln\left(\frac{\operatorname{CV}_{\text{late}}}{\operatorname{CV}_{\text{early}}}\right) + \frac{1}{2(n_{\text{late}} - 1)} - \frac{1}{2(n_{\text{early}} - 1)}$$
    where sampling variance incorporates the observed correlation between log mean and log standard deviation within each period. Effect sizes were pooled in random-effects meta-analytic models using `metafor` [@viechtbauer2010metafor]. To distinguish genuine biological variance shifts from observer pooling artifacts, $\ln\text{CVR}$ was calculated both pooled across all observers ($k = 54$ for wing; $k = 57$ for body mass; $k = 36$ for bill width) and strictly within the same primary researcher ($k = 15$).
 2. **Continuous heteroscedastic dispersion models**: In `glmmTMB`, we specified a dispersion submodel (`dispformula`) allowing residual standard deviation $\sigma_i$ to vary continuously over time and across observers:
-   $$\log(\sigma_i) = \alpha_0 + \alpha_1 \text{scaled\_yr}_i + \alpha_2 \text{Sex}_i + u_{\text{researcher}} + u_{\text{municipality}}$$
+   $$\log(\sigma_i) = \alpha_0 + \alpha_1 \text{scaled\_yr}_i + \alpha_2 \text{Sex}_i + u_{\text{researcher}}$$
    where $\alpha_1$ captures the decadal rate of change in residual standard deviation. In model tier S7, standardized local mean annual temperature (`scaled_tmean`) was added to the dispersion formula to test whether residual variance tracked environmental warming.
 
 ## Trophic interactions and regional prey context
 
-Species' dietary reliance on invertebrates was extracted from the EltonTraits 1.0 database [@wilman2014eltontraits] (`Diet-Inv`, % of diet consisting of invertebrates). In continuous interaction models (Model A), `Diet-Inv` was standardized ($z$-score) and interacted with calendar year (`scaled_yr * diet_inv_std`). Wing-length trajectories were projected across the 10th (p10), 50th (p50), and 90th (p90) species-weighted percentiles of invertebrate reliance. In categorical models (Model B), diet was collapsed into Invertebrate-dominated ($\ge 50\%$ invertebrate diet) versus Other (frugivores, nectarivores, granivores, omnivores). Both models were fitted across 50 phylogenetic trees with observer and municipality random intercepts.
+Species' dietary reliance on invertebrates was extracted from the EltonTraits 1.0 database [@wilman2014eltontraits] (`Diet-Inv`, % of diet consisting of invertebrates). In continuous interaction models (Model A), `Diet-Inv` was standardized ($z$-score) and interacted with calendar year (`scaled_yr * diet_inv_std`). Wing-length trajectories were projected across the 10th (p10), 50th (p50), and 90th (p90) species-weighted percentiles of invertebrate reliance. In categorical models (Model B), diet was collapsed into Invertebrate-dominated ($\ge 50\%$ invertebrate diet) versus Other (frugivores, nectarivores, granivores, omnivores). Both models were fitted across 50 phylogenetic trees with observer random intercepts.
 
 To evaluate regional prey trends, we modeled litter-ant richness from the ATLANTIC ANTS database [@silva2022atlanticants] across 855 standardized field campaigns (1994–2018). We fitted negative-binomial generalized linear mixed models in `glmmTMB` specifying observed ant species richness per campaign as a function of calendar year, with the log of sampling effort (number of pitfall traps $\times$ operational days) as an offset, and random intercepts for contributor, municipality, and sampling locality.
 
