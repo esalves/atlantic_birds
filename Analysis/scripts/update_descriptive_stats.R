@@ -70,11 +70,15 @@ wing.by.spp <- passer.quart.years %>%
   summarise(mean.wing       = mean(conc.wing.length, na.rm = TRUE),
             sd.wing         = sd(conc.wing.length,   na.rm = TRUE),
             sample.n.wing   = sum(!is.na(conc.wing.length)),
+            mean.mass       = mean(Body_mass.g.,     na.rm = TRUE),
+            sd.mass         = sd(Body_mass.g.,       na.rm = TRUE),
+            sample.n.mass   = sum(!is.na(Body_mass.g.)),
             mean.bill.width = mean(Bill_width.mm.,   na.rm = TRUE),
             sd.bill         = sd(Bill_width.mm.,     na.rm = TRUE),
             sample.n.bill   = sum(!is.na(Bill_width.mm.)),
             .groups = "drop_last") %>%
   mutate(size.trend      = mean.wing - lag(mean.wing),
+         size.trend.mass = mean.mass - lag(mean.mass),
          size.trend.bill = mean.bill.width - lag(mean.bill.width)) %>%
   ungroup()
 
@@ -83,21 +87,31 @@ wing.by.spp <- passer.quart.years %>%
 # is present in only one quartile -> excluded, as in the Rmd/figures).
 out$wing_dec <- sum(wing.by.spp$size.trend      < 0, na.rm = TRUE)
 out$wing_inc <- sum(wing.by.spp$size.trend      > 0, na.rm = TRUE)
+out$mass_dec <- sum(wing.by.spp$size.trend.mass < 0, na.rm = TRUE)
+out$mass_inc <- sum(wing.by.spp$size.trend.mass > 0, na.rm = TRUE)
 out$bill_dec <- sum(wing.by.spp$size.trend.bill < 0, na.rm = TRUE)
 out$bill_inc <- sum(wing.by.spp$size.trend.bill > 0, na.rm = TRUE)
 out$wing_quartile_n <- out$wing_dec + out$wing_inc
+out$mass_quartile_n <- out$mass_dec + out$mass_inc
 out$bill_quartile_n <- out$bill_dec + out$bill_inc
 
-# --- lnCVR meta-analyses (wing & bill) -------------------------------------
+# --- lnCVR meta-analyses (wing, mass & bill) -------------------------------
 dat.lnCVR <- dcast(setDT(wing.by.spp), spp ~ period,
-                   value.var = c("mean.wing", "sd.wing", "mean.bill.width",
-                                 "sd.bill", "sample.n.wing", "sample.n.bill"))
+                   value.var = c("mean.wing", "sd.wing", "mean.mass", "sd.mass",
+                                 "mean.bill.width", "sd.bill",
+                                 "sample.n.wing", "sample.n.mass", "sample.n.bill"))
 
 cor.wing.e <- cor(log(wing.by.spp$mean.wing[wing.by.spp$period == "1990-2006"]),
                   log(wing.by.spp$sd.wing[wing.by.spp$period == "1990-2006"]),
                   use = "complete.obs")
 cor.wing.l <- cor(log(wing.by.spp$mean.wing[wing.by.spp$period == "2013-2018"]),
                   log(wing.by.spp$sd.wing[wing.by.spp$period == "2013-2018"]),
+                  use = "complete.obs")
+cor.mass.e <- cor(log(wing.by.spp$mean.mass[wing.by.spp$period == "1990-2006"]),
+                  log(wing.by.spp$sd.mass[wing.by.spp$period == "1990-2006"]),
+                  use = "complete.obs")
+cor.mass.l <- cor(log(wing.by.spp$mean.mass[wing.by.spp$period == "2013-2018"]),
+                  log(wing.by.spp$sd.mass[wing.by.spp$period == "2013-2018"]),
                   use = "complete.obs")
 cor.bill.e <- cor(log(wing.by.spp$mean.bill.width[wing.by.spp$period == "1990-2006"]),
                   log(wing.by.spp$sd.bill[wing.by.spp$period == "1990-2006"]),
@@ -114,6 +128,14 @@ dat.lnCVR$s2.lnCVR.wing <- s2.lnCVR(dat.lnCVR$`mean.wing_1990-2006`, dat.lnCVR$`
                                     dat.lnCVR$`mean.wing_2013-2018`, dat.lnCVR$`sd.wing_2013-2018`,
                                     dat.lnCVR$`sample.n.wing_2013-2018`, cor.wing.l)
 
+dat.lnCVR$lnCVR.mass <- log((dat.lnCVR$`sd.mass_2013-2018`/dat.lnCVR$`mean.mass_2013-2018`)/
+                            (dat.lnCVR$`sd.mass_1990-2006`/dat.lnCVR$`mean.mass_1990-2006`)) +
+  (1/(2*(dat.lnCVR$`sample.n.mass_2013-2018`-1))) - (1/(2*(dat.lnCVR$`sample.n.mass_1990-2006`-1)))
+dat.lnCVR$s2.lnCVR.mass <- s2.lnCVR(dat.lnCVR$`mean.mass_1990-2006`, dat.lnCVR$`sd.mass_1990-2006`,
+                                    dat.lnCVR$`sample.n.mass_1990-2006`, cor.mass.e,
+                                    dat.lnCVR$`mean.mass_2013-2018`, dat.lnCVR$`sd.mass_2013-2018`,
+                                    dat.lnCVR$`sample.n.mass_2013-2018`, cor.mass.l)
+
 dat.lnCVR$lnCVR.bill <- log((dat.lnCVR$`sd.bill_2013-2018`/dat.lnCVR$`mean.bill.width_2013-2018`)/
                             (dat.lnCVR$`sd.bill_1990-2006`/dat.lnCVR$`mean.bill.width_1990-2006`)) +
   (1/(2*(dat.lnCVR$`sample.n.bill_2013-2018`-1))) - (1/(2*(dat.lnCVR$`sample.n.bill_1990-2006`-1)))
@@ -123,6 +145,7 @@ dat.lnCVR$s2.lnCVR.bill <- s2.lnCVR(dat.lnCVR$`mean.bill.width_1990-2006`, dat.l
                                     dat.lnCVR$`sample.n.bill_2013-2018`, cor.bill.l)
 
 m.wing <- rma(yi = lnCVR.wing, vi = s2.lnCVR.wing, method = "REML", data = dat.lnCVR)
+m.mass <- rma(yi = lnCVR.mass, vi = s2.lnCVR.mass, method = "REML", data = dat.lnCVR)
 m.bill <- rma(yi = lnCVR.bill, vi = s2.lnCVR.bill, method = "REML", data = dat.lnCVR)
 
 out$lncvr_wing  <- round(as.numeric(m.wing$b), 3)
@@ -130,6 +153,13 @@ out$lncvr_wing_lo <- round(m.wing$ci.lb, 3)
 out$lncvr_wing_hi <- round(m.wing$ci.ub, 3)
 out$lncvr_wing_k  <- m.wing$k
 out$lncvr_wing_I2 <- round(m.wing$I2, 1)
+
+out$lncvr_mass  <- round(as.numeric(m.mass$b), 3)
+out$lncvr_mass_lo <- round(m.mass$ci.lb, 3)
+out$lncvr_mass_hi <- round(m.mass$ci.ub, 3)
+out$lncvr_mass_k  <- m.mass$k
+out$lncvr_mass_I2 <- round(m.mass$I2, 1)
+
 out$lncvr_bill  <- round(as.numeric(m.bill$b), 3)
 out$lncvr_bill_lo <- round(m.bill$ci.lb, 3)
 out$lncvr_bill_hi <- round(m.bill$ci.ub, 3)
@@ -204,6 +234,7 @@ saveRDS(out, out_path("descriptive_summary.rds"))
 exp_cols <- passer90 %>%
   transmute(Binomial, Year,
             cwl = conc.wing.length,
+            Body_mass.g.,
             Bill_width.mm.,
             Longitude_decimal_degrees, Latitude_decimal_degrees)
 data.table::fwrite(exp_cols, derived_path("passer90_export.csv"))
@@ -216,6 +247,8 @@ cat("\nWING: beta_yr", out$wing_yr, "[", out$wing_yr_lo, out$wing_yr_hi, "] N", 
 cat("BILL: beta_yr", out$bill_yr, "[", out$bill_yr_lo, out$bill_yr_hi, "] N", out$n_rec_bill,
     " excl0:", out$bill_yr_excl_zero, " phylo", out$bill_phylo, "\n")
 cat("Quartile wing: dec", out$wing_dec, "inc", out$wing_inc, " (of", out$wing_quartile_n, ")\n")
+cat("Quartile mass: dec", out$mass_dec, "inc", out$mass_inc, " (of", out$mass_quartile_n, ")\n")
 cat("Quartile bill: dec", out$bill_dec, "inc", out$bill_inc, " (of", out$bill_quartile_n, ")\n")
 cat("lnCVR wing:", out$lncvr_wing, "[", out$lncvr_wing_lo, out$lncvr_wing_hi, "] k", out$lncvr_wing_k, "I2", out$lncvr_wing_I2, "\n")
+cat("lnCVR mass:", out$lncvr_mass, "[", out$lncvr_mass_lo, out$lncvr_mass_hi, "] k", out$lncvr_mass_k, "I2", out$lncvr_mass_I2, "\n")
 cat("lnCVR bill:", out$lncvr_bill, "[", out$lncvr_bill_lo, out$lncvr_bill_hi, "] k", out$lncvr_bill_k, "I2", out$lncvr_bill_I2, "\n")

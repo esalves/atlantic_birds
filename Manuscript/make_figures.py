@@ -81,7 +81,9 @@ CSV  = os.path.join(ANALYSIS, "data", "derived", "passer90_export.csv")
 
 # --- canonical lnCVR meta-analytic means (metafor::rma REML; descriptive_summary.rds) ---
 # Used for the Fig 4 summary line so the figure matches the values quoted in the text.
-LNCVR = {"cwl": (0.183, 0.033, 0.334), "Bill_width.mm.": (0.107, -0.196, 0.411)}
+LNCVR = {"cwl": (0.177, 0.031, 0.323),
+         "Body_mass.g.": (0.193, 0.021, 0.366),
+         "Bill_width.mm.": (0.068, -0.146, 0.282)}
 
 plt.rcParams.update({"font.size": 9, "axes.spines.top": False,
                      "axes.spines.right": False, "figure.dpi": 150})
@@ -403,26 +405,29 @@ else:
     print("SKIPPED fig-species-slopes (fig_species_slopes.csv missing)")
 
 # ---------------------------------------------------------------------------
-# FIG 3 - per-species wing & bill trajectories, early vs late  [unchanged]
+# FIG 3 - per-species wing, mass & bill trajectories, early vs late
 # ---------------------------------------------------------------------------
 def per_species(metric):
     g = q.dropna(subset=[metric]).groupby(["Binomial", "period"])[metric].mean()
     return g.unstack().dropna()
-fig, axes = plt.subplots(1, 2, figsize=(8, 4.3))
-for ax, (metric, lab) in zip(axes, [("cwl", "Wing length"), ("Bill_width.mm.", "Bill width")]):
+fig, axes = plt.subplots(1, 3, figsize=(11.5, 4.3))
+traits_fig3 = [("cwl", "Wing length", "mm"),
+               ("Body_mass.g.", "Body mass", "g"),
+               ("Bill_width.mm.", "Bill width", "mm")]
+for ax, (metric, lab, unit) in zip(axes, traits_fig3):
     wmat = per_species(metric)
     for sp, row in wmat.iterrows():
         e, l = row["1995–2006"], row["2013–2018"]
         ax.plot([0, 1], [e, l], color=(DEC if l < e else INC), alpha=0.6, lw=1)
     ax.set_xticks([0, 1]); ax.set_xticklabels(["1995–2006", "2013–2018"])
-    ax.set_ylabel(f"{lab} (mm)"); ax.set_title(lab, fontsize=10)
+    ax.set_ylabel(f"{lab} ({unit})"); ax.set_title(lab, fontsize=10)
 fig.legend([Line2D([0], [0], color=DEC), Line2D([0], [0], color=INC)],
            ["Decrease", "Increase"], loc="lower center", ncol=2, frameon=False,
-           bbox_to_anchor=(0.5, -0.04))
+           bbox_to_anchor=(0.5, -0.05))
 fig.tight_layout(); fig.savefig(f"{OUT}/fig-trends.png", bbox_inches="tight"); plt.close(fig)
 
 # ---------------------------------------------------------------------------
-# FIG 4 - lnCVR forest plots, TWO panels (wing & bill); corrected SE  [unchanged]
+# FIG 4 - lnCVR forest plots, THREE panels (wing, mass & bill); corrected SE
 # ---------------------------------------------------------------------------
 def lncvr_table(metric):
     g = q.dropna(subset=[metric]).groupby(["Binomial", "period"])[metric].agg(m="mean", s="std", n="count").reset_index()
@@ -451,8 +456,11 @@ def re_mean(t):
     mur = (wr * t["lncvr"]).sum() / wr.sum(); se = np.sqrt(1 / wr.sum())
     return mur, mur - 1.96 * se, mur + 1.96 * se
 
-fig, axes = plt.subplots(1, 2, figsize=(9, 8))
-for ax, (metric, lab) in zip(axes, [("cwl", "Wing length"), ("Bill_width.mm.", "Bill width")]):
+fig, axes = plt.subplots(1, 3, figsize=(13, 8))
+traits_fig4 = [("cwl", "Wing length"),
+               ("Body_mass.g.", "Body mass"),
+               ("Bill_width.mm.", "Bill width")]
+for ax, (metric, lab) in zip(axes, traits_fig4):
     t = lncvr_table(metric); y = np.arange(len(t))
     mu, mlo, mhi = LNCVR[metric]                       # canonical metafor values (match the text)
     chk = re_mean(t)                                   # Python re-computation, for a sanity check
@@ -460,7 +468,7 @@ for ax, (metric, lab) in zip(axes, [("cwl", "Wing length"), ("Bill_width.mm.", "
                 color="#333333", ecolor="#AAAAAA", capsize=1.2)
     ax.axvline(0, ls="--", color="grey", lw=0.8)
     ax.axvspan(mlo, mhi, color="#5B7FB5", alpha=0.18); ax.axvline(mu, color="#2E5090", lw=1.3)
-    ax.set_yticks(y); ax.set_yticklabels([s.replace("_", " ") for s in t["sp"]], fontsize=4.5, style="italic")
+    ax.set_yticks(y); ax.set_yticklabels([s.replace("_", " ") for s in t["sp"]], fontsize=4.2, style="italic")
     ax.set_xlabel("lnCVR (late vs early) · 95% CI")
     ax.set_title(f"{lab}\nmeta-analytic mean = {mu:.2f} [{mlo:.2f}, {mhi:.2f}]", fontsize=9)
     print(f"{lab}: metafor mean {mu} [{mlo}, {mhi}]; python re-check {chk[0]:.3f} [{chk[1]:.3f}, {chk[2]:.3f}] (k={len(t)})")

@@ -48,9 +48,9 @@ keywords:
   - Atlantic Forest
   - phylogenetic comparative analysis
 abstract: |
-  Declining body size is widely hypothesized as a universal ecological response of endotherms to anthropogenic climate warming. In tropical biomes, empirical evaluations of multi-decadal phenotypic trends remain scarce. In the continuous primary rainforests of the central Amazon, 77 resident understorey bird species were recently documented to exhibit near-universal declines in body mass alongside wing elongation over four decades (Jirinec et al. 2021). Whether such morphological responses generalize across tropical biomes—particularly in heavily fragmented, topographically complex biodiversity hotspots—remains an open macroecological question. Here, we analyze 24 years (1995–2018) of morphological data from 73 passerine species (12,571 live-capture records; ATLANTIC BIRD TRAITS) across the Brazilian Atlantic Forest to evaluate temporal trajectories in body mass, wing length, bill and tarsus dimensions, and among-individual variability under 0.25°C/decade of regional warming. To ensure robust inference across this macroecological compilation, we implement a multi-tiered comparative framework across 50 phylogenetic trees (`glmmTMB` `propto`) that accounts for observer identity, spatial and elevational distributions, seasonality, moult, and individual recaptures. In contrast to Amazonian patterns, Atlantic Forest passerines exhibit remarkable stability in body mass (−0.91%/decade, 95% CI: −2.75 to +0.94%), despite marked diurnal mass gains (+0.40%/hour). Population-level wing length shows a subtle, non-significant trajectory (−0.74 mm/decade, 95% CI: −1.55 to +0.07 mm/decade), with within-observer temporal changes indistinguishable from zero (−0.32 mm/decade, 95% CI: −1.59 to +0.96). Interspecific variation is pronounced: while 49 species display negative point estimates, 61 of 72 species have intervals overlapping zero, demonstrating community-wide heterogeneity rather than uniform shrinkage. Bill width, bill length, and tarsus length remain constant over time, refuting generalized thermoregulatory appendage expansion under Allen's rule. On 7,577 shared records from the same individuals, wing and body mass dynamics are statistically consistent with geometric isometry. Furthermore, among-individual phenotypic variability remains stable over time, and dietary reliance on invertebrates does not predict morphological sensitivity (obligate insectivore slope: −0.15 mm/decade, spanning zero). Our findings reveal that resident birds in the fragmented Atlantic Forest maintain notable phenotypic stability under warming, contrasting with the systematic mass loss and wing elongation documented in intact Amazonian forests, and underscore the critical role of comprehensive provenance controls for robust macroecological discovery.
+  Declining body size is widely hypothesized as a universal ecological response of endotherms to anthropogenic climate warming. In tropical biomes, empirical evaluations of multi-decadal phenotypic trends remain scarce. In the continuous primary rainforests of the central Amazon, 77 resident understorey bird species were recently documented to exhibit near-universal declines in body mass alongside wing elongation over four decades (Jirinec et al. 2021). Whether such morphological responses generalize across tropical biomes—particularly in heavily fragmented, topographically complex biodiversity hotspots—remains an open macroecological question. Here, we analyze 24 years (1995–2018) of morphological data from 73 passerine species (12,571 live-capture records; ATLANTIC BIRD TRAITS) across the Brazilian Atlantic Forest to evaluate temporal trajectories in body mass, wing length, bill width, and among-individual variability under 0.25°C/decade of regional warming. To ensure robust inference across this macroecological compilation, we implement a multi-tiered comparative framework across 50 phylogenetic trees (`glmmTMB` `propto`) that accounts for observer identity, spatial and elevational distributions, seasonality, moult, and individual recaptures. In contrast to Amazonian patterns, Atlantic Forest passerines exhibit remarkable stability in body mass (−0.91%/decade, 95% CI: −2.72 to +0.94%), despite marked diurnal mass gains (+0.40%/hour). Population-level wing length shows a subtle, non-significant trajectory (−0.74 mm/decade, 95% CI: −1.55 to +0.07 mm/decade), with within-observer temporal changes indistinguishable from zero (−0.32 mm/decade, 95% CI: −1.59 to +0.96). Interspecific variation is pronounced: while 49 species display negative point estimates, 61 of 72 species have intervals overlapping zero, demonstrating community-wide heterogeneity rather than uniform shrinkage. Bill width remains constant over time (−0.03 mm/decade, 95% CI: −0.18 to +0.13 mm/decade), refuting generalized thermoregulatory appendage expansion under Allen's rule. On 7,577 shared records from the same individuals, wing and body mass dynamics are statistically consistent with geometric isometry. Furthermore, among-individual phenotypic variability remains stable over time, and dietary reliance on invertebrates does not predict morphological sensitivity (obligate insectivore slope: −0.15 mm/decade, spanning zero). Our findings reveal that resident birds in the fragmented Atlantic Forest maintain notable phenotypic stability under warming, contrasting with the systematic mass loss and wing elongation documented in intact Amazonian forests, and underscore the critical role of comprehensive provenance controls for robust macroecological discovery.
 plain-language-summary: |
-  As global temperatures rise, many animals are suspected to be shrinking in body size or changing shape to cope with heat. While birds in the intact Amazon rainforest were recently found to be losing weight and growing longer wings over the past four decades, whether birds in other tropical forests respond similarly has been unclear. Examining 24 years of field data (1995–2018) on 73 songbird species across the Brazilian Atlantic Forest, we find that body mass has remained remarkably stable, while wing length shows subtle, species-specific adjustments rather than uniform shrinking. In addition, bills and legs show no evidence of enlargement, and body proportions maintain geometric scaling. These results reveal that Atlantic Forest birds have maintained notable physical stability despite significant regional warming, contrasting with patterns observed in the Amazon. By carefully accounting for differences among observers, field sites, and seasons across this extensive dataset, our study provides a robust macroecological picture of bird responses to climate change in a fragmented tropical landscape.
+  As global temperatures rise, many animals are suspected to be shrinking in body size or changing shape to cope with heat. While birds in the intact Amazon rainforest were recently found to be losing weight and growing longer wings over the past four decades, whether birds in other tropical forests respond similarly has been unclear. Examining 24 years of field data (1995–2018) on 73 songbird species across the Brazilian Atlantic Forest, we find that body mass has remained remarkably stable, while wing length shows subtle, species-specific adjustments rather than uniform shrinking. In addition, bills show no evidence of enlargement, and body proportions maintain geometric scaling. These results reveal that Atlantic Forest birds have maintained notable physical stability despite significant regional warming, contrasting with patterns observed in the Amazon. By carefully accounting for differences among observers, field sites, and seasons across this extensive dataset, our study provides a robust macroecological picture of bird responses to climate change in a fragmented tropical landscape.
 date: last-modified
 bibliography: references.bib
 citation:
@@ -76,6 +76,8 @@ es          <- readRDS("../Analysis/output/effect_scale.rds")
 .s <- function(x) sub("-", "−", sprintf("%.2f", x))
 # format a signed value to 1 dp with a true minus sign
 .s1 <- function(x) sub("-", "−", sprintf("%.1f", x))
+# format a signed estimate to 4 dp with a true minus sign
+.s4 <- function(x) sub("-", "−", sprintf("%.4f", x))
 
 # pull row from cw_phylo$before_after with optional term filtering
 .cw <- function(mod, term = NULL) {
@@ -117,18 +119,34 @@ if (!is.null(es)) {
 }
 
 # multi-trait comparisons from multi_phylo
-.mt <- function(trait_name, mod = "M3_ring") {
+.mt_phylo <- function(trait_name, mod, term = "scaled_yr") {
   df <- multi_phylo$comparison_lme4
-  r <- df[df$trait == trait_name & df$model == mod & df$term == "scaled_yr", ]
-  if (nrow(r) == 0) return(list(b = "NA", lo = "NA", hi = "NA", n = "NA"))
-  list(b = .s(r$phylo_estimate[1]), lo = .s(r$phylo_lower[1]), hi = .s(r$phylo_upper[1]), n = .n(r$phylo_n[1]))
+  r <- df[df$trait == trait_name & df$model == mod & df$term == term, ]
+  if (nrow(r) == 0) return(list(b = "NA", b2 = "NA", lo = "NA", hi = "NA", lo2 = "NA", hi2 = "NA", pct = "NA", pct_lo = "NA", pct_hi = "NA", n = "NA"))
+  list(
+    b      = .s4(r$phylo_estimate[1]),
+    b2     = .s(r$phylo_estimate[1]),
+    lo     = .s4(r$phylo_lower[1]),
+    hi     = .s4(r$phylo_upper[1]),
+    lo2    = .s(r$phylo_lower[1]),
+    hi2    = .s(r$phylo_upper[1]),
+    pct    = .s1(r$phylo_pct_per_decade[1]),
+    pct_lo = .s1(r$phylo_pct_lower[1]),
+    pct_hi = .s1(r$phylo_pct_upper[1]),
+    n      = .n(r$phylo_n[1])
+  )
 }
 
-mt_mass   <- .mt("ln_body_mass")
-mt_bill_w <- .mt("Bill_width.mm.")
-mt_bill_l <- .mt("Bill_length.mm.")
-mt_tail   <- .mt("Tail_length.mm.")
-mt_tarsus <- .mt("Tarsus_length.mm.")
+mass_m0     <- .mt_phylo("ln_body_mass", "M0_baseline")
+mass_m1     <- .mt_phylo("ln_body_mass", "M1_src_site")
+mass_m3     <- .mt_phylo("ln_body_mass", "M3_ring")
+mass_within <- .mt_phylo("ln_body_mass", "MWsrc_mundlak_contributor", "yr_within_src")
+mass_hour   <- .mt_phylo("ln_body_mass", "HOUR1_with_hour", "scaled_yr")
+
+bill_m0     <- .mt_phylo("Bill_width.mm.", "M0_baseline")
+bill_m1     <- .mt_phylo("Bill_width.mm.", "M1_src_site")
+bill_m3     <- .mt_phylo("Bill_width.mm.", "M3_ring")
+bill_within <- .mt_phylo("Bill_width.mm.", "MWsrc_mundlak_contributor", "yr_within_src")
 
 # diurnal mass gain
 mass_hr_row <- multi_phylo$hour$table[multi_phylo$hour$table$term == "hour_num", ]
@@ -138,6 +156,12 @@ mass_hr_hi  <- if (nrow(mass_hr_row) > 0) .s(100 * mass_hr_row$upper[1]) else "+
 
 # isometry shared records
 biv_ind <- biv_phylo$contrasts_independent[biv_phylo$contrasts_independent$model == "M1_src_site", ]
+iso_wing     <- .s1(biv_ind$wing_pct_decade[1])
+iso_wing_lo  <- .s1(biv_ind$wing_pct_decade_lower[1])
+iso_wing_hi  <- .s1(biv_ind$wing_pct_decade_upper[1])
+iso_mass     <- .s1(biv_ind$mass_pct_decade[1])
+iso_mass_lo  <- .s1(biv_ind$mass_pct_decade_lower[1])
+iso_mass_hi  <- .s1(biv_ind$mass_pct_decade_upper[1])
 iso_diff     <- .s1(biv_ind$diff_pct_decade[1])
 iso_diff_lo  <- .s1(biv_ind$diff_lower[1])
 iso_diff_hi  <- .s1(biv_ind$diff_upper[1])
@@ -176,7 +200,7 @@ Investigating whether resident passerines across the Atlantic Forest have underg
 Here, we capitalize on 24 years (1995–2018) of morphological data from 73 passerine species (`r .n(desc$n_rec)` live-capture records; ATLANTIC BIRD TRAITS; @fig-map) to evaluate whether resident tropical birds in the Atlantic Forest have altered their morphology in response to observed climate warming. Using 50 alternative phylogenetic topologies with fast and flexible phylogenetic mixed models [`glmmTMB` `propto`; @williams2025glmmtmb; @mctavish2025tree], we investigate five core macroecological questions:
 (1) Have Atlantic Forest passerines experienced directional changes in wing length, and how does interspecific variation manifest across the community?
 (2) Does body mass decline over time in parallel with regional warming, as predicted by Bergmann's rule and observed in the Amazon?
-(3) Do appendages (bills and tarsi) expand over time, testing Allen's rule for thermoregulatory cooling?
+(3) Does bill width expand over time, testing Allen's rule for thermoregulatory extremity enlargement?
 (4) Are wing length and body mass decoupled on the same individuals, testing departures from geometric isometry?
 (5) Does among-individual phenotypic variability expand under warming, and does dietary reliance on invertebrates modulate morphological sensitivity to climate trends?
 
@@ -194,9 +218,9 @@ Captures in this macroecological dataset were gathered across 42 primary researc
 
 ## Subtle wing-length trajectories and interspecific heterogeneity
 
-Model-free comparisons of per-species mean trait values between the early (1995–2006) and late (2013–2018) sampling periods revealed substantial variation across the avian community (@fig-trends A): while some species displayed slight decreases in mean wing length, others remained stable or exhibited increases.
+Model-free comparisons of per-species mean trait values between the early (1995–2006) and late (2013–2018) sampling periods across the three focal traits revealed substantial variation across the avian community (@fig-trends): wing length exhibited decreases in 43 species and increases in 18 species (@fig-trends A), body mass decreased in 36 species and increased in 26 species (@fig-trends B), and bill width decreased in 13 species and increased in 31 species (@fig-trends C).
 
-![Species-level trajectories of wing length and bill width between early and late sampling periods. Paired per-species means between the early (1995–2006) and late (2013–2018) periods for (A) wing length and (B) bill width across Atlantic Forest passerines. Lines connect period means for each species, colored by direction of shift (red = decrease, blue = increase), illustrating the raw interspecific variation across the community.](images/fig-trends.png){#fig-trends}
+![Species-level trajectories of wing length, body mass, and bill width between early and late sampling periods. Paired per-species means between the early (1995–2006) and late (2013–2018) periods for (A) wing length ($n = 61$ species), (B) body mass ($n = 62$ species), and (C) bill width ($n = 44$ species) across Atlantic Forest passerines. Lines connect period means for each species, colored by direction of shift (red = decrease, blue = increase), illustrating the raw interspecific variation across the community.](images/fig-trends.png){#fig-trends}
 
 To evaluate temporal trajectories while accounting for phylogenetic relatedness across 50 alternative trees, we fitted a sequence of mixed-effects comparative models (@fig-wingtrend; @tbl-controlled-wing). In an unadjusted baseline model (M0) that accounted only for sex, latitude, species random slopes, and phylogeny, wing length exhibited a steep apparent decline: $\beta = `r cw_m0$b`$ mm per SD-year (95% CI: `r cw_m0$lo` to `r cw_m0$hi`), corresponding to `r cw_m0$dec` mm/decade (`r .s1(wing_pct_dec)`%/decade; @tbl-controlled-wing).
 
@@ -240,44 +264,75 @@ In sensitivity tests, birds of unknown sex ($n = 3,532$; M6) exhibited a moderat
 
 ## Body mass stability and wing–mass allometry on shared individuals
 
-In striking contrast to the wing-shortening and body mass declines documented in the central Amazon [@jirinec2021morphological], Atlantic Forest passerines exhibited remarkable stability in body mass across the 24-year record ($n = 11,077$ records; @tbl-multitrait). In the 50-tree phylogenetic model, log-transformed body mass showed no temporal change ($\beta = `r mt_mass$b`$ per SD-year, 95% CI: `r mt_mass$lo` to `r mt_mass$hi`, corresponding to −0.91%/decade; @tbl-multitrait).
+In striking contrast to the pervasive body mass declines documented in the central Amazon [@jirinec2021morphological], Atlantic Forest passerines exhibited remarkable stability in body mass across the 24-year record ($n = 11,077$ records; @tbl-mass-allometry). In an unadjusted baseline phylogenetic model (M0) that accounted only for sex, latitude, species random slopes, and 50 phylogenetic trees, log body mass showed a slight, non-significant downward trend: $\beta = `r mass_m0$b`$ per SD-year (95% CI: `r mass_m0$lo` to `r mass_m0$hi`, corresponding to `r mass_m0$pct`%/decade; @tbl-mass-allometry).
 
-```{r tbl-multitrait, echo=FALSE}
-tbl_mt_data <- data.frame(
-  Trait = c("Log body mass (g)", "Bill width (mm)", "Bill length (mm)", "Tail length (mm)", "Tarsus length (mm)", "Wing length (mm; cross-ref)"),
-  M0_Baseline = c("−0.0072 [−0.0165, +0.0021]", "+0.24 [0.06, 0.42]*", "−0.00 [−0.11, +0.10]", "+0.28 [−0.27, +0.83]", "+0.42 [0.26, 0.59]*", "−0.92 [−1.40, −0.44]*"),
-  Controlled_lme4 = c("−0.0045 [−0.0138, +0.0047]", "−0.02 [−0.17, +0.14]", "+0.17 [−0.02, +0.36]", "+0.25 [−0.28, +0.77]", "+0.26 [−0.08, +0.59]", "−0.30 [−0.66, +0.06]"),
-  Controlled_Phylo = c(paste0(mt_mass$b, " [", mt_mass$lo, ", ", mt_mass$hi, "]"),
-                       paste0(mt_bill_w$b, " [", mt_bill_w$lo, ", ", mt_bill_w$hi, "]"),
-                       paste0(mt_bill_l$b, " [", mt_bill_l$lo, ", ", mt_bill_l$hi, "]"),
-                       paste0(mt_tail$b, " [", mt_tail$lo, ", ", mt_tail$hi, "]"),
-                       paste0(mt_tarsus$b, " [", mt_tarsus$lo, ", ", mt_tarsus$hi, "]"),
-                       paste0(cw_m3$b, " [", cw_m3$lo, ", ", cw_m3$hi, "]")),
-  N = c(mt_mass$n, mt_bill_w$n, mt_bill_l$n, mt_tail$n, mt_tarsus$n, cw_m3$n)
+Accounting for observer identity and municipality (M1) reduced this slope to $\beta = `r mass_m1$b`$ per SD-year (95% CI: `r mass_m1$lo` to `r mass_m1$hi`, `r mass_m1$pct`%/decade; @tbl-mass-allometry). In the fully controlled phylogenetic model (M3)—which additionally incorporated season, active moult, individual band identity, and 50 trees—body mass remained completely stable: $\beta = `r mass_m3$b`$ per SD-year (95% CI: `r mass_m3$lo` to `r mass_m3$hi`, `r mass_m3$pct`%/decade; @tbl-mass-allometry). Crucially, evaluating temporal change strictly within the same field researcher via a Mundlak random-effects model yielded a within-observer slope indistinguishable from zero ($\beta = `r mass_within$b`$ per SD-year, 95% CI: `r mass_within$lo` to `r mass_within$hi`, `r mass_within$pct`%/decade; @tbl-mass-allometry).
+
+```{r tbl-mass-allometry, echo=FALSE}
+tbl_mass_data <- data.frame(
+  Specification = c(
+    "Body mass: M0 Baseline (sex + latitude + phylogeny)",
+    "Body mass: M1 (+ Observer + Municipality intercepts)",
+    "Body mass: M3 Full controls (+ Season + Moult + Individual)",
+    "Body mass: Mundlak within-observer slope",
+    "Body mass: Diurnal capture hour model (+ capture time)",
+    "Shared records (N = 7,577): Wing length rate",
+    "Shared records (N = 7,577): Body mass rate",
+    "Shared records: Rate difference (Mass − Wing)",
+    "Shared records: Geometric isometry contrast (Mass − 3 × Wing)"
+  ),
+  Beta = c(
+    mass_m0$b, mass_m1$b, mass_m3$b, mass_within$b, mass_hour$b,
+    "—", "—", "—", "—"
+  ),
+  CI_95 = c(
+    paste0("[", mass_m0$lo, ", ", mass_m0$hi, "]"),
+    paste0("[", mass_m1$lo, ", ", mass_m1$hi, "]"),
+    paste0("[", mass_m3$lo, ", ", mass_m3$hi, "]"),
+    paste0("[", mass_within$lo, ", ", mass_within$hi, "]"),
+    paste0("[", mass_hour$lo, ", ", mass_hour$hi, "]"),
+    paste0("[", iso_wing_lo, ", ", iso_wing_hi, "]"),
+    paste0("[", iso_mass_lo, ", ", iso_mass_hi, "]"),
+    paste0("[", iso_diff_lo, ", ", iso_diff_hi, "]"),
+    paste0("[", iso_cont_lo, ", ", iso_cont_hi, "]")
+  ),
+  Rate_pct_dec = c(
+    paste0(mass_m0$pct, "%"),
+    paste0(mass_m1$pct, "%"),
+    paste0(mass_m3$pct, "%"),
+    paste0(mass_within$pct, "%"),
+    paste0(mass_hour$pct, "%"),
+    paste0(iso_wing, "%"),
+    paste0(iso_mass, "%"),
+    paste0(iso_diff, "%"),
+    paste0("+", iso_cont, "%")
+  ),
+  N = c(
+    mass_m0$n, mass_m1$n, mass_m3$n, mass_within$n, mass_hour$n,
+    "7,577", "7,577", "7,577", "7,577"
+  )
 )
-knitr::kable(tbl_mt_data, col.names = c("Morphological trait", "Baseline (M0)", "Controlled (lme4)", "Controlled (50 trees)", "N"),
-             caption = "Multi-trait temporal trends across baseline, non-phylogenetic controlled, and 50-tree phylogenetic models. Asterisks denote intervals excluding zero.")
+knitr::kable(tbl_mass_data, col.names = c("Model specification / Contrast", "β (per SD-yr)", "95% CI", "Rate (%/dec)", "N"),
+             caption = "Body mass temporal models across control tiers and bivariate allometry on shared individuals (50 phylogenetic trees).")
 ```
 
-Evaluating diurnal capture time revealed that live-captured birds experienced strong daily mass gains (+`r mass_hr_pct`% body mass per hour of the day, 95% CI: `r mass_hr_lo` to `r mass_hr_hi`%, $t = 7.03$, $n = 8,345$), reflecting normal diurnal feeding rhythms. With diurnal capture hour explicitly controlled, the decadal year slope remained completely flat ($\beta = −0.0063$, $t = −0.99$).
+Evaluating diurnal capture time revealed that live-captured birds experienced strong daily mass gains (+`r mass_hr_pct`% body mass per hour of the day, 95% CI: `r mass_hr_lo` to `r mass_hr_hi`%, $t = 7.03$, $n = 8,345$), reflecting normal diurnal feeding rhythms. With diurnal capture hour explicitly controlled, the decadal year slope remained completely flat ($\beta = `r mass_hour$b`$, 95% CI: `r mass_hour$lo` to `r mass_hour$hi`, `r mass_hour$pct`%/decade; @tbl-mass-allometry).
 
-To evaluate whether shape changes occurred on the same individual birds, we analyzed 7,577 shared records with simultaneous measurements of wing length and body mass across 72 species. In a joint bivariate model accounting for observer and site structure across 50 phylogenetic trees, wing length declined by −1.53%/decade (95% CI: −2.69 to −0.36%) while body mass declined by −0.54%/decade (95% CI: −2.68 to +1.60%). 
+To evaluate whether shape changes occurred on the same individual birds, we analyzed 7,577 shared records with simultaneous measurements of wing length and body mass across 72 species. In a joint bivariate model accounting for observer and site structure across 50 phylogenetic trees, wing length declined by `r iso_wing`%/decade (95% CI: `r iso_wing_lo` to `r iso_wing_hi`%) while body mass declined by `r iso_mass`%/decade (95% CI: `r iso_mass_lo` to `r iso_mass_hi`%; @tbl-mass-allometry). 
 
-The difference between the two rates was `r iso_diff`%/decade (95% CI: `r iso_diff_lo` to `r iso_diff_hi`%, $z = −0.79$). Under geometric isometry, body mass scales with the cube of linear dimensions ($M \propto L^3$), yielding an expected mass change of approximately three times the linear dimension change. The formal isometry contrast ($\text{mass trend} - 3 \times \text{wing trend}$) was +`r iso_cont`%/decade (95% CI: `r iso_cont_lo` to `r iso_cont_hi`%, $z = 1.93$). Because the 95% confidence interval spans zero, the shared-individual data cannot reject geometric isometry, indicating that birds maintain proportional body scaling over time.
+The difference between the two rates was `r iso_diff`%/decade (95% CI: `r iso_diff_lo` to `r iso_diff_hi`%, $z = −0.79$; @tbl-mass-allometry). Under geometric isometry, body mass scales with the cube of linear dimensions ($M \propto L^3$), yielding an expected mass change of approximately three times the linear dimension change. The formal isometry contrast ($\text{mass trend} - 3 \times \text{wing trend}$) was +`r iso_cont`%/decade (95% CI: `r iso_cont_lo` to `r iso_cont_hi`%, $z = 1.93$; @tbl-mass-allometry). Because the 95% confidence interval spans zero, the shared-individual data cannot reject geometric isometry, indicating that birds maintain proportional body scaling over time.
 
-## Multi-trait stability and invariance of bills and tarsi
+## Bill width invariance and testing Allen's rule
 
-In addition to body mass and wing length, we tested whether extremities underwent thermoregulatory enlargement as predicted by Allen's rule [@allen1877; @ryding2021shape]. Raw species-level trajectories for bill width displayed both increases and decreases across species (@fig-trends B). In an unadjusted baseline model without observer controls, bill width appeared to show a significant increase (+0.24 mm/SD-year, 95% CI: 0.06 to 0.42; $t = 2.6$; @tbl-multitrait), a pattern that could be misconstrued as support for Allen's rule.
+Allen's rule [@allen1877; @ryding2021shape] posits that extremities such as bills enlarge in warm climates to facilitate non-evaporative thermoregulatory heat dissipation. Raw species-level trajectories for bill width displayed both increases and decreases across the community (@fig-trends C). In an unadjusted baseline model without observer controls (M0), bill width appeared to show a statistically significant positive decadal trend: $\beta = +`r bill_m0$b2`$ mm per SD-year (95% CI: +`r bill_m0$lo2` to +`r bill_m0$hi2`, $t = 2.6$, $n = `r bill_m0$n`$), a pattern that could naively be misconstrued as empirical support for Allen's rule.
 
-However, bill width was recorded by 22 field researchers, and only two researchers sampled birds in both the early and late periods. When observer identity was accounted for, the temporal slope collapsed completely to zero ($\beta = −0.02$, $t = −0.3$ in `lme4`; $\beta = `r mt_bill_w$b`$ [$-0.18, +0.13$] in the 50-tree phylogenetic model; @tbl-multitrait). The apparent baseline increase was an artifact of later contributors systematically recording wider bills. Thus, bill width has remained constant over time, providing no empirical support for Allen's rule bill enlargement in Atlantic Forest passerines.
-
-Similarly, an apparent baseline increase in tarsus length (+0.42 mm/SD-year, 95% CI: 0.26 to 0.59; $t = 5.0$; $n = 4,285$) attenuated to zero once observer identity was included ($\beta = `r mt_tarsus$b`$ [$-0.08, +0.60$], $z = 1.50$; @tbl-multitrait). Bill length ($n = 7,540$) and tail length ($n = 8,679$) showed no significant temporal trends across any specification (@tbl-multitrait). Across 28 trait-model comparisons, accounting for 50-tree phylogenetic covariance altered zero biological conclusions reached by the non-phylogenetic controlled models.
+However, bill width was recorded by 22 field researchers across the dataset, and only two researchers sampled birds in both the early (1995–2006) and late (2013–2018) periods. When researcher identity and municipality were accounted for (M1), this apparent positive trajectory collapsed completely to zero ($\beta = `r bill_m1$b2`$ mm/SD-year, 95% CI: `r bill_m1$lo2` to `r bill_m1$hi2`, $n = `r bill_m1$n`$). In the fully controlled 50-tree phylogenetic model (M3), bill width remained entirely flat: $\beta = `r bill_m3$b2`$ mm/SD-year (95% CI: `r bill_m3$lo2` to `r bill_m3$hi2`, corresponding to −0.03 mm/decade, $n = `r bill_m3$n`$). Evaluating temporal change within the same field researcher confirmed stability ($\beta = +`r bill_within$b2`$ mm/SD-year, 95% CI: `r bill_within$lo2` to `r bill_within$hi2`). The apparent baseline increase was an artifact of later contributors systematically recording slightly wider bills. Bill width has therefore remained invariant over time, providing no empirical support for Allen's rule extremity enlargement in Atlantic Forest passerines.
 
 ## Phenotypic variability across species and stability of trait variance
 
-Beyond mean trait values, climate warming has been hypothesized to alter phenotypic variance, either increasing variability through relaxed selection or developmental instability, or reducing it through directional canalization [@teplitsky_climate_2014]. Evaluating species-level log coefficient-of-variation ratios ($\ln\text{CVR}$) between early and late periods across the community revealed positive meta-analytic means when pooled across observers: $\ln\text{CVR} = +0.18$ (95% CI: 0.03 to 0.33, $k = 54$; @fig-variability A) for wing length and $+0.11$ (95% CI: −0.20 to +0.41, $k = 25$; @fig-variability B) for bill width.
+Beyond mean trait values, climate warming has been hypothesized to alter phenotypic variance, either increasing variability through relaxed selection or developmental instability, or reducing it through directional canalization [@teplitsky_climate_2014]. Evaluating species-level log coefficient-of-variation ratios ($\ln\text{CVR}$) between early (1995–2006) and late (2013–2018) periods across the community revealed subtle patterns when pooled across observers (@fig-variability): wing length exhibited a meta-analytic mean of $\ln\text{CVR} = +0.177$ (95% CI: 0.031 to 0.323, $k = 54$; @fig-variability A), body mass exhibited $\ln\text{CVR} = +0.193$ (95% CI: 0.021 to 0.366, $k = 57$; @fig-variability B), and bill width exhibited $\ln\text{CVR} = +0.068$ (95% CI: −0.146 to +0.282, $k = 36$; @fig-variability C).
 
-![Interspecific patterns of among-individual phenotypic variability ($\ln\text{CVR}$) between early and late sampling periods. Forest plots display the species-level log coefficient-of-variation ratio ($\ln\text{CVR}$) comparing late (2013–2018) versus early (1995–2006) periods for (A) wing length ($k = 54$ species) and (B) bill width ($k = 25$ species). Points and error bars represent species estimates and 95% confidence intervals; vertical blue lines and shaded bands represent the random-effects meta-analytic means ($\ln\text{CVR} = +0.18$ for wing length; $+0.11$ for bill width).](images/fig-variability.png){#fig-variability}
+![Interspecific patterns of among-individual phenotypic variability ($\ln\text{CVR}$) between early and late sampling periods. Forest plots display the species-level log coefficient-of-variation ratio ($\ln\text{CVR}$) comparing late (2013–2018) versus early (1995–2006) periods for (A) wing length ($k = 54$ species), (B) body mass ($k = 57$ species), and (C) bill width ($k = 36$ species) across Atlantic Forest passerines. Points and error bars represent species estimates and 95% confidence intervals; vertical lines and shaded bands represent random-effects meta-analytic means ($\ln\text{CVR} = +0.177$ for wing length; $+0.193$ for body mass; $+0.068$ for bill width).](images/fig-variability.png){#fig-variability}
 
 However, the mean number of contributors pooled per species-period cell rose from 3.68 early to 5.50 late (Wilcoxon $p = 5 \times 10^{-8}$), and residual standard deviations varied up to 2.5-fold among contributors. When $\ln\text{CVR}$ was evaluated strictly *within* the same contributor ($n \ge 5$ records), the apparent variance expansion disappeared ($\ln\text{CVR} = −0.249$, 95% CI: −0.515 to +0.017; $k = 15$).
 
@@ -298,7 +353,7 @@ To evaluate regional prey availability, we examined regional insect databases. G
 Our macroecological investigation across 73 passerine bird species and 24 years of climate warming in the Brazilian Atlantic Forest reveals a pattern of notable phenotypic stability alongside subtle, species-specific adjustments. Across multiple morphometric dimensions, we find:
 (1) **Body mass stability**: In sharp contrast to predictions from Bergmann's rule, body mass has remained constant over 24 years (−0.91%/decade, spanning zero), despite strong diurnal feeding rhythms (+0.40%/hour).
 (2) **Subtle and heterogeneous wing trajectories**: Community-level wing length shows a subtle, non-significant trajectory (−0.74 mm/decade; within-observer slope −0.32 mm/decade), characterized by pronounced interspecific variation where 61 of 72 species overlap zero.
-(3) **Invariance of extremities refutes Allen's rule**: Bill width, bill length, and tarsus length show no temporal expansion, refuting the hypothesis of extremity enlargement for thermoregulatory heat dissipation.
+(3) **Bill width invariance refutes Allen's rule**: Bill width shows no temporal expansion under controls (−0.03 mm/decade), refuting the hypothesis of extremity enlargement for thermoregulatory heat dissipation.
 (4) **Preservation of geometric isometry**: On shared individuals measured for both traits, wing length and body mass maintain geometric scaling ($M \propto L^3$), with no community-wide allometric decoupling.
 (5) **Phenotypic variance stability**: Among-individual variability has remained constant over time and does not track temperature.
 (6) **Trophic buffering**: Obligate insectivores exhibit null temporal slopes, indicating that dietary specialization does not amplify morphological sensitivity.
@@ -319,7 +374,7 @@ Third, **microclimatic variability and physiological plasticity**. Forest fragme
 
 Our findings provide a critical empirical test of classic ecogeographical rules in tropical endotherms under climate change. Bergmann's rule has frequently been generalized as a universal expectation that warming temperatures drive reductions in animal body size [@gardner_declining_2011; @sheridan_shrinking_2011]. In our 24-year dataset of 73 tropical passerine species, body mass showed no directional decline despite +0.25°C/decade of regional warming. This stability challenges the universality of Bergmann's rule as a general response to contemporary climate warming, demonstrating that tropical endotherms can maintain stable body mass over decadal timescales.
 
-Similarly, Allen's rule posits that appendages enlarge in warmer environments to facilitate heat dissipation [@allen1877; @ryding2021shape]. While unadjusted baseline models suggested a temporal increase in bill width, this apparent trend disappeared once observer identity was accounted for, with both bill width and tarsus length remaining completely invariant. In tropical passerines, bill morphology is heavily constrained by foraging biomechanics, trophic specialization, and vocal performance, which may strongly override subtle thermoregulatory selection for larger bills [@teplitsky_climate_2014].
+Similarly, Allen's rule posits that appendages enlarge in warmer environments to facilitate heat dissipation [@allen1877; @ryding2021shape]. While unadjusted baseline models suggested a temporal increase in bill width, this apparent trend disappeared once observer identity was accounted for, with bill width remaining completely invariant (−0.03 mm/decade, spanning zero). In tropical passerines, bill morphology is heavily constrained by foraging biomechanics, trophic specialization, and vocal performance, which may strongly override subtle thermoregulatory selection for larger bills [@teplitsky_climate_2014].
 
 ## Interspecific variation and preservation of allometric scaling
 
@@ -335,7 +390,7 @@ In our dataset, unadjusted baseline models suggested steep declines in wing leng
 
 ## Conclusion
 
-In summary, 24 years of climate warming in the Brazilian Atlantic Forest have not induced the widespread body mass loss or wing elongation observed in the continuous Amazonian understorey. Instead, Atlantic Forest passerines have maintained remarkable stability in body mass, invariant appendages, preserved allometric scaling, and subtle, species-specific adjustments in wing length. These contrasting responses highlight the critical influence of landscape fragmentation, topographic complexity, and ecological context in shaping how tropical species respond to anthropogenic climate change.
+In summary, 24 years of climate warming in the Brazilian Atlantic Forest have not induced the widespread body mass loss or wing elongation observed in the continuous Amazonian understorey. Instead, Atlantic Forest passerines have maintained remarkable stability in body mass, invariant bill width, preserved allometric scaling, and subtle, species-specific adjustments in wing length. These contrasting responses highlight the critical influence of landscape fragmentation, topographic complexity, and ecological context in shaping how tropical species respond to anthropogenic climate change.
 
 # Methods {#sec-methods}
 
@@ -353,7 +408,7 @@ In large-scale macroecological compilations aggregating data across independent 
 
 ### Observer turnover and researcher random effects (`Main_researcher`)
 
-In avian morphometrics, inter-observer measurement error is well-documented to reach 1–3 mm for wing length and 0.5–1 mm for bill and tarsus dimensions [@weeks2020]. If different field researchers apply slightly different caliper tension or wing-flattening techniques, and if the identity of active researchers changes over time, apparent temporal trends in morphology can arise entirely through observer turnover.
+In avian morphometrics, inter-observer measurement error is well-documented to reach 1–3 mm for wing length and 0.5–1 mm for bill dimensions [@weeks2020]. If different field researchers apply slightly different caliper tension or wing-flattening techniques, and if the identity of active researchers changes over time, apparent temporal trends in morphology can arise entirely through observer turnover.
 
 In the ATLANTIC BIRD TRAITS compilation, the field measurer column (`Measurer`) is 100% missing (NA) and literature reference (`Reference`) is 99% missing. However, the identity of the principal investigator and research group coordinator (`Main_researcher`) is 100% complete across all analytical records, comprising 42 distinct contributors in our wing dataset. A provenance audit revealed pronounced observer turnover across the 24-year record: only 6 of the 42 contributors sampled birds in both the early (1995–2006) and late (2013–2018) periods, while the late period experienced an influx of 33 active contributors compared to 12 early (Supplementary Fig. S1). To account for baseline measurement idiosyncrasies among research groups, we incorporated a random intercept for researcher identity (`(1 | Main_researcher)`).
 
@@ -395,13 +450,13 @@ Parameter estimates $\hat{\beta}_k$ and variance-covariance matrices $V_k$ acros
 $$\bar{\beta} = \frac{1}{K}\sum_{k=1}^K \hat{\beta}_k, \quad V_{\text{total}} = \bar{V} + \left(1 + \frac{1}{K}\right) B$$
 where $\bar{V} = \frac{1}{K}\sum_{k=1}^K V_k$ is the mean within-tree variance and $B = \frac{1}{K-1}\sum_{k=1}^K (\hat{\beta}_k - \bar{\beta})(\hat{\beta}_k - \bar{\beta})^\top$ is the between-tree variance. Wald-Rubin 95% confidence intervals were computed as $\bar{\beta} \pm 1.96 \sqrt{\operatorname{diag}(V_{\text{total}})}$.
 
-## Multi-trait modeling and testing Allen's rule
+## Body mass and bill width modeling and testing Allen's rule
 
-To evaluate whether temporal shifts occurred across other morphometric dimensions, we applied the identical sequential control ladder to: log-transformed body mass ($n = 11,077$), bill width ($n = 3,205$), bill length ($n = 7,540$), tail length ($n = 8,679$), and tarsus length ($n = 4,285$). 
+To evaluate whether temporal shifts occurred in body mass and extremity dimensions, we applied the sequential control ladder to log-transformed body mass ($n = 11,077$) and bill width ($n = 3,205$). Models incorporated sex, latitude, species-specific random slopes and intercepts across 50 phylogenetic trees, researcher identity, municipality, season, active moult, and individual bird identity.
 
 To evaluate diurnal feeding rhythms in body mass, we extracted recorded capture time (`Hour`) for the 8,345 mass records with available time stamps. We modeled diurnal mass gain by including continuous capture hour (`hour_num`, 06:00 to 18:00) alongside calendar year.
 
-To evaluate Allen's rule [@allen1877; @ryding2021shape], which predicts that appendages enlarge in warmer conditions to facilitate heat dissipation, we tested whether bill width, bill length, and tarsus length exhibited positive temporal slopes under observer and spatial controls.
+To evaluate Allen's rule [@allen1877; @ryding2021shape], which predicts that extremities enlarge in warmer conditions to facilitate non-evaporative heat dissipation, we tested whether bill width exhibited a positive temporal slope under researcher and spatial controls.
 
 ## Bivariate modeling and delta-method test of geometric isometry
 
@@ -422,7 +477,7 @@ Among-individual phenotypic variability was modeled using two complementary appr
 
 1. **Meta-analytic $\ln\text{CVR}$**: For species with $\ge 5$ records in both the early (1995–2006) and late (2013–2018) periods, we computed the log coefficient-of-variation ratio ($\ln\text{CVR}$) with small-sample bias correction [@nakagawa2015metaanalysis]:
    $$\ln\text{CVR} = \ln\left(\frac{\operatorname{CV}_{\text{late}}}{\operatorname{CV}_{\text{early}}}\right) + \frac{1}{2(n_{\text{late}} - 1)} - \frac{1}{2(n_{\text{early}} - 1)}$$
-   where sampling variance incorporates the observed correlation between log mean and log standard deviation within each period. Effect sizes were pooled in random-effects meta-analytic models using `metafor` [@viechtbauer2010metafor]. To distinguish genuine biological variance shifts from observer pooling artifacts, $\ln\text{CVR}$ was calculated both pooled across all observers ($k = 54$ for wing; $k = 25$ for bill width) and strictly within the same primary researcher ($k = 15$).
+   where sampling variance incorporates the observed correlation between log mean and log standard deviation within each period. Effect sizes were pooled in random-effects meta-analytic models using `metafor` [@viechtbauer2010metafor]. To distinguish genuine biological variance shifts from observer pooling artifacts, $\ln\text{CVR}$ was calculated both pooled across all observers ($k = 54$ for wing; $k = 57$ for body mass; $k = 36$ for bill width) and strictly within the same primary researcher ($k = 15$).
 2. **Continuous heteroscedastic dispersion models**: In `glmmTMB`, we specified a dispersion submodel (`dispformula`) allowing residual standard deviation $\sigma_i$ to vary continuously over time and across observers:
    $$\log(\sigma_i) = \alpha_0 + \alpha_1 \text{scaled\_yr}_i + \alpha_2 \text{Sex}_i + u_{\text{researcher}} + u_{\text{municipality}}$$
    where $\alpha_1$ captures the decadal rate of change in residual standard deviation. In model tier S7, standardized local mean annual temperature (`scaled_tmean`) was added to the dispersion formula to test whether residual variance tracked environmental warming.
