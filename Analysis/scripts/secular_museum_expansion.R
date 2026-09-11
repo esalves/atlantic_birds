@@ -436,13 +436,13 @@ p3a <- ggplot(giss, aes(x = Year, y = af_temp)) +
   geom_line(color = "grey60", linewidth = 0.4) +
   geom_point(color = "#d95f02", size = 1.8, alpha = 0.8) +
   geom_line(aes(y = temp_pred), color = "#b2182b", linewidth = 1.2) +
-  annotate("text", x = 1885, y = 0.7, label = "Pre-1980: +0.036 °C / dec\n(Estabilidade climática)",
+  annotate("text", x = 1885, y = 0.7, label = "Pre-1980: +0.036 °C / dec\n(Climate stability)",
            color = "grey30", size = 3.2, hjust = 0) +
-  annotate("text", x = 1999, y = -0.38, label = "Pós-1980: +0.190 °C / dec\n(Aquecimento acelerado)",
+  annotate("text", x = 1999, y = -0.38, label = "Post-1980: +0.190 °C / dec\n(Accelerated warming)",
            color = "#b2182b", size = 3.2, hjust = 0.5, fontface = "bold") +
-  labs(x = NULL, y = "Anomalia Térmica (°C)",
-       title = "A. Trajetória Térmica Regional (1880–2018)",
-       subtitle = "NASA GISS / CRU-TS (r = 0,74 com as 357 localidades). Quebra segmentada em 1980.") +
+  labs(x = NULL, y = "Regional Temperature Anomaly (°C)",
+       title = "A. Regional Temperature Trajectory (1880–2018)",
+       subtitle = "NASA GISS / CRU-TS (r = 0.74 with 357 capture localities). Segmented breakpoint at 1980.") +
   theme(plot.title = element_text(face = "bold", size = 10.5),
         plot.subtitle = element_text(size = 8.5))
 
@@ -473,36 +473,37 @@ p3b <- ggplot(annual_wing, aes(x = Year, y = mean_wc)) +
   geom_point(aes(size = n), color = "#008080", alpha = 0.7) +
   geom_errorbar(aes(ymin = mean_wc - se_wc, ymax = mean_wc + se_wc), width = 0.8, color = "grey60", alpha = 0.5) +
   geom_line(aes(y = wing_pred), color = "#008080", linewidth = 1.2) +
-  scale_size_continuous(range = c(1.5, 5), name = "N aves") +
-  annotate("text", x = 1885, y = 5.5, label = "Pre-1980: +0.45 mm / dec\n(Estabilidade morfológica em museus)",
+  scale_size_continuous(range = c(1.5, 5), name = "Number of birds") +
+  annotate("text", x = 1885, y = 5.5, label = "Pre-1980: +0.45 mm / dec\n(Historical museum stability)",
            color = "grey30", size = 3.2, hjust = 0) +
-  annotate("text", x = 1999, y = -5.0, label = "Pós-1980: -0.26 a -0.41 mm / dec\n(Encurtamento significativo)",
+  annotate("text", x = 1999, y = -5.0, label = "Post-1980: −0.26 to −0.41 mm / dec\n(Significant shortening)",
            color = "#008080", size = 3.2, hjust = 0.5, fontface = "bold") +
-  labs(x = "Ano", y = "Desvio Médio de Asa (mm)",
-       title = "B. Trajetória Morfológica de Asa (1880–2018)",
-       subtitle = "Desvio centrado por espécie. Pontos = média anual ± SE; quebra segmentada em 1980.") +
+  labs(x = "Year", y = "Mean Wing Length Deviation (mm)",
+       title = "B. Wing Length Trajectory (1880–2018)",
+       subtitle = "Species-centered deviation. Points = annual mean ± SE; segmented breakpoint at 1980.") +
   theme(plot.title = element_text(face = "bold", size = 10.5),
         plot.subtitle = element_text(size = 8.5),
         legend.position = "right")
 
 # Panel 3c: Direct coupling: Post-1980 vs Pre-1980 Wing vs Temperature
 coupled_annual <- inner_join(annual_wing, giss, by = "Year") %>%
-  mutate(periodo = ifelse(Year >= 1980, "Pós-1980 (Aquecimento)", "Pré-1980 (Histórico)"))
+  mutate(period = factor(ifelse(Year >= 1980, "Post-1980 (Warming)", "Pre-1980 (Historical)"),
+                         levels = c("Pre-1980 (Historical)", "Post-1980 (Warming)")))
 
-p3c <- ggplot(coupled_annual, aes(x = af_temp, y = mean_wc, color = periodo)) +
+p3c <- ggplot(coupled_annual, aes(x = af_temp, y = mean_wc, color = period)) +
   geom_hline(yintercept = 0, linetype = "dotted", color = "grey50") +
   geom_vline(xintercept = 0, linetype = "dotted", color = "grey50") +
   geom_point(aes(size = n), alpha = 0.8) +
   geom_smooth(method = "lm", se = TRUE, linewidth = 1.1) +
-  scale_color_manual(values = c("Pré-1980 (Histórico)" = "#e6550d",
-                                "Pós-1980 (Aquecimento)" = "#2b5c8f"), name = "Período") +
+  scale_color_manual(values = c("Pre-1980 (Historical)" = "#e6550d",
+                                "Post-1980 (Warming)" = "#2b5c8f"), name = "Period") +
   scale_size_continuous(range = c(1.5, 5), guide = "none") +
   annotate("text", x = -0.45, y = 6.2,
-           label = "Pré-1980: β = +0.10 mm / °C (p = 0.91, nulo)\nPós-1980: β = -1.68 mm / °C (p = 0.005, sig!)",
+           label = "Pre-1980: β = +0.10 mm / °C (p = 0.91, null)\nPost-1980: β = −1.68 mm / °C (p = 0.005)",
            color = "#1a365d", size = 3.4, fontface = "bold", hjust = 0) +
-  labs(x = "Anomalia de Temperatura Regional (°C)", y = "Desvio de Asa (mm)",
-       title = "C. Resposta Térmica da Asa: Pré vs. Pós-1980",
-       subtitle = "Pós-1980: cada +1 °C associa-se a -1,68 mm de asa (p = 0,005). Pré-1980: resposta nula.") +
+  labs(x = "Regional Temperature Anomaly (°C)", y = "Wing Length Deviation (mm)",
+       title = "C. Wing Thermal Sensitivity: Pre- vs. Post-1980",
+       subtitle = "Post-1980: −1.68 mm wing shortening per +1 °C anomaly (p = 0.005). Pre-1980: null response.") +
   theme(plot.title = element_text(face = "bold", size = 10.5),
         plot.subtitle = element_text(size = 8.5),
         legend.position = "bottom")
@@ -543,36 +544,37 @@ p4b <- ggplot(annual_mass, aes(x = Year, y = mean_mc)) +
   geom_point(aes(size = n), color = "#d95f02", alpha = 0.75) +
   geom_errorbar(aes(ymin = mean_mc - se_mc, ymax = mean_mc + se_mc), width = 0.8, color = "grey60", alpha = 0.5) +
   geom_line(aes(y = mass_pred), color = "#d95f02", linewidth = 1.2) +
-  scale_size_continuous(range = c(1.5, 5), name = "N aves") +
+  scale_size_continuous(range = c(1.5, 5), name = "Number of birds") +
   scale_x_continuous(limits = c(1880, 2018)) +
-  annotate("text", x = 1885, y = 14, label = "Pre-1980 (1962–1979):\n-0.17% / ano (p = 0.52, estável)",
+  annotate("text", x = 1885, y = 14, label = "Pre-1980 (1962–1979):\n−0.17% / yr (p = 0.52, stable)",
            color = "grey30", size = 3.2, hjust = 0) +
-  annotate("text", x = 1999, y = -14, label = "Pós-1980: -0.02% / ano (p = 0.49)\n(Estabilidade estrita em campo)",
+  annotate("text", x = 1999, y = -14, label = "Post-1980: −0.02% / yr (p = 0.49)\n(Field mass stability)",
            color = "#d95f02", size = 3.2, hjust = 0.5, fontface = "bold") +
-  labs(x = "Ano", y = "Desvio Médio de Massa (%)",
-       title = "B. Trajetória de Massa Corporal (1960–2018)",
-       subtitle = "Desvio relativo médio por espécie (Passeriformes, N = 50.058). Quebra segmentada em 1980.") +
+  labs(x = "Year", y = "Mean Body Mass Deviation (%)",
+       title = "B. Body Mass Trajectory (1960–2018)",
+       subtitle = "Species-centered relative deviation (Passeriformes, N = 50,058). Segmented breakpoint at 1980.") +
   theme(plot.title = element_text(face = "bold", size = 10.5),
         plot.subtitle = element_text(size = 8.5),
         legend.position = "right")
 
 coupled_mass <- inner_join(annual_mass, giss, by = "Year") %>%
-  mutate(periodo = ifelse(Year >= 1980, "Pós-1980 (Aquecimento)", "Pré-1980 (Histórico)"))
+  mutate(period = factor(ifelse(Year >= 1980, "Post-1980 (Warming)", "Pre-1980 (Historical)"),
+                         levels = c("Pre-1980 (Historical)", "Post-1980 (Warming)")))
 
-p4c <- ggplot(coupled_mass, aes(x = af_temp, y = mean_mc, color = periodo)) +
+p4c <- ggplot(coupled_mass, aes(x = af_temp, y = mean_mc, color = period)) +
   geom_hline(yintercept = 0, linetype = "dotted", color = "grey50") +
   geom_vline(xintercept = 0, linetype = "dotted", color = "grey50") +
   geom_point(aes(size = n), alpha = 0.8) +
   geom_smooth(method = "lm", se = TRUE, linewidth = 1.1) +
-  scale_color_manual(values = c("Pré-1980 (Histórico)" = "#e6550d",
-                                "Pós-1980 (Aquecimento)" = "#2b5c8f"), name = "Período") +
+  scale_color_manual(values = c("Pre-1980 (Historical)" = "#e6550d",
+                                "Post-1980 (Warming)" = "#2b5c8f"), name = "Period") +
   scale_size_continuous(range = c(1.5, 5), guide = "none") +
   annotate("text", x = -0.45, y = 22,
-           label = "Pré-1980: β = -1.97% / °C (p = 0.86, nulo)\nPós-1980: β = +3.68% / °C (p = 0.43, nulo)",
+           label = "Pre-1980: β = −1.97% / °C (p = 0.86, null)\nPost-1980: β = +3.68% / °C (p = 0.43, null)",
            color = "#1a365d", size = 3.4, fontface = "bold", hjust = 0) +
-  labs(x = "Anomalia de Temperatura Regional (°C)", y = "Desvio de Massa (%)",
-       title = "C. Resposta Térmica da Massa: Pré vs. Pós-1980",
-       subtitle = "Massa corporal estatisticamente estável e insensível à temperatura em ambos os períodos.") +
+  labs(x = "Regional Temperature Anomaly (°C)", y = "Body Mass Deviation (%)",
+       title = "C. Body Mass Thermal Sensitivity: Pre- vs. Post-1980",
+       subtitle = "Body mass statistically stable and decoupled from temperature across both periods.") +
   theme(plot.title = element_text(face = "bold", size = 10.5),
         plot.subtitle = element_text(size = 8.5),
         legend.position = "bottom")
@@ -618,36 +620,37 @@ p5b <- ggplot(annual_allom, aes(x = Year, y = mean_iso)) +
   geom_point(aes(size = n), color = "#7570b3", alpha = 0.75) +
   geom_errorbar(aes(ymin = mean_iso - se_iso, ymax = mean_iso + se_iso), width = 0.8, color = "grey60", alpha = 0.5) +
   geom_line(aes(y = allom_pred), color = "#7570b3", linewidth = 1.2) +
-  scale_size_continuous(range = c(1.5, 5), name = "N aves") +
+  scale_size_continuous(range = c(1.5, 5), name = "Number of birds") +
   scale_x_continuous(limits = c(1880, 2018)) +
-  annotate("text", x = 1885, y = 7.5, label = "Pre-1980 (1962–1979):\n+0.52% / ano (p = 0.69, nulo)",
+  annotate("text", x = 1885, y = 7.5, label = "Pre-1980 (1962–1979):\n+0.52% / yr (p = 0.69, null)",
            color = "grey30", size = 3.2, hjust = 0) +
-  annotate("text", x = 1999, y = -14, label = "Pós-1980: +2.12% / dec (p = 0.048)\n(Stoutening térmico significante)",
+  annotate("text", x = 1999, y = -14, label = "Post-1980: +2.12% / dec (p = 0.048)\n(Significant thermal stoutening)",
            color = "#7570b3", size = 3.2, hjust = 0.5, fontface = "bold") +
-  labs(x = "Ano", y = "Contraste de Isometria Δiso (%)",
-       title = "B. Trajetória da Alometria (Δiso = ln M - 3 ln L, 1960–2018)",
-       subtitle = "Desvio centrado por espécie (Passeriformes compartilhados, N = 29.871). Quebra em 1980.") +
+  labs(x = "Year", y = "Isometry Contrast Δiso (%)",
+       title = "B. Allometry Trajectory (Δiso = ln M - 3 ln L, 1960–2018)",
+       subtitle = "Species-centered deviation (shared Passeriformes, N = 29,871). Breakpoint at 1980.") +
   theme(plot.title = element_text(face = "bold", size = 10.5),
         plot.subtitle = element_text(size = 8.5),
         legend.position = "right")
 
 coupled_allom <- inner_join(annual_allom, giss, by = "Year") %>%
-  mutate(periodo = ifelse(Year >= 1980, "Pós-1980 (Aquecimento)", "Pré-1980 (Histórico)"))
+  mutate(period = factor(ifelse(Year >= 1980, "Post-1980 (Warming)", "Pre-1980 (Historical)"),
+                         levels = c("Pre-1980 (Historical)", "Post-1980 (Warming)")))
 
-p5c <- ggplot(coupled_allom, aes(x = af_temp, y = mean_iso, color = periodo)) +
+p5c <- ggplot(coupled_allom, aes(x = af_temp, y = mean_iso, color = period)) +
   geom_hline(yintercept = 0, linetype = "dotted", color = "grey50") +
   geom_vline(xintercept = 0, linetype = "dotted", color = "grey50") +
   geom_point(aes(size = n), alpha = 0.8) +
   geom_smooth(method = "lm", se = TRUE, linewidth = 1.1) +
-  scale_color_manual(values = c("Pré-1980 (Histórico)" = "#e6550d",
-                                "Pós-1980 (Aquecimento)" = "#2b5c8f"), name = "Período") +
+  scale_color_manual(values = c("Pre-1980 (Historical)" = "#e6550d",
+                                "Post-1980 (Warming)" = "#2b5c8f"), name = "Period") +
   scale_size_continuous(range = c(1.5, 5), guide = "none") +
   annotate("text", x = -0.45, y = 8.5,
-           label = "Pré-1980: β = +4.36% / °C (p = 0.70, nulo)\nPós-1980: β = +9.32% / °C (p = 0.034, sig!)",
+           label = "Pre-1980: β = +4.36% / °C (p = 0.70, null)\nPost-1980: β = +9.32% / °C (p = 0.034)",
            color = "#1a365d", size = 3.4, fontface = "bold", hjust = 0) +
-  labs(x = "Anomalia de Temperatura Regional (°C)", y = "Contraste de Isometria Δiso (%)",
-       title = "C. Resposta Térmica da Alometria: Pré vs. Pós-1980",
-       subtitle = "Pós-1980: desvio positivo cresce +9,32% por +1 °C (p = 0,034). Pré-1980: desacoplado.") +
+  labs(x = "Regional Temperature Anomaly (°C)", y = "Isometry Contrast Δiso (%)",
+       title = "C. Allometry Thermal Sensitivity: Pre- vs. Post-1980",
+       subtitle = "Post-1980: positive deviation increases +9.32% per +1 °C (p = 0.034). Pre-1980: decoupled.") +
   theme(plot.title = element_text(face = "bold", size = 10.5),
         plot.subtitle = element_text(size = 8.5),
         legend.position = "bottom")
@@ -655,5 +658,17 @@ p5c <- ggplot(coupled_allom, aes(x = af_temp, y = mean_iso, color = periodo)) +
 p_allom_coupling <- (p3a / p5b) | p5c
 p_allom_coupling <- p_allom_coupling + plot_layout(widths = c(1.6, 1.4))
 ggsave(file.path(fig_dir, "climate_allometry_coupling.png"), p_allom_coupling, width = 13.5, height = 7.5, dpi = 200, bg = "white")
+
+# Copy English figures directly to Manuscript/images/
+manu_img_dir <- file.path(ANALYSIS_DIR, "..", "Manuscript", "images")
+if (dir.exists(manu_img_dir)) {
+  file.copy(file.path(fig_dir, "climate_morphometry_coupling.png"),
+            file.path(manu_img_dir, "fig-s-climate-morphometry.png"), overwrite = TRUE)
+  file.copy(file.path(fig_dir, "climate_mass_coupling.png"),
+            file.path(manu_img_dir, "fig-s-climate-mass.png"), overwrite = TRUE)
+  file.copy(file.path(fig_dir, "climate_allometry_coupling.png"),
+            file.path(manu_img_dir, "fig-s-climate-allometry.png"), overwrite = TRUE)
+  message("[copy] Synced English figures to Manuscript/images/")
+}
 
 message("[done] Script complete. Outputs in ", out_dir)

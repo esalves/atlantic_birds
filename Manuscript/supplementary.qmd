@@ -4,6 +4,12 @@ author:
   - name: Eduardo S.A. Santos
     affiliations:
       - Collaboration for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, AB, T6G 2E9, Canada
+  - name: Ayumi Mizuno
+    affiliations:
+      - Collaboration for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, AB, T6G 2E9, Canada
+  - name: Santiago Ortega
+    affiliations:
+      - Collaboration for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, AB, T6G 2E9, Canada
   - name: João C.T. Menezes
     affiliations:
       - Organismic and Evolutionary Biology Graduate Program, University of Massachusetts Amherst, Amherst, MA, 01003, USA
@@ -29,7 +35,7 @@ Large-scale biodiversity trait compilations aggregate measurements across numero
 
 A provenance audit revealed substantial compositional turnover among active research teams over time: only 6 of the 42 primary researchers sampled birds in both the early quartile (1995–2006; 12 active contributors) and the late quartile (2013–2018; 33 active contributors; @fig-s-records). Furthermore, spatial sampling expanded northward and into higher-elevation montane habitats during the latter half of the time series. In avian morphometrics, inter-observer measurement differences frequently reach 1–3 mm for wing length and 0.5–1 mm for bill dimensions [@weeks2020]. When observer identity is left uncontrolled, compositional turnover mimics temporal phenotypic change, accounting for approximately 60% of the apparent unadjusted wing-length decline and creating spurious trends in bill width and trait variance.
 
-To resolve genuine biological change from sampling turnover, all primary models incorporate random intercepts for primary researcher (`(1 | Main_researcher)`). In addition, within-between random effects models [Mundlak REWB; @mundlak1978pooling; @bell2019fixed] definitively demonstrate that morphological traits remained stable within consistent individual researchers over time (e.g., within-observer wing slope: $-0.32$ mm/decade, 95% CI: $-1.59$ to $+0.96$ mm/decade; complete cases: $+0.03$ mm/decade, 95% CI: $-0.58$ to $+0.63$).
+To resolve genuine biological change from sampling turnover, all primary models incorporate random intercepts for primary researcher (`(1 | Main_researcher)`). In addition, within-between random effects models [Mundlak REWB; @mundlak1978pooling; @bell2019fixed] demonstrate that morphological traits remained stable within consistent individual researchers over time (e.g., within-observer wing slope: $-0.32$ mm/decade, 95% CI: $-1.59$ to $+0.96$ mm/decade; complete cases: $+0.03$ mm/decade, 95% CI: $-0.58$ to $+0.63$).
 
 ![**Supplementary Figure S1.** Temporal distribution of live-capture passerine wing records across primary researchers (1995–2018). (Top) Number of wing records per calendar year, stacked by the 12 largest research contributors (and an aggregated "Other (30)" category). Daggers (†) mark research teams that continuously sampled birds across both the early (1995–2006) and late (2013–2018) periods. (Bottom) Number of active research contributors per calendar year.](images/fig-s-records-by-source.png){#fig-s-records}
 
@@ -49,7 +55,7 @@ Across sampling localities, mean annual temperature increased significantly by $
 
 ## Supplementary Note S3: Century-Scale Museum Integration and Climate Breakpoint Analysis
 
-To place the 24-year mist-netting record (1995–2018) into long-term macroecological perspective, we audited historical museum study skins ($n = 3,439$ adult specimens, 1884–2017) across 142 passerine species preserved in major Brazilian collections (Museu de Zoologia da Universidade de São Paulo [MZUSP], Museu Nacional da UFRJ [MNRJ], Universidade Regional de Blumenau [FURB], and Universidade Federal de Pernambuco [UFPE]).
+To place the 24-year mist-netting record (1995–2018) into long-term macroecological perspective, we audited historical museum study skins ($n = 3,439$ adult specimens, 1884–2017) across 142 passerine species preserved in major Brazilian ornithological collections, available via the ATLANTIC BIRD TRAITS database.
 
 We evaluated secular climate warming using NASA GISS Surface Temperature Analysis (GISTEMP v4; Zonal annual anomalies for $24^\circ\text{S}\text{–Equator}$, 1880–2018; @lenssen2019gistemp), which strongly correlates with local CRU-TS capture temperatures ($r = 0.744$). Using two-phase piecewise linear regression [@muggeo2003estimating], we conducted a grid search across candidate breakpoint years (1900–2005) to identify the structural inflection point in regional warming:
 $$y_t = \alpha + \beta_1 \min(Y_t - \tau, 0) + \beta_2 \max(Y_t - \tau, 0) + \varepsilon_t$$
@@ -86,7 +92,7 @@ This expanded dataset comprised 46,663 body mass records (243 species) and 31,88
 
 ## Supplementary Note S5: Exploratory Distributional Structural Equation Modeling (drmSEM)
 
-To evaluate causal pathways connecting climate warming, potential prey availability, and avian morphometrics, we formulated a distributional causal DAG using `drmSEM` / `glmmTMB` (@fig-s-drmsem). The model simultaneously estimates mean paths ($\mu$) and heteroscedastic dispersion paths ($\log\sigma$). In accordance with the main findings, direct temperature effects on wing length were modest, body mass showed complete stability, and regional prey indices (litter ants) showed no direct causal constraint on avian body condition.
+To evaluate causal pathways connecting climate warming, potential prey availability, and avian morphometrics, we formulated a distributional causal DAG using `drmSEM` / `glmmTMB` (@fig-s-drmsem). The model simultaneously estimates mean paths ($\mu$) and heteroscedastic dispersion paths ($\log\sigma$). In accordance with the main findings, direct temperature effects on wing length were modest, body mass showed stability, and regional prey indices (litter ants) showed no direct causal constraint on avian body condition.
 
 ![**Supplementary Figure S9.** Distributional causal directed acyclic graph (drmSEM) evaluating environmental warming, prey availability, and avian phenotypic responses. Solid arrows represent mean structural paths ($\mu$); dashed arrows represent dispersion paths ($\log\sigma$). Standardized path coefficients ($\pm 1$ SE) are displayed alongside each path.](images/fig-drmsem.png){#fig-s-drmsem}
 
