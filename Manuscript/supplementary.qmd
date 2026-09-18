@@ -10,9 +10,6 @@ author:
   - name: Santiago Ortega
     affiliations:
       - Collaboration for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, AB, T6G 2E9, Canada
-  - name: João C.T. Menezes
-    affiliations:
-      - Organismic and Evolutionary Biology Graduate Program, University of Massachusetts Amherst, Amherst, MA, 01003, USA
   - name: Gustavo Burin
     affiliations:
       - Department of Biological and Environmental Sciences, University of Gothenburg, Sweden
@@ -27,15 +24,182 @@ format:
     theme: cosmo
 ---
 
+```{r load-estimates, include=FALSE}
+desc        <- readRDS("../Analysis/output/descriptive_summary.rds")
+cw_phylo    <- readRDS("../Analysis/output/controlled_wing_phylo_results.rds")
+mass        <- readRDS("../Analysis/output/mass_results.rds")
+multi_phylo <- readRDS("../Analysis/output/multitrait_phylo_results.rds")
+biv_phylo   <- readRDS("../Analysis/output/bivariate_phylo_results.rds")
+var_phylo   <- readRDS("../Analysis/output/variance_phylo_results.rds")
+diet_phylo  <- readRDS("../Analysis/output/diet_interaction_phylo.rds")
+ants        <- readRDS("../Analysis/output/ants_results.rds")
+clim        <- readRDS("../Analysis/output/climate_trends.rds")
+es          <- readRDS("../Analysis/output/effect_scale.rds")
+
+# format a count with a thousands separator for inline use
+.n <- function(x) format(x, big.mark = ",", trim = TRUE)
+# format a signed estimate / CI bound to 2 dp with a true minus sign
+.s <- function(x) sub("-", "−", sprintf("%.2f", x))
+# format a signed value to 1 dp with a true minus sign
+.s1 <- function(x) sub("-", "−", sprintf("%.1f", x))
+# format a signed estimate to 4 dp with a true minus sign
+.s4 <- function(x) sub("-", "−", sprintf("%.4f", x))
+
+# pull row from cw_phylo$before_after with optional term filtering
+.cw <- function(mod, term = NULL) {
+  r <- cw_phylo$before_after[cw_phylo$before_after$model == mod, ]
+  if (!is.null(term)) r <- r[r$term == term, ]
+  if (nrow(r) == 0) return(list(b = "NA", lo = "NA", hi = "NA", dec = "NA", dec_lo = "NA", dec_hi = "NA", n = "NA"))
+  list(
+    b      = .s(r$estimate[1]),
+    lo     = .s(r$ci_lo[1]),
+    hi     = .s(r$ci_hi[1]),
+    dec    = .s1(r$mm_per_decade[1]),
+    dec_lo = .s1(r$mm_per_decade_lo[1]),
+    dec_hi = .s1(r$mm_per_decade_hi[1]),
+    n      = .n(r$N[1])
+  )
+}
+
+cw_m0           <- .cw("M0")
+cw_m1a          <- .cw("M1a_src")
+cw_m1           <- .cw("M1")
+cw_m2           <- .cw("M2")
+cw_m3           <- .cw("M3")
+cw_m3_cc        <- .cw("M3_cc")
+cw_m5src_within <- .cw("M5src", "yr_within_src")
+cw_m5src_mean   <- .cw("M5src", "yr_src_mean")
+cw_m6           <- .cw("M6")
+cw_m7           <- .cw("M7")
+cw_noanom       <- .cw("M3_noanom")
+cw_long         <- .cw("M3_longrun")
+
+# effect scale
+if (!is.null(es)) {
+  .esw <- es$wing$using_scaling_sd
+  wing_pct_dec    <- .esw["est", "pct_per_decade"]
+  wing_pct_rec    <- .esw["est", "pct_over_record"]
+  wing_pct_rec_lo <- .esw["lo",  "pct_over_record"]
+  wing_pct_rec_hi <- .esw["hi",  "pct_over_record"]
+} else {
+  wing_pct_dec <- -2.58; wing_pct_rec <- -5.9; wing_pct_rec_lo <- -9.0; wing_pct_rec_hi <- -2.8
+}
+
+# multi-trait comparisons from multi_phylo
+.mt_phylo <- function(trait_name, mod, term = "scaled_yr") {
+  df <- multi_phylo$comparison_lme4
+  r <- df[df$trait == trait_name & df$model == mod & df$term == term, ]
+  if (nrow(r) == 0) return(list(b = "NA", b2 = "NA", lo = "NA", hi = "NA", lo2 = "NA", hi2 = "NA", pct = "NA", pct_lo = "NA", pct_hi = "NA", n = "NA"))
+  list(
+    b      = .s4(r$phylo_estimate[1]),
+    b2     = .s(r$phylo_estimate[1]),
+    lo     = .s4(r$phylo_lower[1]),
+    hi     = .s4(r$phylo_upper[1]),
+    lo2    = .s(r$phylo_lower[1]),
+    hi2    = .s(r$phylo_upper[1]),
+    pct    = .s1(r$phylo_pct_per_decade[1]),
+    pct_lo = .s1(r$phylo_pct_lower[1]),
+    pct_hi = .s1(r$phylo_pct_upper[1]),
+    n      = .n(r$phylo_n[1])
+  )
+}
+
+multi_lme4 <- readRDS("../Analysis/output/multitrait_results.rds")
+.mt_lme4 <- function(trait_name, mod, term = "scaled_yr") {
+  df <- multi_lme4$table
+  r <- df[df$trait == trait_name & df$model == mod & df$term == term, ]
+  if (nrow(r) == 0) return(list(b = "NA", b2 = "NA", lo = "NA", hi = "NA", lo2 = "NA", hi2 = "NA", pct = "NA", pct_lo = "NA", pct_hi = "NA", n = "NA"))
+  list(
+    b      = .s4(r$estimate[1]),
+    b2     = .s(r$estimate[1]),
+    lo     = .s4(r$lower[1]),
+    hi     = .s4(r$upper[1]),
+    lo2    = .s(r$lower[1]),
+    hi2    = .s(r$upper[1]),
+    pct    = .s1(r$pct_per_decade[1]),
+    pct_lo = .s1(r$pct_per_decade_lower[1]),
+    pct_hi = .s1(r$pct_per_decade_upper[1]),
+    n      = .n(r$n[1])
+  )
+}
+
+mass_m0     <- .mt_phylo("ln_body_mass", "M0_baseline")
+mass_m1a    <- .mt_lme4("ln_body_mass", "M1a_src")
+mass_m1     <- .mt_phylo("ln_body_mass", "M1_src_site")
+mass_m3     <- .mt_phylo("ln_body_mass", "M3_ring")
+mass_within <- .mt_phylo("ln_body_mass", "MWsrc_mundlak_contributor", "yr_within_src")
+mass_hour   <- .mt_phylo("ln_body_mass", "HOUR1_with_hour", "scaled_yr")
+
+bill_m0     <- .mt_phylo("Bill_width.mm.", "M0_baseline")
+bill_m1a    <- .mt_lme4("Bill_width.mm.", "M1a_src")
+bill_m1     <- .mt_phylo("Bill_width.mm.", "M1_src_site")
+bill_m3     <- .mt_phylo("Bill_width.mm.", "M3_ring")
+bill_within <- .mt_phylo("Bill_width.mm.", "MWsrc_mundlak_contributor", "yr_within_src")
+
+# diurnal mass gain
+mass_hr_row <- multi_phylo$hour$table[multi_phylo$hour$table$term == "hour_num", ]
+mass_hr_pct <- if (nrow(mass_hr_row) > 0) .s(100 * mass_hr_row$estimate[1]) else "+0.40"
+mass_hr_lo  <- if (nrow(mass_hr_row) > 0) .s(100 * mass_hr_row$lower[1]) else "+0.29"
+mass_hr_hi  <- if (nrow(mass_hr_row) > 0) .s(100 * mass_hr_row$upper[1]) else "+0.52"
+
+# isometry shared records
+biv_ind <- biv_phylo$contrasts_independent[biv_phylo$contrasts_independent$model == "M1_src_site", ]
+iso_wing     <- .s1(biv_ind$wing_pct_decade[1])
+iso_wing_lo  <- .s1(biv_ind$wing_pct_decade_lower[1])
+iso_wing_hi  <- .s1(biv_ind$wing_pct_decade_upper[1])
+iso_mass     <- .s1(biv_ind$mass_pct_decade[1])
+iso_mass_lo  <- .s1(biv_ind$mass_pct_decade_lower[1])
+iso_mass_hi  <- .s1(biv_ind$mass_pct_decade_upper[1])
+iso_diff     <- .s1(biv_ind$diff_pct_decade[1])
+iso_diff_lo  <- .s1(biv_ind$diff_lower[1])
+iso_diff_hi  <- .s1(biv_ind$diff_upper[1])
+iso_cont     <- .s1(biv_ind$iso_contrast_pct_decade[1])
+iso_cont_lo  <- .s1(biv_ind$iso_lower[1])
+iso_cont_hi  <- .s1(biv_ind$iso_upper[1])
+
+# M1a parsimonious contributor model
+iso_sum         <- jsonlite::fromJSON("../Analysis/output/figure_data/fig_isometry_summary.json")
+iso_m1a_wing    <- .s1(iso_sum$m1a_wing_pct_decade)
+iso_m1a_wing_lo <- .s1(iso_sum$m1a_wing_lower)
+iso_m1a_wing_hi <- .s1(iso_sum$m1a_wing_upper)
+iso_m1a_mass    <- .s1(iso_sum$m1a_mass_pct_decade)
+iso_m1a_mass_lo <- .s1(iso_sum$m1a_mass_lower)
+iso_m1a_mass_hi <- .s1(iso_sum$m1a_mass_upper)
+iso_m1a_cont    <- .s1(iso_sum$m1a_iso_contrast)
+iso_m1a_cont_lo <- .s1(iso_sum$m1a_iso_lower)
+iso_m1a_cont_hi <- .s1(iso_sum$m1a_iso_upper)
+iso_m1a_exp     <- .s1(iso_sum$m1a_isometric_mass_expected)
+iso_m1a_exp_lo  <- .s1(iso_sum$m1a_isometric_mass_expected_lower)
+iso_m1a_exp_hi  <- .s1(iso_sum$m1a_isometric_mass_expected_upper)
+iso_m1a_diff    <- .s1(iso_sum$m1a_wing_pct_decade - iso_sum$m1a_mass_pct_decade)
+
+# variance results
+var_s0 <- var_phylo$comparison[var_phylo$comparison$tier == "S0" & var_phylo$comparison$term == "scaled_yr", ]
+var_s3 <- var_phylo$comparison[var_phylo$comparison$tier == "S3" & var_phylo$comparison$term == "scaled_yr", ]
+var_s7_yr <- var_phylo$comparison[var_phylo$comparison$tier == "S7" & var_phylo$comparison$term == "scaled_yr", ]
+var_s7_tm <- var_phylo$comparison[var_phylo$comparison$tier == "S7" & var_phylo$comparison$term == "scaled_tmean", ]
+
+# diet interaction
+diet_base <- diet_phylo$interaction_table_all_specs[diet_phylo$interaction_table_all_specs$model == "A" & diet_phylo$interaction_table_all_specs$term == "interaction", ]
+diet_ctrl <- diet_phylo$interaction_table_all_specs[diet_phylo$interaction_table_all_specs$model == "A_src_site" & diet_phylo$interaction_table_all_specs$term == "interaction", ]
+diet_p90  <- diet_phylo$quantile_slopes_all_specs[diet_phylo$quantile_slopes_all_specs$model == "A_src_site" & diet_phylo$quantile_slopes_all_specs$quantile == "p90", ]
+
+# climate trends
+clim_tm <- clim$pooled[clim$pooled$variable == "tmean" & clim$pooled$weighting == "unweighted + year RE", ]
+
+# ants index
+ants_pl <- ants$year_effects[ants$year_effects$event_level == "campaign" & ants$year_effects$model == "pooled: contributor + locality + site RE, effort covariate", ]
+```
+
 # Supplementary Notes
 
-## Supplementary Note S1: Macroecological Provenance and Observer Turnover
+## Supplementary Note S1: Macroecological Provenance and Contributor Turnover
 
 Large-scale biodiversity trait compilations aggregate measurements across numerous independent research initiatives spanning wide geographical territories and multiple decades [@rodrigues_atlantic_2019]. In the ATLANTIC BIRD TRAITS database, 42 primary researchers coordinated field mist-netting across 139 named municipalities between 1995 and 2018 (@fig-s-records).
 
-A provenance audit revealed substantial compositional turnover among active research teams over time: only 6 of the 42 primary researchers sampled birds in both the early quartile (1995–2006; 12 active contributors) and the late quartile (2013–2018; 33 active contributors; @fig-s-records). Furthermore, spatial sampling expanded northward and into higher-elevation montane habitats during the latter half of the time series. In avian morphometrics, inter-observer measurement differences frequently reach 1–3 mm for wing length and 0.5–1 mm for bill dimensions [@weeks2020]. When observer identity is left uncontrolled, compositional turnover mimics temporal phenotypic change, accounting for approximately 60% of the apparent unadjusted wing-length decline and creating spurious trends in bill width and trait variance.
+A provenance audit revealed substantial compositional turnover among active research teams over time: only 6 of the 42 primary researchers sampled birds in both the early quartile (1995–2006; 12 active contributors) and the late quartile (2013–2018; 33 active contributors; @fig-s-records). Furthermore, spatial sampling expanded northward and into higher-elevation montane habitats during the latter half of the time series. In avian morphometrics, inter-observer measurement differences frequently reach 1–3 mm for wing length and 0.5–1 mm for bill dimensions [@weeks2020]. When contributor identity is left uncontrolled, compositional turnover can mimic temporal phenotypic change: the unadjusted wing-length decline attenuates by approximately 60% once it is modelled, and the apparent trends in bill width and trait variance do not persist.
 
-To resolve genuine biological change from sampling turnover, all primary models incorporate random intercepts for primary researcher (`(1 | Main_researcher)`). In addition, within-between random effects models [Mundlak REWB; @mundlak1978pooling; @bell2019fixed] demonstrate that morphological traits remained stable within consistent individual researchers over time (e.g., within-observer wing slope: $-0.32$ mm/decade, 95% CI: $-1.59$ to $+0.96$ mm/decade; complete cases: $+0.03$ mm/decade, 95% CI: $-0.58$ to $+0.63$).
+To resolve genuine biological change from sampling turnover, all primary models incorporate random intercepts for primary researcher (`(1 | Main_researcher)`). In addition, within-between random effects models [Mundlak REWB; @mundlak1978pooling; @bell2019fixed] show no directional change in morphological traits within individual contributors over time (e.g., within-contributor wing slope: $-0.32$ mm/decade, 95% CI: $-1.59$ to $+0.96$ mm/decade; complete cases: $+0.03$ mm/decade, 95% CI: $-0.58$ to $+0.63$).
 
 ![**Supplementary Figure S1.** Temporal distribution of live-capture passerine wing records across primary researchers (1995–2018). (Top) Number of wing records per calendar year, stacked by the 12 largest research contributors (and an aggregated "Other (30)" category). Daggers (†) mark research teams that continuously sampled birds across both the early (1995–2006) and late (2013–2018) periods. (Bottom) Number of active research contributors per calendar year.](images/fig-s-records-by-source.png){#fig-s-records}
 
@@ -98,6 +262,19 @@ To evaluate causal pathways connecting climate warming, potential prey availabil
 
 ---
 
+## Supplementary Note S6: Species-Level Phenotypic Variability (lnCVR)
+
+Species-level log coefficient-of-variation ratios ($\ln\text{CVR}$) comparing the late (2013–2018) and early (1995–2006) sampling periods are shown below. Pooled across contributors these suggest increased variability; restricted to within the same contributor the pattern does not persist (see main text).
+
+![**Supplementary Figure S10.** Interspecific patterns of among-individual phenotypic variability ($\ln\text{CVR}$) between early and late sampling periods. Forest plots display the species-level log coefficient-of-variation ratio ($\ln\text{CVR}$) comparing late (2013–2018) versus early (1995–2006) periods for (A) wing length ($k = 54$ species), (B) body mass ($k = 57$ species), and (C) bill width ($k = 36$ species) across Atlantic Forest passerines. Points and error bars represent species estimates and 95% confidence intervals; vertical lines and shaded bands represent random-effects meta-analytic means ($\ln\text{CVR} = +0.177$ for wing length; $+0.193$ for body mass; $+0.068$ for bill width).](images/fig-variability.png){#fig-variability}
+
+---
+
+## Supplementary Note S7: Exploratory Regional Invertebrate Context
+
+Dietary reliance on invertebrates did not clearly explain variation in wing-length trajectories in the main analysis. To place that result in ecological context, we examined what regional invertebrate evidence is available. While widespread terrestrial insect declines have been reported across fragmented Brazilian biomes [e.g., in butterflies, bees, and dung beetles; @lewinsohn2022insect], multi-decadal, standardized prey monitoring within tropical forest understoreys remains a macroecological knowledge gap. Global compilations such as PREDICTS [@hudson2017database] lacked multi-year temporal depth in the Atlantic Forest (53 of 56 studies were single-calendar-year snapshots). As a regionally matched alternative, we modeled litter-ant richness from the ATLANTIC ANTS database [@silva2022atlanticants] across 855 standardized campaign events (1994–2018). Regional litter-ant richness declined in this compilation (−20.1%/decade, 95% CI: −31.1 to −7.4%), but the pattern was highly sensitive to sampling effort and site composition (e.g., PERD) and should be treated only as exploratory context. Litter-ant species richness is not a measure of prey abundance or biomass, ground-dwelling ants represent only one component of these birds' invertebrate diets, and regional invertebrate compilations face the same spatial and protocol turnover challenges as vertebrate trait databases.
+---
+
 # Supplementary Tables
 
 | Tier / Specification | Trait | Sample Description | Records ($N$) | Species ($k$) | Time Span | Decadal Rate (%/dec) | 95% Confidence Interval | Raw Unit / decade |
@@ -113,6 +290,78 @@ To evaluate causal pathways connecting climate warming, potential prey availabil
 | **T6. Spanning Species Cohort** | Wing length | 175 Species sampled in both Historical and Modern eras | 24,583 | 175 | 1884–2018 | **$-0.71\%$** | $[-1.41, -0.01]$ | $-0.55$ mm |
 
 : **Supplementary Table S1.** Summary of decadal morphological trajectories across sequential analytical tiers and sample filtering criteria. Models control for species-specific random slopes and intercepts, geographic locality, and contributor/collection. {#tbl-s1}
+
+
+```{r tbl-s-wing, echo=FALSE}
+tbl_cw_data <- data.frame(
+  Model = c("M0: Baseline (sex + latitude + phylogeny)",
+            "M1: + Contributor intercept (Main_researcher)",
+            "M2: + Wing-column proxy + Longitude + Altitude",
+            "M3: Full controls (+ Season + Moult + Individual)",
+            "M3_cc: Full controls on complete cases (N = 8,282)",
+            "M5src: Within-contributor temporal slope (Mundlak REWB)",
+            "M6: Unknown-sex replication (full M3 controls)",
+            "M7: First captures only (no recaptures)"),
+  Beta = c(cw_m0$b, cw_m1a$b, cw_m2$b, cw_m3$b, cw_m3_cc$b, cw_m5src_within$b, cw_m6$b, cw_m7$b),
+  CI = c(paste0("[", cw_m0$lo, ", ", cw_m0$hi, "]"),
+         paste0("[", cw_m1a$lo, ", ", cw_m1a$hi, "]"),
+         paste0("[", cw_m2$lo, ", ", cw_m2$hi, "]"),
+         paste0("[", cw_m3$lo, ", ", cw_m3$hi, "]"),
+         paste0("[", cw_m3_cc$lo, ", ", cw_m3_cc$hi, "]"),
+         paste0("[", cw_m5src_within$lo, ", ", cw_m5src_within$hi, "]"),
+         paste0("[", cw_m6$lo, ", ", cw_m6$hi, "]"),
+         paste0("[", cw_m7$lo, ", ", cw_m7$hi, "]")),
+  Rate = c(cw_m0$dec, cw_m1a$dec, cw_m2$dec, cw_m3$dec, cw_m3_cc$dec, cw_m5src_within$dec, cw_m6$dec, cw_m7$dec),
+  N = c(cw_m0$n, cw_m1a$n, cw_m2$n, cw_m3$n, cw_m3_cc$n, cw_m5src_within$n, cw_m6$n, cw_m7$n)
+)
+knitr::kable(tbl_cw_data, col.names = c("Model specification", "β (mm/SD-yr)", "95% CI", "Rate (mm/dec)", "N"),
+             caption = "**Supplementary Table S2.** Phylogenetic mixed models of wing length across 50 trees, evaluating temporal trajectories across sequential control tiers.")
+```
+
+```{r tbl-s-mass, echo=FALSE}
+tbl_mass_data <- data.frame(
+  Specification = c(
+    "Full sample (N = 11,077): Body mass M0 Baseline (sex + latitude + phylogeny)",
+    "Full sample (N = 11,077): Body mass M1 (+ Contributor intercept)",
+    "Full sample (N = 11,077): Body mass M3 Full controls (+ Season + Moult + Individual)",
+    "Full sample (N = 11,077): Body mass Mundlak within-contributor slope",
+    "Diurnal subsample (N = 8,345): Body mass (+ capture time)",
+    "Shared records (N = 7,577): Wing length rate (Contributor control)",
+    "Shared records (N = 7,577): Body mass rate (Contributor control)",
+    "Shared records (N = 7,577): Geometric isometry contrast (Mass − 3 × Wing)"
+  ),
+  Beta = c(
+    mass_m0$b, mass_m1a$b, mass_m3$b, mass_within$b, mass_hour$b,
+    "—", "—", "—"
+  ),
+  CI_95 = c(
+    paste0("[", mass_m0$lo, ", ", mass_m0$hi, "]"),
+    paste0("[", mass_m1a$lo, ", ", mass_m1a$hi, "]"),
+    paste0("[", mass_m3$lo, ", ", mass_m3$hi, "]"),
+    paste0("[", mass_within$lo, ", ", mass_within$hi, "]"),
+    paste0("[", mass_hour$lo, ", ", mass_hour$hi, "]"),
+    paste0("[", iso_m1a_wing_lo, ", ", iso_m1a_wing_hi, "]"),
+    paste0("[", iso_m1a_mass_lo, ", ", iso_m1a_mass_hi, "]"),
+    paste0("[", iso_m1a_cont_lo, ", ", iso_m1a_cont_hi, "]")
+  ),
+  Rate_pct_dec = c(
+    paste0(mass_m0$pct, "%"),
+    paste0(mass_m1a$pct, "%"),
+    paste0(mass_m3$pct, "%"),
+    paste0(mass_within$pct, "%"),
+    paste0(mass_hour$pct, "%"),
+    paste0(iso_m1a_wing, "%"),
+    paste0(iso_m1a_mass, "%"),
+    paste0("+", iso_m1a_cont, "%")
+  ),
+  N = c(
+    mass_m0$n, mass_m1a$n, mass_m3$n, mass_within$n, mass_hour$n,
+    "7,577", "7,577", "7,577"
+  )
+)
+knitr::kable(tbl_mass_data, col.names = c("Model specification / Contrast", "β (per SD-yr)", "95% CI", "Rate (%/dec)", "N"),
+             caption = "**Supplementary Table S3.** Body mass temporal models across control tiers, and bivariate allometry on shared individuals (50 phylogenetic trees).")
+```
 
 ---
 
