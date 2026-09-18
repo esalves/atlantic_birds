@@ -86,6 +86,16 @@ The decline is carried entirely by the live records; the museum series alone is 
 
 WorldClim **historical monthly weather** (CRU-TS 4.09 downscaled with WorldClim 2.1, monthly tmin/tmax 1950–2024, 2.5 arc-min) — the time-resolved product, explicitly not the v2.1 normals. `rec_tmean` = annual mean of (tmax+tmin)/2 in the **capture year** at the record's coordinates. The 772 NAs are a coastal land-mask artefact (98 of 455 localities, 91 around Guarapari/ES) with no nearest-cell fill applied by design.
 
+### Structural changes made after the E-cluster (2026-09-18)
+
+All numbers below are pulled into the text by inline R from `Analysis/output/referee_reruns/referee_reruns.rds` via accessors in the `load-estimates` chunk (`rr_therm`, `rr_iso`, `rr_sec`). Nothing is typed by hand.
+
+- **Thermal claim removed and replaced by the null result.** The Results section is now "Annual temperature anomalies do not explain the allometric shift": one short section reporting that the anomaly effect is indistinguishable from zero under M3 adjustment, and under three further specifications, while calendar year carries the signal. `fig-thermal-allometry` is dropped from the main text (main-text figures 7 → 6); the figure file itself has no generating code and should not be republished. Abstract, Discussion point 4 and the Methods section updated to match. Methods now describe what was actually run and state the exposure-window objection.
+- **New Supplementary Note S8** tabulates all four thermal specifications (E1/E2/E3) as Supplementary Table S4, built from the saved object, with the convergence count per model and a note that CR2 is unavailable for non-nested random effects.
+- **Secular section rewritten.** Keeps only the claim that survives — no morphological trend before 1980, so the contemporary pattern is not the tail of a long trajectory — and reports the failure explicitly: decline carried by live captures, absent in museum specimens alone, year x source interaction non-zero, and gone when restricted to adults. Discussion paragraph rewritten to match; the "emerged with post-1980 warming" claim is withdrawn.
+- **Isometry strengthened.** The Results now add the M3 confirmation (+5.0%/decade, 95% CI 2.3-7.7, p < 0.001) and note that fitting the contrast directly yields its SE exactly, which answers Mizuno c82.
+- Both documents render clean: no unresolved cross-references, no inline-R leaks, no NA leaks.
+
 ### Still open
 
 - **D1–D4, D6–D11, D13–D15** — the remaining Methods clarifications (11 items), all text-only.

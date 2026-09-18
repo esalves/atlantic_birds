@@ -35,6 +35,7 @@ diet_phylo  <- readRDS("../Analysis/output/diet_interaction_phylo.rds")
 ants        <- readRDS("../Analysis/output/ants_results.rds")
 clim        <- readRDS("../Analysis/output/climate_trends.rds")
 es          <- readRDS("../Analysis/output/effect_scale.rds")
+rr          <- readRDS("../Analysis/output/referee_reruns/referee_reruns.rds")
 
 # format a count with a thousands separator for inline use
 .n <- function(x) format(x, big.mark = ",", trim = TRUE)
@@ -273,6 +274,30 @@ Species-level log coefficient-of-variation ratios ($\ln\text{CVR}$) comparing th
 ## Supplementary Note S7: Exploratory Regional Invertebrate Context
 
 Dietary reliance on invertebrates did not clearly explain variation in wing-length trajectories in the main analysis. To place that result in ecological context, we examined what regional invertebrate evidence is available. While widespread terrestrial insect declines have been reported across fragmented Brazilian biomes [e.g., in butterflies, bees, and dung beetles; @lewinsohn2022insect], multi-decadal, standardized prey monitoring within tropical forest understoreys remains a macroecological knowledge gap. Global compilations such as PREDICTS [@hudson2017database] lacked multi-year temporal depth in the Atlantic Forest (53 of 56 studies were single-calendar-year snapshots). As a regionally matched alternative, we modeled litter-ant richness from the ATLANTIC ANTS database [@silva2022atlanticants] across 855 standardized campaign events (1994–2018). Regional litter-ant richness declined in this compilation (−20.1%/decade, 95% CI: −31.1 to −7.4%), but the pattern was highly sensitive to sampling effort and site composition (e.g., PERD) and should be treated only as exploratory context. Litter-ant species richness is not a measure of prey abundance or biomass, ground-dwelling ants represent only one component of these birds' invertebrate diets, and regional invertebrate compilations face the same spatial and protocol turnover challenges as vertebrate trait databases.
+---
+
+## Supplementary Note S8: Temperature-Anomaly Models Across Specifications
+
+The main text reports no association between morphology and the local annual temperature anomaly ($\Delta T_{\text{local}}$) under the full M3 adjustment set. Because an anomaly measured over a warming study period is itself correlated with calendar year, and because all birds captured at one locality in one year share an anomaly value, we fitted four specifications. All are produced by `Analysis/scripts/referee_reruns.R` and stored in `Analysis/output/referee_reruns/referee_reruns.rds`.
+
+```{r tbl-s-thermal, echo=FALSE}
+th <- rbind(
+  transform(rr$E1[rr$E1$term %in% c("dT", "dT_detr", "scaled_yr"),
+                  c("model", "response", "term", "estimate", "se", "z", "p")], trees = NA),
+  transform(rr$E2[, c("model", "response", "term", "estimate", "se", "z", "p")], trees = NA),
+  setNames(rr$E3[, c("model", "response", "term", "estimate", "se", "z", "p", "trees_used")],
+           c("model", "response", "term", "estimate", "se", "z", "p", "trees")))
+th$estimate <- signif(th$estimate, 3); th$se <- signif(th$se, 3)
+th$z <- round(th$z, 2); th$p <- signif(th$p, 3)
+knitr::kable(th, row.names = FALSE,
+             col.names = c("Specification", "Response", "Term", "Estimate", "SE", "z", "p", "Trees"),
+             caption = "**Supplementary Table S4.** Temperature-anomaly associations across specifications. `dT` is the local annual anomaly; `dT_detr` is the anomaly detrended within sites; `scaled_yr` is calendar year. E1a enters anomaly and year simultaneously; E2a adds a locality-year random intercept; E3 applies the full M3 adjustment set across 50 phylogenetic trees; E3b adds calendar year to E3. `Trees` is the number of the 50 trees whose fits converged and were pooled.")
+```
+
+In every specification containing both terms, calendar year carries the signal and the anomaly does not. We did not use a cluster-robust variance estimator: the random-effects structure is non-nested, which available implementations (`clubSandwich` CR2) do not support, so locality-year clustering is handled with a random intercept instead.
+
+A further caveat is one of exposure window rather than statistics. Wing length is fixed at moult, so the mean temperature of the calendar year in which a bird happened to be captured is not a plausible causal exposure for its wing length. Any thermal mechanism would have to operate during feather growth, which these data cannot resolve.
+
 ---
 
 # Supplementary Tables
