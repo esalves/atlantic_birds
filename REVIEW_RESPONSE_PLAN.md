@@ -98,7 +98,32 @@ All numbers below are pulled into the text by inline R from `Analysis/output/ref
 
 ### Still open
 
-- **D1–D4, D6–D11, D13–D15** — the remaining Methods clarifications (11 items), all text-only.
+- [x] **D-cluster clarifications applied** (D1, D2, D3, D4, D6, D7, D8, D9, D10, D11, D14). D13 is moot — it asked about Figure 6, which was the thermal figure, now removed. D15 was already covered in the B cluster.
+  - D1 M3 vs M3_cc: the primary sample does not drop incomplete records; altitude is imputed and season/moult carry an `unrecorded` level. `M3_cc` removes the 196 records with imputed altitude or unrecorded season.
+  - D2 M6 drops `Sex` (every record is unknown-sex); otherwise identical to M3.
+  - D3 M3_noanom: contributor x municipality x year cells, >= 10 records, mean within-species-sex deviation > 6 mm (~1.5 residual SD, ~8% of a wing).
+  - D4 phylogeny applies to species intercepts only; year slopes are independent.
+  - D6 capture-hour model stated in full — it is NOT the M3 set (omits longitude, elevation, moult, individual), restricted to 05:00-19:00.
+  - D7 the isometry contrast is also fitted directly as a response, so no slope covariance is needed.
+  - D9 within-contributor lnCVR: k = 15 effect sizes, 12 species, 5 contributors, 233 early / 157 late records — all counts pulled from `variance_results.rds$lncvr_contributor_table`.
+  - D10 early/late = outer quartiles (<= 2006, >= 2013); 2007-2012 excluded from the two-period contrast only, retained in all continuous analyses.
+  - D11 the 20-km buffer is the compilation's own tolerance for coordinate imprecision and ecotone generalization, not a biological buffer.
+  - D14 bill width justified as the best-covered extremity trait and the principal site of non-evaporative heat exchange, with its limits stated.
+
+### Third unsupported claim found: the 1980 breakpoint (D8 / Mizuno c88)
+
+`secular_museum_expansion.R` sets `bp_val <- 1980` by hand (line 429), on a code comment about the "modern global warming onset". The grid search it does run covers **1940-1995** (not 1900-2005 as the Methods claimed) and favours **1956** (AIC -111.5) over 1980 (AIC -93.1), a difference of 18.4 AIC units. No source exists anywhere for the "+/- 3 years" the Methods reported.
+Corrected: the Methods and Results now state that 1980 is an a priori boundary, report the grid result against it, and say the pre/post contrast is a comparison of two fixed periods rather than evidence of a break at 1980. All four values are pulled from `secular_expansion_results.rds$climate_coupling$temp_bp_grid`.
+
+### `pool_rubin_df()` audit (engine issue)
+
+Scanned every `.rds` under `Analysis/output/` for non-finite SEs in pooled tables:
+- **Headline models are clean.** M0, M1a_src, M2, M3, M3_cc, M5src, M6, M7, M3_noanom all have finite SEs across all 50 trees.
+- **Two models are affected**, both in `controlled_wing_phylo_results.rds`: `M5_cc` (15/15 pooled rows NA) and `M_carrano` (10/10 NA). Neither is quoted from the object in the manuscript.
+- Note `M_carrano` reports `converged = 50/50` yet still has an NA pooled SE, so the convergence flag does not catch this.
+- `RESULTS_SUMMARY.md` still carries a CI for the Carrano model ([-0.266, +0.208]) that the current object cannot produce, i.e. the summary predates the current build.
+
+### Still open
 - **E1–E4, E6–E7** re-runs.
 - The Discussion body sections still follow the old order internally; worth a pass once the E-cluster numbers are final.
 
