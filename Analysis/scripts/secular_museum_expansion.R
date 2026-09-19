@@ -70,9 +70,15 @@ d_base <- birds_raw %>%
     scaled_lat = as.numeric(scale(Latitude_decimal_degrees * -1))
   )
 
-# Global scaling constants for Year (use 5-year SD as decade standard = 10 / SD)
-SD_YR  <- 5.019925  # manuscript convention
-CTR_YR <- 2009.487
+# Global scaling constants for Year. Read from the analytical dataset so this
+# script cannot drift from the main analysis if passer90 is rebuilt
+# (see SCRIPT_CONSTANTS_AUDIT.md).
+local({
+  e <- new.env(); load(derived_path("passer90.rda"), envir = e)
+  SD_YR  <<- as.numeric(attr(e$passer90$scaled_yr, "scaled:scale"))
+  CTR_YR <<- as.numeric(attr(e$passer90$scaled_yr, "scaled:center"))
+})
+stopifnot(is.finite(SD_YR), is.finite(CTR_YR), SD_YR > 0)
 DEC    <- 10 / SD_YR
 
 d_base <- d_base %>%

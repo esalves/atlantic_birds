@@ -90,8 +90,11 @@ res <- list(generated = Sys.time(), n_trees = N_TREES,
 d0 <- readRDS(derived_path("passer90_climate.rds"))
 stopifnot(all(d0$Status == "live"), all(d0$known_sex))
 
-SD_YR  <- 5.019925                       # attr(passer90$scaled_yr, "scaled:scale")
-CTR_YR <- 2009.487
+# Year scaling: read from the data rather than hardcoded, so a rebuild of
+# passer90 cannot silently desynchronise this script from the main analysis.
+SD_YR  <- as.numeric(attr(d0$scaled_yr, "scaled:scale"))
+CTR_YR <- as.numeric(attr(d0$scaled_yr, "scaled:center"))
+stopifnot(is.finite(SD_YR), is.finite(CTR_YR), SD_YR > 0)
 DEC    <- 10 / SD_YR                     # SD-years per decade
 
 d <- d0 %>%

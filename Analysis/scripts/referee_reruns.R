@@ -64,8 +64,10 @@ source(file.path(ANALYSIS_DIR, "scripts", "_phylo_engine.R"))
 OUT_DIR <- out_path("referee_reruns")
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 
-SD_YR <- 5.019925
-DEC   <- 10 / SD_YR
+# Year scaling is read from the data below, once passer90_climate.rds is loaded,
+# rather than hardcoded (see SCRIPT_CONSTANTS_AUDIT.md).
+SD_YR <- NA_real_
+DEC   <- NA_real_
 N_TREES <- as.integer(Sys.getenv("REFEREE_N_TREES", "50"))
 
 RES <- list()   # collected result tables
@@ -112,6 +114,9 @@ safely <- function(label, expr) {
 # ===========================================================================
 note("Loading passer90_climate.rds ...")
 pc <- readRDS(derived_path("passer90_climate.rds"))
+SD_YR <- as.numeric(attr(pc$scaled_yr, "scaled:scale"))
+DEC   <- 10 / SD_YR
+stopifnot(is.finite(SD_YR), SD_YR > 0)
 
 dat <- pc %>%
   mutate(
@@ -321,7 +326,7 @@ note("E6/E7: secular museum series ...")
 RES$secular <- safely("E6/E7", {
   birds_raw <- read_csv(raw_path("ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv"),
                         guess_max = 70000, show_col_types = FALSE)
-  CTR_YR <- 2009.487
+  CTR_YR <- as.numeric(attr(pc$scaled_yr, "scaled:center"))   # read from the data, not hardcoded
   d_base <- birds_raw %>%
     filter(AtlanticForests_20km_Buffer == "inside the 20 km polygon", !is.na(Year)) %>%
     mutate(conc_wing = coalesce(Wing_length_right.mm., Wing_length_left.mm., Wing_length.mm.),
