@@ -427,6 +427,12 @@ Do the pronounced morphological responses reported for central Amazonian birds g
 (6) **Little evidence of change in phenotypic variability**: Apparent increases in among-individual variability did not survive adjustment for contributor turnover, and residual variance did not track temperature.
 (7) **No clear dietary modulation**: Temporal slopes for highly insectivorous species overlapped zero, giving little evidence that trophic specialization amplified morphological sensitivity, though the interaction remains uncertain.
 
+## Interspecific variation and departure from geometric isometry
+
+Rather than a uniform community-wide response, our results reveal substantial interspecific heterogeneity (@fig-species-slopes). While a small minority of species exhibited declines in wing length whose confidence intervals excluded zero (9 of 72 species) or comparable increases (2 of 72 species), the vast majority (61 species) showed trajectories overlapping zero. This diversity of species trajectories aligns with recent global syntheses showing that morphological responses to climate change are frequently idiosyncratic and species-specific rather than uniform [@teplitsky_climate_2014].
+
+Importantly, our analysis of 7,577 shared records from the same individuals revealed that body mass was more conserved than predicted under cubic geometric scaling of wing shortening. Mass and wing length are therefore decoupled, and the data reject strict geometric isometry; rather than the slenderization documented in the Amazon [@jirinec2021morphological], Atlantic Forest passerines retain mass relative to wing length. Dietary reliance on invertebrates did not clearly explain variation in these trajectories: obligate insectivores exhibited a temporal slope overlapping zero, giving little evidence that trophic specialization modified morphological responses over this period, though the interaction remains uncertain.
+
 ## Contrasting macroecological dynamics: the Atlantic Forest and the central Amazon
 
 These findings present a macroecological contrast to the only comparable multi-decadal Neotropical benchmark: the study by @jirinec2021morphological in the central Amazon. In 77 non-migratory understorey species monitored over 40 years in continuous primary rainforest, @jirinec2021morphological documented widespread declines in body mass (averaging −0.1 to −0.2%/year) coupled with wing elongation in 36% of species. This resulted in a community-wide reduction in wing loading, interpreted as an adaptation to lower metabolic flight costs and improve flight efficiency in an increasingly hot, dry understorey.
@@ -447,25 +453,19 @@ Our findings provide a critical empirical test of classic ecogeographical rules 
 
 Similarly, Allen's rule posits that appendages enlarge in warmer environments to facilitate heat dissipation [@allen1877; @ryding2021shape]. While unadjusted baseline models suggested a temporal increase in bill width, this apparent trend did not survive the inclusion of contributor identity, leaving little evidence of bill-width change. In tropical passerines, bill morphology is heavily constrained by foraging biomechanics, trophic specialization, and vocal performance, which may strongly override subtle thermoregulatory selection for larger bills [@teplitsky_climate_2014].
 
-## Interspecific variation and departure from geometric isometry
+## The inferential foundation for macroecological trait synthesis
 
-Rather than a uniform community-wide response, our results reveal substantial interspecific heterogeneity (@fig-species-slopes). While a small minority of species exhibited declines in wing length whose confidence intervals excluded zero (9 of 72 species) or comparable increases (2 of 72 species), the vast majority (61 species) showed trajectories overlapping zero. This diversity of species trajectories aligns with recent global syntheses showing that morphological responses to climate change are frequently idiosyncratic and species-specific rather than uniform [@teplitsky_climate_2014].
+Our study highlights the role of proper data dependency controls when analyzing multi-decadal compilations in macroecology. Large-scale compilations such as ATLANTIC BIRD TRAITS [@rodrigues_atlantic_2019] are indispensable for macroecological and macroevolutionary research, providing taxonomic and geographic scope that single-site studies cannot achieve. However, because compiled databases combine measurements across dozens of independent research teams, sampling localities, protocols, and seasons, apparent multi-decadal trends can be substantially confounded by sampling turnover.
 
-Importantly, our analysis of 7,577 shared records from the same individuals revealed that body mass was more conserved than predicted under cubic geometric scaling of wing shortening. Mass and wing length are therefore decoupled, and the data reject strict geometric isometry; rather than the slenderization documented in the Amazon [@jirinec2021morphological], Atlantic Forest passerines retain mass relative to wing length. Dietary reliance on invertebrates did not clearly explain variation in these trajectories: obligate insectivores exhibited a temporal slope overlapping zero, giving little evidence that trophic specialization modified morphological responses over this period, though the interaction remains uncertain.
+In our dataset, unadjusted baseline models suggested steep declines in wing length, increases in bill width, and expanding trait variability. Under our multi-tiered comparative framework, the estimated wing decline attenuated by approximately 60%, the apparent bill expansion disappeared, and the apparent variance inflation was no longer supported. Because contributor identity, sampling geography, protocol, and season are not fully separable in a compilation of this kind, we do not attribute this attenuation to any single source; what the comparison establishes is that the unadjusted estimates were substantially carried by how the dataset was assembled. Adding contributor identity and individual identity as random intercepts, and latitude, longitude, elevation, season, and moult as fixed effects—alongside 50-tree phylogenetic comparative models—provided the inferential foundation necessary to uncover these biological patterns. Rather than invalidating trait compilations, our findings indicate that large-scale compilations can yield robust macroecological insight when sampling structure is modelled explicitly.
 
-## Secular context, climatic breakpoint, and sampling breadth
+## Secular context and sampling breadth
 
 Our focal analytical dataset spanned 24 years (1995–2018), corresponding to the era of standardized, multi-project mist-netting in the Atlantic Forest. Century-scale instrumental climate data and historical museum collections bear on two questions: did morphological stability precede this window, and how sensitive are our inferences to taxonomic and demographic sampling breadth?
 
 First, the historical material shows no morphological trend before 1980, across decades in which regional temperatures changed little. The contemporary patterns are therefore not the tail of a long-running trajectory. We stop there. The stronger claim—that morphological change emerged with the post-1980 acceleration of warming—would require the combined museum-plus-live series, and that series does not support it: the apparent secular decline is carried entirely by the live captures, disappears in museum specimens alone, and does not survive restriction to adults (Results, §Robustness). Because museum preparation shrinks feathers and keratin, and because we have no sample measured by both routes with which to calibrate the offset, joining the two sources introduces exactly the kind of artefact our primary analysis excludes skins to avoid.
 
 Second, expanding the analytical framework to mirror less restrictive community sampling shows that our conclusions are not uniformly robust to filtering decisions, and it is worth distinguishing which are. The wing-length result is robust: across the broader avian understorey community, and across all analytical strata and the century-long series, wing-length trajectories remained negative or neutral, and we found no sign of the wing elongation and reduced wing loading reported for the contiguous Amazon. The body-mass result is more sensitive: the community-wide analysis revealed a modest decline that is not detectable in the restricted 73-species sample. Whether this reflects greater statistical power, the inclusion of species or demographic classes excluded from the primary sample, or residual sampling structure in the broader compilation, we cannot determine here, and we therefore treat the absence of a body-mass trend as a conclusion specific to the filtered sample. The resulting position of the Atlantic Forest, between temperate migratory species and the undisturbed central Amazonian understorey, is suggestive but rests on a cross-study comparison and a single modest estimate; we do not regard it as establishing quantitatively intermediate thermal sensitivity.
-
-## The inferential foundation for macroecological trait synthesis
-
-Our study highlights the role of proper data dependency controls when analyzing multi-decadal compilations in macroecology. Large-scale compilations such as ATLANTIC BIRD TRAITS [@rodrigues_atlantic_2019] are indispensable for macroecological and macroevolutionary research, providing taxonomic and geographic scope that single-site studies cannot achieve. However, because compiled databases combine measurements across dozens of independent research teams, sampling localities, protocols, and seasons, apparent multi-decadal trends can be substantially confounded by sampling turnover.
-
-In our dataset, unadjusted baseline models suggested steep declines in wing length, increases in bill width, and expanding trait variability. Under our multi-tiered comparative framework, the estimated wing decline attenuated by approximately 60%, the apparent bill expansion disappeared, and the apparent variance inflation was no longer supported. Because contributor identity, sampling geography, protocol, and season are not fully separable in a compilation of this kind, we do not attribute this attenuation to any single source; what the comparison establishes is that the unadjusted estimates were substantially carried by how the dataset was assembled. Adding contributor identity and individual identity as random intercepts, and latitude, longitude, elevation, season, and moult as fixed effects—alongside 50-tree phylogenetic comparative models—provided the inferential foundation necessary to uncover these biological patterns. Rather than invalidating trait compilations, our findings indicate that large-scale compilations can yield robust macroecological insight when sampling structure is modelled explicitly.
 
 In summary, 24 years of climate warming in the Brazilian Atlantic Forest have not induced the widespread body mass loss or wing elongation observed in the continuous Amazonian understorey. Instead, we found little evidence of directional change in body mass or bill width, a departure from geometric isometry in which mass is retained relative to wing length, and subtle, species-specific adjustments in wing length. These contrasting responses suggest that landscape fragmentation, topographic complexity, and ecological context shape how tropical species respond to anthropogenic climate change, a hypothesis that our cross-study comparison motivates but cannot itself test.
 
@@ -599,6 +599,56 @@ As exploratory regional context only (Supplementary Note S7), we modeled litter-
 ## Reproducible software environment
 
 Analyses and manuscript generation were conducted using R version 4.4+ with packages `glmmTMB` (v1.1.14), `prepR4pcm` (v0.1.0), `metafor` (v4.6+), `ape` (v5.8+), `sf` (v1.0+), `terra` (v1.8+), and `tidyverse` (v2.0+), alongside Python (version 3.11+) with `matplotlib` (v3.10+) and `pandas` (v2.2+). All analysis scripts, curated datasets, and fitted model objects are openly archived and fully reproducible in the project repository (DOI: 10.5281/zenodo.atlantic_birds).
+
+# Competing interests {.unnumbered}
+
+<!-- TODO(submission): confirm for all authors before submitting. Default text below. -->
+The authors declare no competing or financial interests.
+
+# Author contributions {.unnumbered}
+
+<!-- TODO(submission): verify against the CRediT roles in the YAML header and
+     confirm with each co-author. -->
+E.S.A.S. conceived the study, curated the data, designed and performed the
+analyses, produced the figures, and wrote the original draft. A.M., S.O. and
+G.B. contributed to the methodology, validated the analyses, and reviewed and
+edited the manuscript. All authors approved the final version.
+
+# Funding {.unnumbered}
+
+<!-- TODO(submission): grant numbers and funders required. Biology Open asks for
+     funder names and award numbers, and Crossref Funder Registry IDs where
+     available. This cannot be completed from the repository. -->
+*To be completed.*
+
+# Data availability {.unnumbered}
+
+All primary data analysed here are from previously published, openly available
+compilations: morphological records from ATLANTIC BIRD TRAITS
+[@rodrigues_atlantic_2019] and litter-ant records from ATLANTIC ANTS
+[@silva2022atlanticants]. Climate data are from the WorldClim historical monthly
+weather series (CRU-TS 4.09 downscaled; @harris2020crudata) and NASA GISTEMP v4
+[@lenssen2019gistemp]. Phylogenies were drawn from the posterior distribution of
+@mctavish2025tree. Dietary data are from EltonTraits 1.0 [@wilman2014eltontraits].
+
+Analysis code, the derived analytical datasets, and the fitted model objects
+needed to reproduce every value reported here are archived at
+<!-- TODO(submission): mint the Zenodo DOI and replace this placeholder; the
+     current string in the Methods is not a resolvable DOI. -->
+*[repository DOI to be minted]*.
+
+# Ethics {.unnumbered}
+
+<!-- TODO(submission): confirm whether a statement is required. This study is a
+     secondary analysis of previously published, openly available records and
+     involved no new capture or handling of animals; the original licences and
+     permits are those of the contributing projects reported in
+     @rodrigues_atlantic_2019. Confirm with co-authors and with the journal
+     whether anything further is needed. -->
+This study is a secondary analysis of previously published, openly available
+records. No new animal capture or handling was undertaken. Capture and ringing
+permits for the primary data are those held by the contributing research
+programs compiled in ATLANTIC BIRD TRAITS [@rodrigues_atlantic_2019].
 
 # Acknowledgements {.unnumbered}
 
