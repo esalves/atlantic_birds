@@ -119,11 +119,41 @@ tidy_phylo_fit <- function(fit, tree = NA_integer_) {
 }
 
 #' Rubin's rules over per-tree fixed-effect tables.
-pool_rubin_df <- function(fixed_tbl) {
-  fixed_tbl %>% group_by(component, par) %>%
-    summarise(m = n(), qbar = mean(estimate), ubar = mean(se^2), b = ifelse(n() > 1, var(estimate), 0), .groups = "drop") %>%
-    mutate(se = sqrt(ubar + (1 + 1/m) * b), estimate = qbar, lower = qbar - 1.96 * se, upper = qbar + 1.96 * se,
-           z = qbar / se) %>% select(component, par, m, estimate, se, lower, upper, z, ubar, between_tree_var = b)
+#'
+#' A tree whose Hessian is not positive-definite returns a non-finite SE. Pooling
+#' such a tree with mean(se^2) silently turns the POOLED se, CI and z into NA
+#' while leaving the point estimate intact -- an estimate with no uncertainty
+#' attached, and no warning. We therefore drop non-finite per-tree fits, record
+#' how many were used in `m_used` (`m` remains the number supplied), and warn.
+#' Set `on_drop = "error"` to make it fatal, or `min_frac` to require a minimum
+#' share of usable trees.
+pool_rubin_df <- function(fixed_tbl, on_drop = c("warn", "error", "silent"), min_frac = 0.8) {
+  on_drop <- match.arg(on_drop)
+  ok <- is.finite(fixed_tbl$estimate) & is.finite(fixed_tbl$se)
+  if (!all(ok)) {
+    dropped <- fixed_tbl[!ok, , drop = FALSE]
+    msg <- sprintf(
+      "pool_rubin_df: dropped %d of %d per-tree fits with non-finite estimate/SE (parameters: %s). Pooled SEs use the remaining trees.",
+      sum(!ok), nrow(fixed_tbl), paste(sort(unique(dropped$par)), collapse = ", "))
+    if (on_drop == "error") stop(msg) else if (on_drop == "warn") warning(msg, call. = FALSE, immediate. = TRUE)
+    fixed_tbl <- fixed_tbl[ok, , drop = FALSE]
+  }
+  out <- fixed_tbl %>% group_by(component, par) %>%
+    summarise(m_used = n(), qbar = mean(estimate), ubar = mean(se^2),
+              b = ifelse(n() > 1, var(estimate), 0), .groups = "drop") %>%
+    mutate(m = m_used, se = sqrt(ubar + (1 + 1/m_used) * b), estimate = qbar,
+           lower = qbar - 1.96 * se, upper = qbar + 1.96 * se, z = qbar / se) %>%
+    select(component, par, m, m_used, estimate, se, lower, upper, z, ubar, between_tree_var = b)
+  # a parameter pooled from too few usable trees is not reportable
+  n_supplied <- max(out$m_used, 1L)
+  thin <- out$m_used < min_frac * n_supplied
+  if (any(thin) && on_drop != "silent") {
+    msg <- sprintf("pool_rubin_df: %s pooled from < %.0f%% of the usable trees (%s).",
+                   paste(out$par[thin], collapse = ", "), 100 * min_frac,
+                   paste(out$m_used[thin], collapse = ", "))
+    if (on_drop == "error") stop(msg) else warning(msg, call. = FALSE, immediate. = TRUE)
+  }
+  out
 }
 
 #' Fit across trees and pool. Returns list(pooled, per_tree_fixed, varcomp, fits (optional), secs).
