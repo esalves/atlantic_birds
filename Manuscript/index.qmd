@@ -48,16 +48,18 @@ author:
       - Writing – review & editing
     affiliations:
       - Department of Biological and Environmental Sciences, University of Gothenburg, Sweden
+subtitle: "Running title: Atlantic Forest bird morphology"
 keywords:
   - body size
   - climate change
-  - morphological variation
-  - phenotypic stability
+  - phenotypic variation
   - macroecology
   - Atlantic Forest
   - phylogenetic comparative analysis
 abstract: |
-  Declining body size has been widely hypothesized as a general ecological response of endotherms to anthropogenic climate warming. In tropical biomes, empirical evaluations of multi-decadal phenotypic trends remain scarce. Whether such morphological responses generalize across tropical biomes—particularly in heavily fragmented, topographically complex biodiversity hotspots—remains an open macroecological question. Here, we analyze 24 years (1995–2018) of morphological data from 73 passerine species (12,571 live-capture records; ATLANTIC BIRD TRAITS) across the Brazilian Atlantic Forest to evaluate temporal trajectories in body mass, wing length, bill width, and among-individual variability under 0.25°C/decade of regional warming. Overall, we found little evidence of directional change in body mass (−0.91%/decade, 95% CI: −2.72 to +0.94%). The community-level wing-length trajectory was weakly negative, with a confidence interval overlapping zero (−0.74 mm/decade, 95% CI: −1.55 to +0.07 mm/decade). Interspecific variation is pronounced: while 49 species display negative point estimates, 61 of 72 species with wing data have intervals overlapping zero, indicating community-wide heterogeneity rather than uniform shrinkage. Bill width showed little temporal change (−0.03 mm/decade, 95% CI: −0.18 to +0.13 mm/decade), giving little evidence of the appendage enlargement expected under Allen-type thermoregulatory predictions. On 7,577 shared records from the same individuals, body mass was more conserved than expected under cubic geometric shrinkage (+4.85%/decade contrast, 95% CI: +0.81 to +8.89%), rejecting strict geometric isometry and indicating decoupling between mass and wing length. This departure was robust to the full adjustment set, but was not associated with interannual temperature anomalies, so we do not attribute it to thermal variation. Our findings indicate that passerines in the fragmented Atlantic Forest have displayed only subtle phenotypic changes under warming.
+  Declining body size is widely hypothesized as a general endotherm response to climate warming, but multi-decadal tropical tests are scarce and reported responses are heterogeneous. We analysed 24 years (1995–2018) of morphology from 73 passerine species (12,571 live-capture records; ATLANTIC BIRD TRAITS) across the Brazilian Atlantic Forest under 0.25°C/decade of regional warming, adjusting for turnover in the research programs, localities and seasons making up the compilation. We found little evidence of directional change in body mass (−0.91%/decade, 95% CI: −2.72 to +0.94%) or bill width (−0.03 mm/decade, 95% CI: −0.18 to +0.13), the latter giving no support for Allen-type appendage enlargement. The wing-length trajectory was weakly negative with an interval overlapping zero (−0.74 mm/decade, 95% CI: −1.55 to +0.07), and responses were heterogeneous: 61 of 72 species had intervals spanning zero. On 7,577 records from individuals measured for both traits, body mass was more conserved than cubic geometric shrinkage predicts (+4.85%/decade contrast, 95% CI: +0.81 to +8.89%), rejecting strict geometric isometry: mass and wing length changed independently. It persisted under full adjustment but was unrelated to interannual temperature anomalies. Atlantic Forest passerines therefore show only subtle, species-specific change, and do not reproduce the pronounced responses reported from the central Amazon.
+summary-statement: |
+  Two decades of warming produced only subtle, species-specific morphological change in Atlantic Forest birds, unlike the pronounced responses reported from the central Amazon.
 plain-language-summary: |
   As global temperatures rise, many animals are suspected to be shrinking in body size or changing shape to cope with heat. While birds in the intact Amazon rainforest were recently found to be losing weight and growing longer wings over the past four decades, whether birds in other tropical forests respond similarly has been unclear. Examining 24 years of field data (1995–2018) on 73 songbird species across the Brazilian Atlantic Forest, we find no clear evidence that body mass has changed, while wing length shows subtle, species-specific adjustments rather than uniform shrinking. Bills show no sign of enlargement, and body mass was conserved rather than falling in step with the small changes in wing length. Atlantic Forest birds therefore appear to have changed little in size despite significant regional warming, in contrast to patterns reported from the Amazon. By carefully accounting for differences among the research groups that collected the data, and among field sites and seasons, our study offers a macroecological picture of bird responses to climate change in a fragmented tropical landscape.
 date: last-modified
@@ -469,7 +471,7 @@ Second, expanding the analytical framework to mirror less restrictive community 
 
 In summary, 24 years of climate warming in the Brazilian Atlantic Forest have not induced the widespread body mass loss or wing elongation observed in the continuous Amazonian understorey. Instead, we found little evidence of directional change in body mass or bill width, a departure from geometric isometry in which mass is retained relative to wing length, and subtle, species-specific adjustments in wing length. These contrasting responses suggest that landscape fragmentation, topographic complexity, and ecological context shape how tropical species respond to anthropogenic climate change, a hypothesis that our cross-study comparison motivates but cannot itself test.
 
-# Methods {#sec-methods}
+# Materials and Methods {#sec-methods}
 
 ## Trait database filtering and analytical sample derivation
 
@@ -596,6 +598,31 @@ Species' dietary reliance on invertebrates was extracted from the EltonTraits 1.
 
 As exploratory regional context only (Supplementary Note S7), we modeled litter-ant richness from the ATLANTIC ANTS database [@silva2022atlanticants] across 855 standardized field campaigns (1994–2018). We fitted negative-binomial generalized linear mixed models in `glmmTMB` specifying observed ant species richness per campaign as a function of calendar year, with the log of sampling effort (number of pitfall traps $\times$ operational days) as an offset, and random intercepts for contributor, municipality, and sampling locality.
 
+## Use of AI tools
+
+<!-- TODO(submission): E.S.A.S. must verify this statement is complete and
+     accurate before submission, and check it against BiO's AI policies page.
+     The scope below is what the repository records: 31 of 128 commits between
+     2026-06-12 and 2026-09-19 are co-authored by an AI assistant. -->
+
+Generative AI tools (Anthropic Claude, accessed through Claude Code) were used
+during the analysis and preparation of this manuscript. Their use covered
+writing and revising analysis scripts in R, executing those scripts, drafting
+and revising manuscript text, and auditing the analysis code for reproducibility.
+No AI tool was used to generate, alter or impute data, or to produce figures from
+anything other than the analysis outputs described above. All analyses were
+re-executed from the archived scripts and all reported values are read
+programmatically from the saved model objects rather than transcribed.
+
+We note two errors introduced by this workflow and corrected before submission,
+both identified by re-running the analyses against the archived code. First, an
+earlier draft reported an association between the isometry contrast and annual
+temperature anomalies that no script in the repository reproduces; that analysis
+has been re-run and the claim withdrawn. Second, a climate breakpoint reported as
+the result of a maximum-likelihood grid search had in fact been fixed by hand;
+the text now states it as an a priori boundary and reports the grid search
+against it. All authors have verified the claims that remain.
+
 ## Reproducible software environment
 
 Analyses and manuscript generation were conducted using R version 4.4+ with packages `glmmTMB` (v1.1.14), `prepR4pcm` (v0.1.0), `metafor` (v4.6+), `ape` (v5.8+), `sf` (v1.0+), `terra` (v1.8+), and `tidyverse` (v2.0+), alongside Python (version 3.11+) with `matplotlib` (v3.10+) and `pandas` (v2.2+). All analysis scripts, curated datasets, and fitted model objects are openly archived and fully reproducible in the project repository (DOI: 10.5281/zenodo.atlantic_birds).
@@ -603,7 +630,7 @@ Analyses and manuscript generation were conducted using R version 4.4+ with pack
 # Competing interests {.unnumbered}
 
 <!-- TODO(submission): confirm for all authors before submitting. Default text below. -->
-The authors declare no competing or financial interests.
+No competing interests declared.
 
 # Author contributions {.unnumbered}
 
@@ -621,7 +648,7 @@ edited the manuscript. All authors approved the final version.
      available. This cannot be completed from the repository. -->
 *To be completed.*
 
-# Data availability {.unnumbered}
+# Data and resource availability {.unnumbered}
 
 All primary data analysed here are from previously published, openly available
 compilations: morphological records from ATLANTIC BIRD TRAITS
