@@ -115,7 +115,22 @@ All numbers below are pulled into the text by inline R from `Analysis/output/ref
 `secular_museum_expansion.R` sets `bp_val <- 1980` by hand (line 429), on a code comment about the "modern global warming onset". The grid search it does run covers **1940-1995** (not 1900-2005 as the Methods claimed) and favours **1956** (AIC -111.5) over 1980 (AIC -93.1), a difference of 18.4 AIC units. No source exists anywhere for the "+/- 3 years" the Methods reported.
 Corrected: the Methods and Results now state that 1980 is an a priori boundary, report the grid result against it, and say the pre/post contrast is a comparison of two fixed periods rather than evidence of a break at 1980. All four values are pulled from `secular_expansion_results.rds$climate_coupling$temp_bp_grid`.
 
-### `pool_rubin_df()` audit (engine issue)
+### `pool_rubin_df()` FIXED and verified (commit 8746b10)
+
+`_phylo_engine.R` now drops non-finite per-tree fits instead of propagating `NA`
+through `mean(se^2)`, records `m_used` beside `m`, and warns immediately naming
+the affected parameters. `on_drop = "error"` makes it fatal; a `min_frac = 0.8`
+guard warns when a parameter is pooled from under 80% of usable trees.
+
+Verified by re-running `atlantic_parallel_controlled.R --trees 50 --engine
+glmmTMB` and diffing all 49 `before_after` rows against the pre-fix baseline:
+3 rows gained a finite SE (`M5_cc` both Mundlak terms, and `M_carrano`) — exactly
+the models the audit predicted; point estimates moved only in the 4th decimal
+(tree-sampling noise); **no already-finite SE changed**; non-finite SEs 3 → 0.
+The other four Rubin poolers pool brms draws, not glmmTMB Hessians, and exclude
+failed fits upstream, so they do not share the defect.
+
+### Original audit finding (engine issue)
 
 Scanned every `.rds` under `Analysis/output/` for non-finite SEs in pooled tables:
 - **Headline models are clean.** M0, M1a_src, M2, M3, M3_cc, M5src, M6, M7, M3_noanom all have finite SEs across all 50 trees.
