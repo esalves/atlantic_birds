@@ -66,6 +66,7 @@ INCLUDE=(
   'LICENSE-DATA.md'
   'CITATION.cff'
   '.zenodo.json'
+  'renv.lock'
   'make_zenodo_archive.sh'
 )
 
@@ -120,6 +121,8 @@ Analysis/output/climate_trends.rds
 Analysis/output/effect_scale.rds
 Analysis/output/referee_reruns/referee_reruns.rds
 Analysis/output/figure_data/fig_isometry_summary.json
+Analysis/output/session_info.txt
+renv.lock
 Manuscript/index.qmd
 Manuscript/supplementary.qmd
 Manuscript/references.bib

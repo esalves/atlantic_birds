@@ -542,7 +542,7 @@ authors have verified the claims that remain.
 
 ## Reproducible software environment
 
-Analyses and manuscript generation were conducted using R version 4.4+ with packages `glmmTMB` (v1.1.14), `prepR4pcm` (v0.1.0), `metafor` (v4.6+), `ape` (v5.8+), `sf` (v1.0+), `terra` (v1.8+), and `tidyverse` (v2.0+), alongside Python (version 3.11+) with `matplotlib` (v3.10+) and `pandas` (v2.2+). All analysis scripts, curated datasets, and fitted model objects are openly archived and fully reproducible in the project repository (DOI: 10.5281/zenodo.atlantic_birds).
+Analyses and manuscript generation were conducted in R 4.6.0 with `glmmTMB` (v1.1.14), `prepR4pcm` (v0.5.0.9000), `metafor` (v5.0-1), `lme4` (v2.0-1), `ape` (v5.8-1), `phytools` (v2.5-2), `sf` (v1.1-2) and `terra` (v1.9-27), alongside Python (3.11 or later) with `matplotlib` and `pandas` for the figures. The complete environment, giving the exact version and source of every package, is recorded in `renv.lock` at the root of the archived repository and can be restored with `renv::restore()`; `Analysis/output/session_info.txt` gives the same information in human-readable form. Each saved model object additionally records the R and engine version under which it was fitted. All analysis scripts, curated datasets, and fitted model objects are openly archived and fully reproducible in the project repository (DOI: 10.5281/zenodo.atlantic_birds).
 
 # Competing interests {.unnumbered}
 

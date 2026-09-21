@@ -39,6 +39,20 @@ Rscript ../Analysis/scripts/atlantic_diet_interaction.R   # writes images/diet_i
   longer referenced; the analysis scripts that produce them are still in
   `Analysis/scripts/`.
 
+## 1b. Refresh the environment record
+
+Before building the Zenodo deposit (and whenever an analysis package is
+upgraded), re-capture the computational environment:
+
+```bash
+Rscript ../Analysis/scripts/capture_environment.R   # -> renv.lock + Analysis/output/session_info.txt
+```
+
+It scans `Analysis/scripts/*.R` and `Manuscript/*.qmd` for declared packages
+and snapshots them. It deliberately does **not** run `renv::init()`, so no
+project `.Rprofile` is created and R starts normally in this repo. The package
+versions quoted in the Methods must match what it writes.
+
 ## 2. Render the document
 
 ```bash
