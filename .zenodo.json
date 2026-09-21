@@ -1,0 +1,74 @@
+{
+  "title": "Analysis code and derived data for \"Morphological stability and subtle phenotypic shifts in Atlantic Forest birds across two decades of climate warming\"",
+  "upload_type": "software",
+  "description": "<p>Analysis code, derived analytical data sets and fitted result objects reproducing every value reported in a study of morphological change in 73 Atlantic Forest passerine species across 24 years (1995&ndash;2018) of regional warming.</p><p><strong>Licensing.</strong> The code (<code>Analysis/scripts/</code>, <code>Manuscript/</code>) is released under the MIT licence. The derived data, result objects, figures and manuscript text are released under CC BY 4.0. The Zenodo record licence below is set to CC BY 4.0 as the more demanding of the two; see <code>LICENSE</code> and <code>LICENSE-DATA.md</code> in the deposit for the exact split.</p><p><strong>Primary data sources</strong>, each of which should be cited in its own right: ATLANTIC BIRD TRAITS (Rodrigues et al. 2019, <em>Ecology</em>, no copyright or proprietary restrictions); EltonTraits 1.0 (Wilman et al. 2014, <em>Ecology</em>, no restrictions); the avian phylogeny of McTavish et al. 2025 (<em>PNAS</em>, CC BY 4.0); and WorldClim 2.1 downscaled from CRU-TS 4.09 (Fick &amp; Hijmans 2017; Harris et al. 2020).</p><p><strong>What is not included.</strong> Third-party raw data are not redistributed. WorldClim's terms forbid redistribution without prior permission, so no file containing per-record WorldClim values is deposited; <code>Analysis/scripts/climate_extraction.R</code> rebuilds them from a WorldClim download. Large brms model objects (~2 GB, superseded by the glmmTMB engine) are also omitted. Every number in the main text reproduces from the deposit alone.</p>",
+  "access_right": "open",
+  "license": "cc-by-4.0",
+  "creators": [
+    {
+      "name": "Santos, Eduardo S. A.",
+      "orcid": "0000-0002-0434-3655",
+      "affiliation": "Collaboration for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, Canada"
+    },
+    {
+      "name": "Mizuno, Ayumi",
+      "orcid": "0000-0003-0822-5637",
+      "affiliation": "Collaboration for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, Canada"
+    },
+    {
+      "name": "Ortega, Santiago",
+      "orcid": "0000-0002-3518-276X",
+      "affiliation": "Collaboration for Open Science and Synthesis in Ecology and Evolution, Department of Biological Sciences, University of Alberta, Edmonton, Canada"
+    },
+    {
+      "name": "Burin, Gustavo",
+      "orcid": "0000-0001-7851-0666",
+      "affiliation": "Department of Biological and Environmental Sciences, University of Gothenburg, Sweden"
+    }
+  ],
+  "keywords": [
+    "body size",
+    "climate change",
+    "phenotypic variation",
+    "macroecology",
+    "Atlantic Forest",
+    "phylogenetic comparative analysis",
+    "ATLANTIC BIRD TRAITS",
+    "Passeriformes",
+    "glmmTMB",
+    "phylogenetic mixed models"
+  ],
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "10.1002/ecy.2647",
+      "relation": "isDerivedFrom",
+      "resource_type": "dataset",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.1890/13-1917.1",
+      "relation": "isDerivedFrom",
+      "resource_type": "dataset",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.1073/pnas.2409658122",
+      "relation": "isDerivedFrom",
+      "resource_type": "publication-article",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.1038/s41597-020-0453-3",
+      "relation": "isDerivedFrom",
+      "resource_type": "publication-article",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "https://github.com/esalves/atlantic_birds",
+      "relation": "isSupplementTo",
+      "resource_type": "software",
+      "scheme": "url"
+    }
+  ]
+}
