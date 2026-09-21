@@ -76,7 +76,7 @@ phylo_mode,trees,controlled_wing_phylo_results.rds
 phylo_engine_name,glmmTMB,controlled_wing_phylo_results.rds
 phylo_engine_version,1.1.14,controlled_wing_phylo_results.rds
 phylo_n_trees,50,controlled_wing_phylo_results.rds
-phylo_generated,2026-09-09 16:48:02,controlled_wing_phylo_results.rds
+phylo_generated,2026-09-18 18:36:49,controlled_wing_phylo_results.rds
 phylo_sd_year,5.01992511153777,controlled_wing_phylo_results.rds
 phylo_mean_wing_mm,71.129291106393,controlled_wing_phylo_results.rds
 phylo_decision_gate_scenario,B,controlled_wing_phylo_results.rds

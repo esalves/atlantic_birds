@@ -32,7 +32,6 @@ multi_phylo <- readRDS("../Analysis/output/multitrait_phylo_results.rds")
 biv_phylo   <- readRDS("../Analysis/output/bivariate_phylo_results.rds")
 var_phylo   <- readRDS("../Analysis/output/variance_phylo_results.rds")
 diet_phylo  <- readRDS("../Analysis/output/diet_interaction_phylo.rds")
-ants        <- readRDS("../Analysis/output/ants_results.rds")
 clim        <- readRDS("../Analysis/output/climate_trends.rds")
 es          <- readRDS("../Analysis/output/effect_scale.rds")
 rr          <- readRDS("../Analysis/output/referee_reruns/referee_reruns.rds")
@@ -187,9 +186,6 @@ diet_p90  <- diet_phylo$quantile_slopes_all_specs[diet_phylo$quantile_slopes_all
 
 # climate trends
 clim_tm <- clim$pooled[clim$pooled$variable == "tmean" & clim$pooled$weighting == "unweighted + year RE", ]
-
-# ants index
-ants_pl <- ants$year_effects[ants$year_effects$event_level == "campaign" & ants$year_effects$model == "pooled: contributor + locality + site RE, effort covariate", ]
 ```
 
 # Supplementary Notes
@@ -206,8 +202,6 @@ To resolve genuine biological change from sampling turnover, all primary models 
 
 ![**Supplementary Figure S2.** Relative proportion of wing-length measurement columns populated in the ATLANTIC BIRD TRAITS database by year. Bars indicate the annual percentage of records reporting right wing length, left wing length, or side-unspecified wing length. Sample sizes ($n$) above bars indicate total annual captures with wing data.](images/fig-s-wingcol.png){#fig-s-wingcol}
 
----
-
 ## Supplementary Note S2: Regional Environmental and Climatic Trends (1995–2018)
 
 We extracted monthly climate data from the CRU-TS 4.09 high-resolution gridded multivariate dataset ($0.5^\circ \times 0.5^\circ$ resolution; @harris2020crudata) at the 357 coordinate capture localities across the Atlantic Forest domain (@fig-s-climate-trends).
@@ -216,67 +210,13 @@ Across sampling localities, mean annual temperature increased significantly by $
 
 ![**Supplementary Figure S3.** Environmental trends across 357 avian capture localities in the Brazilian Atlantic Forest (1995–2018). **(A)** Mean annual temperature (°C), showing significant warming (+0.246°C/decade, $p = 0.005$). **(B)** Total annual precipitation (mm/year), showing non-significant variation ($-44.7$ mm/decade, $p = 0.25$). **(C)** 12-month Standardized Precipitation-Evapotranspiration Index (SPEI-12), indicating stability in drought regimes ($-0.256$/decade, $p = 0.16$). Solid lines and shaded bands represent pooled linear mixed-effects model trajectories with 95% confidence intervals.](images/fig-s-climate-trends.png){#fig-s-climate-trends}
 
----
+## Supplementary Note S3: Species-Level Phenotypic Variability (lnCVR)
 
-## Supplementary Note S3: Century-Scale Museum Integration and Climate Breakpoint Analysis
+The main text reports among-individual phenotypic variability from continuous heteroscedastic dispersion models. As a complementary species-level summary, we computed log coefficient-of-variation ratios ($\ln\text{CVR}$) with small-sample bias correction [@nakagawa2015metaanalysis] for species with $\ge 5$ records in both the early (1995–2006) and late (2013–2018) periods, pooling effect sizes in random-effects meta-analytic models using `metafor` [@viechtbauer2010metafor]. Pooled across contributors, variability appeared to increase (wing length $\ln\text{CVR} = +0.177$, 95% CI: 0.031 to 0.323, $k = 54$; body mass $+0.193$, 95% CI: 0.021 to 0.366, $k = 57$; bill width $+0.068$, 95% CI: −0.146 to +0.282, $k = 36$). Restricted to within the same contributor, the apparent expansion disappeared ($\ln\text{CVR} = -0.249$, 95% CI: −0.515 to +0.017; $k = 15$), matching the conclusion drawn from the dispersion models. The within-contributor version requires a species to have been sampled by the same contributor in both periods, which few combinations satisfy, so it rests on a considerably smaller and compositionally narrower subset than the pooled comparison.
 
-To place the 24-year mist-netting record (1995–2018) into long-term macroecological perspective, we audited historical museum study skins ($n = 3,439$ adult specimens, 1884–2017) across 142 passerine species preserved in major Brazilian ornithological collections, available via the ATLANTIC BIRD TRAITS database.
+![**Supplementary Figure S4.** Interspecific patterns of among-individual phenotypic variability ($\ln\text{CVR}$) between early and late sampling periods. Forest plots display the species-level log coefficient-of-variation ratio ($\ln\text{CVR}$) comparing late (2013–2018) versus early (1995–2006) periods for (A) wing length ($k = 54$ species), (B) body mass ($k = 57$ species), and (C) bill width ($k = 36$ species) across Atlantic Forest passerines. Points and error bars represent species estimates and 95% confidence intervals; vertical lines and shaded bands represent random-effects meta-analytic means ($\ln\text{CVR} = +0.177$ for wing length; $+0.193$ for body mass; $+0.068$ for bill width).](images/fig-variability.png){#fig-variability}
 
-We evaluated secular climate warming using NASA GISS Surface Temperature Analysis (GISTEMP v4; Zonal annual anomalies for $24^\circ\text{S}\text{–Equator}$, 1880–2018; @lenssen2019gistemp), which strongly correlates with local CRU-TS capture temperatures ($r = 0.744$). Using two-phase piecewise linear regression [@muggeo2003estimating], we conducted a grid search across candidate breakpoint years (1900–2005) to identify the structural inflection point in regional warming:
-$$y_t = \alpha + \beta_1 \min(Y_t - \tau, 0) + \beta_2 \max(Y_t - \tau, 0) + \varepsilon_t$$
-The maximum-likelihood breakpoint emerged at $\tau = 1980 \pm 3$ years:
-- **Pre-1980 (1880–1979):** $+0.036^\circ\text{C}$/decade ($t = 2.05, p = 0.042$), reflecting modest decadal fluctuations.
-- **Post-1980 (1980–2018):** $+0.190^\circ\text{C}$/decade ($t = 8.62, p < 10^{-15}$), representing a $>5$-fold acceleration in regional warming rate (@fig-s-climate-morphometry A).
-
-Applying identical piecewise regressions to species-centered morphological deviations revealed that pre-1980 museum specimens exhibited strict stability or slight positive trajectories in wing length ($+0.45$ mm/decade, $t = 3.71$; @fig-s-climate-morphometry B), with zero thermal sensitivity to annual temperature anomalies ($\beta = +0.10$ mm/°C, $p = 0.91$; @fig-s-climate-morphometry C). Wing shortening emerged synchronously with the post-1980 warming acceleration ($-0.26$ to $-0.41$ mm/decade, $p < 0.02$; thermal sensitivity $\beta = -1.68$ mm/°C, $p = 0.005$).
-
-Similarly, historical body mass (1962–1979) was strictly invariant ($-0.17\%$/year, $p = 0.52$; thermal sensitivity $\beta = -1.97\%/^\circ\text{C}, p = 0.86$; @fig-s-climate-mass), and bivariate allometry followed geometric isometry prior to 1980 ($\Delta_{\text{iso}}: p = 0.69$), shifting to significant stoutening post-1980 ($+2.12\%$/decade, $p = 0.048$; thermal sensitivity $\beta = +9.32\%/^\circ\text{C}, p = 0.034$; @fig-s-climate-allometry). For 175 species continuously connecting museum skins to modern field captures, the secular wing decline was $-0.71\%$/decade ($p = 0.047$; @fig-s-secular-trajectories).
-
-![**Supplementary Figure S4.** Century-scale climate breakpoint (~1980) and morphometric coupling of wing length (1880–2018). **(A)** Regional temperature anomalies (NASA GISS Zonal $24^\circ\text{S}\text{–Equator}$), showing the structural breakpoint in 1980 (dashed line; $+0.036^\circ\text{C}$/dec pre-1980 vs. $+0.190^\circ\text{C}$/dec post-1980). **(B)** Annual mean wing length deviations across 37,751 records (1884–2018), showing pre-1980 museum stability and post-1980 shortening. **(C)** Thermal sensitivity of wing length: pre-1980 morphology was decoupled from temperature ($\beta = +0.10$ mm/°C, $p = 0.91$), whereas post-1980 exhibits strong negative thermal coupling ($\beta = -1.68$ mm/°C, $p = 0.005$).](images/fig-s-climate-morphometry.png){#fig-s-climate-morphometry}
-
-![**Supplementary Figure S5.** Century-scale body mass trajectory and thermal decoupling (1962–2018). **(A)** Regional temperature series with 1980 breakpoint. **(B)** Species-centered body mass deviations across 50,058 passerine records, showing multi-decadal stability across both pre-1980 ($-0.17\%$/year, $p = 0.52$) and post-1980 ($-0.02\%$/year, $p = 0.49$) eras. **(C)** Thermal sensitivity of body mass, demonstrating complete thermal decoupling across all time periods ($p = 0.86$ pre-1980; $p = 0.43$ post-1980).](images/fig-s-climate-mass.png){#fig-s-climate-mass}
-
-![**Supplementary Figure S6.** Century-scale allometric trajectory and thermal stoutening (1962–2018). **(A)** Regional temperature series with 1980 breakpoint. **(B)** Isometry contrast ($\Delta_{\text{iso}} = \ln M - 3\ln L$) across 29,871 shared records, showing strict isometry pre-1980 ($p = 0.69$) and significant stoutening post-1980 ($+2.12\%$/decade, $p = 0.048$). **(C)** Thermal sensitivity of allometry, showing strong positive coupling to regional warming post-1980 ($\beta = +9.32\%/^\circ\text{C}, p = 0.034$).](images/fig-s-climate-allometry.png){#fig-s-climate-allometry}
-
-![**Supplementary Figure S8.** Secular species-specific trajectories for 175 passerine species connecting historical museum skins (1884–1979) to modern field ringing records (1995–2018). Points represent annual species means sized by capture count; lines represent species-specific linear mixed-effects trajectories.](images/fig-s-secular-trajectories.png){#fig-s-secular-trajectories}
-
----
-
-## Supplementary Note S4: Community-Wide Sampling Expansion (Jirinec et al. 2021 Criteria)
-
-To assess whether our focal sample restrictions (passerines, adults of known sex, $n \ge 30$, $\ge 5$ years span) influenced conclusions, we implemented a community-wide expansion following the less restrictive sampling design of @jirinec2021morphological:
-1. Inclusion of adult individuals of unknown sex;
-2. Expansion from Passeriformes to all mist-netted understorey bird orders (Apodiformes, Columbiformes, Coraciiformes, Cuculiformes, Galbuliformes, Gruiformes, Passeriformes, Pelecaniformes, Piciformes, Strigiformes, Trogoniformes);
-3. Temporal coverage criterion requiring $\ge 5$ captures before and after the median sampling year (2010).
-
-This expanded dataset comprised 46,663 body mass records (243 species) and 31,888 wing records (217 species). Linear mixed-effects models controlling for species random slopes, sampling locality, and contributor demonstrated that wing shortening remained invariant at $-1.00\%$/decade (95% CI: $-2.09$ to $+0.09\%$/decade; @tbl-s1; @fig-s-model-comparison). For body mass, the expanded community sample yielded a statistically detectable decadal decline of $-1.29\%$/decade (95% CI: $-2.30$ to $-0.27\%$/decade), positioning the Atlantic Forest intermediate between North American temperate migrants [$-0.68\%$/decade; @weeks2020] and continuous Amazonian understorey [$-1.80\%$/decade; @jirinec2021morphological].
-
-![**Supplementary Figure S7.** Forest plot comparing decadal rates of change (% per decade, $\pm 95\%$ CI) across sequential analytical tiers (T1–T6) for wing length (blue) and body mass (orange). Benchmarks from @weeks2020 (temperate migrants) and @jirinec2021morphological (Amazonian understorey) are displayed for comparison.](images/fig-s-model-comparison.png){#fig-s-model-comparison}
-
----
-
-## Supplementary Note S5: Exploratory Distributional Structural Equation Modeling (drmSEM)
-
-To evaluate causal pathways connecting climate warming, potential prey availability, and avian morphometrics, we formulated a distributional causal DAG using `drmSEM` / `glmmTMB` (@fig-s-drmsem). The model simultaneously estimates mean paths ($\mu$) and heteroscedastic dispersion paths ($\log\sigma$). In accordance with the main findings, direct temperature effects on wing length were modest, body mass showed stability, and regional prey indices (litter ants) showed no direct causal constraint on avian body condition.
-
-![**Supplementary Figure S9.** Distributional causal directed acyclic graph (drmSEM) evaluating environmental warming, prey availability, and avian phenotypic responses. Solid arrows represent mean structural paths ($\mu$); dashed arrows represent dispersion paths ($\log\sigma$). Standardized path coefficients ($\pm 1$ SE) are displayed alongside each path.](images/fig-drmsem.png){#fig-s-drmsem}
-
----
-
-## Supplementary Note S6: Species-Level Phenotypic Variability (lnCVR)
-
-Species-level log coefficient-of-variation ratios ($\ln\text{CVR}$) comparing the late (2013–2018) and early (1995–2006) sampling periods are shown below. Pooled across contributors these suggest increased variability; restricted to within the same contributor the pattern does not persist (see main text).
-
-![**Supplementary Figure S10.** Interspecific patterns of among-individual phenotypic variability ($\ln\text{CVR}$) between early and late sampling periods. Forest plots display the species-level log coefficient-of-variation ratio ($\ln\text{CVR}$) comparing late (2013–2018) versus early (1995–2006) periods for (A) wing length ($k = 54$ species), (B) body mass ($k = 57$ species), and (C) bill width ($k = 36$ species) across Atlantic Forest passerines. Points and error bars represent species estimates and 95% confidence intervals; vertical lines and shaded bands represent random-effects meta-analytic means ($\ln\text{CVR} = +0.177$ for wing length; $+0.193$ for body mass; $+0.068$ for bill width).](images/fig-variability.png){#fig-variability}
-
----
-
-## Supplementary Note S7: Exploratory Regional Invertebrate Context
-
-Dietary reliance on invertebrates did not clearly explain variation in wing-length trajectories in the main analysis. To place that result in ecological context, we examined what regional invertebrate evidence is available. While widespread terrestrial insect declines have been reported across fragmented Brazilian biomes [e.g., in butterflies, bees, and dung beetles; @lewinsohn2022insect], multi-decadal, standardized prey monitoring within tropical forest understoreys remains a macroecological knowledge gap. Global compilations such as PREDICTS [@hudson2017database] lacked multi-year temporal depth in the Atlantic Forest (53 of 56 studies were single-calendar-year snapshots). As a regionally matched alternative, we modeled litter-ant richness from the ATLANTIC ANTS database [@silva2022atlanticants] across 855 standardized campaign events (1994–2018). Regional litter-ant richness declined in this compilation (−20.1%/decade, 95% CI: −31.1 to −7.4%), but the pattern was highly sensitive to sampling effort and site composition (e.g., PERD) and should be treated only as exploratory context. Litter-ant species richness is not a measure of prey abundance or biomass, ground-dwelling ants represent only one component of these birds' invertebrate diets, and regional invertebrate compilations face the same spatial and protocol turnover challenges as vertebrate trait databases.
----
-
-## Supplementary Note S8: Temperature-Anomaly Models Across Specifications
+## Supplementary Note S4: Temperature-Anomaly Models Across Specifications
 
 The main text reports no association between morphology and the local annual temperature anomaly ($\Delta T_{\text{local}}$) under the full M3 adjustment set. Because an anomaly measured over a warming study period is itself correlated with calendar year, and because all birds captured at one locality in one year share an anomaly value, we fitted four specifications. All are produced by `Analysis/scripts/referee_reruns.R` and stored in `Analysis/output/referee_reruns/referee_reruns.rds`.
 
@@ -291,31 +231,14 @@ th$estimate <- signif(th$estimate, 3); th$se <- signif(th$se, 3)
 th$z <- round(th$z, 2); th$p <- signif(th$p, 3)
 knitr::kable(th, row.names = FALSE,
              col.names = c("Specification", "Response", "Term", "Estimate", "SE", "z", "p", "Trees"),
-             caption = "**Supplementary Table S4.** Temperature-anomaly associations across specifications. `dT` is the local annual anomaly; `dT_detr` is the anomaly detrended within sites; `scaled_yr` is calendar year. E1a enters anomaly and year simultaneously; E2a adds a locality-year random intercept; E3 applies the full M3 adjustment set across 50 phylogenetic trees; E3b adds calendar year to E3. `Trees` is the number of the 50 trees whose fits converged and were pooled.")
+             caption = "**Supplementary Table S3.** Temperature-anomaly associations across specifications. `dT` is the local annual anomaly; `dT_detr` is the anomaly detrended within sites; `scaled_yr` is calendar year. E1a enters anomaly and year simultaneously; E2a adds a locality-year random intercept; E3 applies the full M3 adjustment set across 50 phylogenetic trees; E3b adds calendar year to E3. `Trees` is the number of the 50 trees whose fits converged and were pooled.")
 ```
 
 In every specification containing both terms, calendar year carries the signal and the anomaly does not. We did not use a cluster-robust variance estimator: the random-effects structure is non-nested, which available implementations (`clubSandwich` CR2) do not support, so locality-year clustering is handled with a random intercept instead.
 
 A further caveat is one of exposure window rather than statistics. Wing length is fixed at moult, so the mean temperature of the calendar year in which a bird happened to be captured is not a plausible causal exposure for its wing length. Any thermal mechanism would have to operate during feather growth, which these data cannot resolve.
 
----
-
 # Supplementary Tables
-
-| Tier / Specification | Trait | Sample Description | Records ($N$) | Species ($k$) | Time Span | Decadal Rate (%/dec) | 95% Confidence Interval | Raw Unit / decade |
-| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **T1. Manuscript Baseline (`passer90`)** | Wing length | Passerines, Adult, Known Sex, Live captures | 8,478 | 72 | 1995–2018 | **$-1.48\%$** | $[-2.58, -0.37]$ | $-1.05$ mm |
-| **T1. Manuscript Baseline (`passer90`)** | Body mass | Passerines, Adult, Known Sex, Live captures | 11,256 | 73 | 1995–2018 | **$-1.12\%$** | $[-3.21, +1.02]$ | $-0.011$ log g |
-| **T2. Jirinec Passerines (All Sexes)** | Wing length | Passerines, All Sexes, Jirinec temporal coverage | 28,190 | 178 | 1995–2018 | **$-0.88\%$** | $[-1.93, +0.18]$ | $-0.66$ mm |
-| **T2. Jirinec Passerines (All Sexes)** | Body mass | Passerines, All Sexes, Jirinec temporal coverage | 41,258 | 191 | 1995–2018 | **$-1.46\%$** | $[-2.55, -0.36]$ | $-0.015$ log g |
-| **T3. Jirinec Community (All Orders)** | Wing length | All Orders, All Sexes, Jirinec temporal coverage | 31,888 | 217 | 1995–2018 | **$-1.00\%$** | $[-2.09, +0.09]$ | $-0.76$ mm |
-| **T3. Jirinec Community (All Orders)** | Body mass | All Orders, All Sexes, Jirinec temporal coverage | 46,663 | 243 | 1995–2018 | **$-1.29\%$** | $[-2.30, -0.27]$ | $-0.013$ log g |
-| **T4. Museum Historical Series** | Wing length | Museum Study Skins only (MZUSP, MNRJ, etc.) | 3,439 | 142 | 1884–2017 | **$-0.31\%$** | $[-1.95, +1.34]$ | $-0.28$ mm |
-| **T5. Integrated Live + Museum** | Wing length | Live Captures + Museum Skins (Status control) | 34,312 | 184 | 1884–2018 | **$-0.36\%$** | $[-0.92, +0.20]$ | $-0.28$ mm |
-| **T6. Spanning Species Cohort** | Wing length | 175 Species sampled in both Historical and Modern eras | 24,583 | 175 | 1884–2018 | **$-0.71\%$** | $[-1.41, -0.01]$ | $-0.55$ mm |
-
-: **Supplementary Table S1.** Summary of decadal morphological trajectories across sequential analytical tiers and sample filtering criteria. Models control for species-specific random slopes and intercepts, geographic locality, and contributor/collection. {#tbl-s1}
-
 
 ```{r tbl-s-wing, echo=FALSE}
 tbl_cw_data <- data.frame(
@@ -340,7 +263,7 @@ tbl_cw_data <- data.frame(
   N = c(cw_m0$n, cw_m1a$n, cw_m2$n, cw_m3$n, cw_m3_cc$n, cw_m5src_within$n, cw_m6$n, cw_m7$n)
 )
 knitr::kable(tbl_cw_data, col.names = c("Model specification", "β (mm/SD-yr)", "95% CI", "Rate (mm/dec)", "N"),
-             caption = "**Supplementary Table S2.** Phylogenetic mixed models of wing length across 50 trees, evaluating temporal trajectories across sequential control tiers.")
+             caption = "**Supplementary Table S1.** Phylogenetic mixed models of wing length across 50 trees, evaluating temporal trajectories across sequential control tiers.")
 ```
 
 ```{r tbl-s-mass, echo=FALSE}
@@ -385,10 +308,8 @@ tbl_mass_data <- data.frame(
   )
 )
 knitr::kable(tbl_mass_data, col.names = c("Model specification / Contrast", "β (per SD-yr)", "95% CI", "Rate (%/dec)", "N"),
-             caption = "**Supplementary Table S3.** Body mass temporal models across control tiers, and bivariate allometry on shared individuals (50 phylogenetic trees).")
+             caption = "**Supplementary Table S2.** Body mass temporal models across control tiers, and bivariate allometry on shared individuals (50 phylogenetic trees).")
 ```
-
----
 
 # References {.unnumbered}
 

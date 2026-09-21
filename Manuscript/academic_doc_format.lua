@@ -50,8 +50,26 @@ function Pandoc(doc)
         name = "Author " .. tostring(i)
       end
 
-      -- Affiliation numbers
-      local affil_num = tostring(i)
+      -- Affiliation numbers: use the author's own affiliations so that
+      -- co-authors sharing an affiliation share a superscript. Falls back to
+      -- the author index only when no affiliation is resolvable.
+      local affil_nums = {}
+      if auth.affiliations and type(auth.affiliations) == "table" then
+        for _, aff in ipairs(auth.affiliations) do
+          local num = to_str(aff.number)
+          if num == "" then
+            local aff_id = to_str(aff.id)
+            local all = meta['by-affiliation']
+            if aff_id ~= "" and all and type(all) == "table" then
+              for k, cand in ipairs(all) do
+                if to_str(cand.id) == aff_id then num = tostring(k) break end
+              end
+            end
+          end
+          if num ~= "" then table.insert(affil_nums, num) end
+        end
+      end
+      local affil_num = (#affil_nums > 0) and table.concat(affil_nums, ",") or tostring(i)
       local is_corr = false
       if auth.attributes and auth.attributes.corresponding then
         is_corr = true
