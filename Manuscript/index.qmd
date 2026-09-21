@@ -276,8 +276,13 @@ rr_iso_yr        <- rr_therm("E1a_anomaly_plus_year", "isometry contrast lnM-3ln
 rr_iso_m3        <- rr_iso("E4b_iso_M3")
 # sample sizes for the thermal models, taken from the fitted tables / data
 rr_n_therm  <- unique(rr$E1$n)[1]
-rr_n_shared <- nrow(subset(readRDS("../Analysis/data/derived/passer90_climate.rds"),
-                           !is.na(conc.wing.length) & !is.na(ln_body_mass)))
+# Counted from passer90.rda (ATLANTIC BIRD TRAITS only). The same count comes
+# from passer90_climate.rds, but that file carries WorldClim-derived columns
+# whose terms forbid redistribution, and no climate column is needed here.
+rr_n_shared <- local({
+  e <- new.env(); load("../Analysis/data/derived/passer90.rda", envir = e)
+  nrow(subset(e$passer90, !is.na(conc.wing.length) & !is.na(ln_body_mass)))
+})
 ```
 
 # Introduction
