@@ -20,6 +20,10 @@
 #                              engine; no reported number depends on them
 #   archive/                   superseded and retired analyses; preserved in the
 #                              git history of the public repository instead
+#   jirinec_gap_analysis.R, jirinec_gaps_report.R, Analysis/output/jirinec_gaps/
+#                              an exploratory side-report, never part of the
+#                              manuscript; shipping it would invite readers to
+#                              treat it as a result of this paper
 #   Analysis/scripts/atlantic_birds_ms*            legacy Rmd + 440 MB knitr cache
 #   Analysis/scripts/body_mass_descriptive.html    legacy 4.2 MB render
 #   REVISION_*.md, REVIEW_RESPONSE_PLAN.md, CODE_REVIEW.md
@@ -70,12 +74,15 @@ git archive --format=tar HEAD -- "${INCLUDE[@]}" | tar -x -C "$STAGE"
 # Drop what git tracks but the deposit should not carry.
 rm -rf \
   "$STAGE/Analysis/output/models" \
+  "$STAGE/Analysis/output/jirinec_gaps" \
   "$STAGE/Analysis/scripts/atlantic_birds_ms_cache" \
   "$STAGE/Analysis/scripts/atlantic_birds_ms_files" \
   "$STAGE/Manuscript/_freeze" \
   "$STAGE/Manuscript/.quarto"
 rm -f \
   "$STAGE/Analysis/data/derived/passer90_climate.rds" \
+  "$STAGE/Analysis/scripts/jirinec_gap_analysis.R" \
+  "$STAGE/Analysis/scripts/jirinec_gaps_report.R" \
   "$STAGE/Analysis/scripts/atlantic_birds_ms.Rmd" \
   "$STAGE/Analysis/scripts/body_mass_descriptive.html" \
   "$STAGE/Analysis/scripts/body_mass_descriptive.qmd"
@@ -85,6 +92,13 @@ find "$STAGE" -name 'REVISION_*.md' -delete
 # Refuse to ship anything WorldClim-derived per-record.
 if find "$STAGE" -name 'passer90_climate.rds' | grep -q .; then
   echo "ERROR: a WorldClim-derived per-record file is still staged. Aborting." >&2
+  exit 1
+fi
+
+# Refuse to ship the exploratory Jirinec side-report.
+if find "$STAGE" -iname '*jirinec*' | grep -q .; then
+  echo "ERROR: Jirinec gap-analysis material is still staged. Aborting." >&2
+  find "$STAGE" -iname '*jirinec*' >&2
   exit 1
 fi
 
