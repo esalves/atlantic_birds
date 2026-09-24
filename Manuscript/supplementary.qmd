@@ -128,19 +128,12 @@ mass_m1a    <- .mt_lme4("ln_body_mass", "M1a_src")
 mass_m1     <- .mt_phylo("ln_body_mass", "M1_src_site")
 mass_m3     <- .mt_phylo("ln_body_mass", "M3_ring")
 mass_within <- .mt_phylo("ln_body_mass", "MWsrc_mundlak_contributor", "yr_within_src")
-mass_hour   <- .mt_phylo("ln_body_mass", "HOUR1_with_hour", "scaled_yr")
 
 bill_m0     <- .mt_phylo("Bill_width.mm.", "M0_baseline")
 bill_m1a    <- .mt_lme4("Bill_width.mm.", "M1a_src")
 bill_m1     <- .mt_phylo("Bill_width.mm.", "M1_src_site")
 bill_m3     <- .mt_phylo("Bill_width.mm.", "M3_ring")
 bill_within <- .mt_phylo("Bill_width.mm.", "MWsrc_mundlak_contributor", "yr_within_src")
-
-# diurnal mass gain
-mass_hr_row <- multi_phylo$hour$table[multi_phylo$hour$table$term == "hour_num", ]
-mass_hr_pct <- if (nrow(mass_hr_row) > 0) .s(100 * mass_hr_row$estimate[1]) else "+0.40"
-mass_hr_lo  <- if (nrow(mass_hr_row) > 0) .s(100 * mass_hr_row$lower[1]) else "+0.29"
-mass_hr_hi  <- if (nrow(mass_hr_row) > 0) .s(100 * mass_hr_row$upper[1]) else "+0.52"
 
 # isometry shared records
 biv_ind <- biv_phylo$contrasts_independent[biv_phylo$contrasts_independent$model == "M1_src_site", ]
@@ -273,13 +266,12 @@ tbl_mass_data <- data.frame(
     "Full sample (N = 11,077): Body mass M1 (+ Contributor intercept)",
     "Full sample (N = 11,077): Body mass M3 Full controls (+ Season + Moult + Individual)",
     "Full sample (N = 11,077): Body mass Mundlak within-contributor slope",
-    "Diurnal subsample (N = 8,345): Body mass (+ capture time)",
     "Shared records (N = 7,577): Wing length rate (Contributor control)",
     "Shared records (N = 7,577): Body mass rate (Contributor control)",
     "Shared records (N = 7,577): Geometric isometry contrast (Mass − 3 × Wing)"
   ),
   Beta = c(
-    mass_m0$b, mass_m1a$b, mass_m3$b, mass_within$b, mass_hour$b,
+    mass_m0$b, mass_m1a$b, mass_m3$b, mass_within$b,
     "—", "—", "—"
   ),
   CI_95 = c(
@@ -287,7 +279,6 @@ tbl_mass_data <- data.frame(
     paste0("[", mass_m1a$lo, ", ", mass_m1a$hi, "]"),
     paste0("[", mass_m3$lo, ", ", mass_m3$hi, "]"),
     paste0("[", mass_within$lo, ", ", mass_within$hi, "]"),
-    paste0("[", mass_hour$lo, ", ", mass_hour$hi, "]"),
     paste0("[", iso_m1a_wing_lo, ", ", iso_m1a_wing_hi, "]"),
     paste0("[", iso_m1a_mass_lo, ", ", iso_m1a_mass_hi, "]"),
     paste0("[", iso_m1a_cont_lo, ", ", iso_m1a_cont_hi, "]")
@@ -297,13 +288,12 @@ tbl_mass_data <- data.frame(
     paste0(mass_m1a$pct, "%"),
     paste0(mass_m3$pct, "%"),
     paste0(mass_within$pct, "%"),
-    paste0(mass_hour$pct, "%"),
     paste0(iso_m1a_wing, "%"),
     paste0(iso_m1a_mass, "%"),
     paste0("+", iso_m1a_cont, "%")
   ),
   N = c(
-    mass_m0$n, mass_m1a$n, mass_m3$n, mass_within$n, mass_hour$n,
+    mass_m0$n, mass_m1a$n, mass_m3$n, mass_within$n,
     "7,577", "7,577", "7,577"
   )
 )
