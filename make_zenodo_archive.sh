@@ -16,6 +16,9 @@
 #                              holds per-record WorldClim values; WorldClim
 #                              forbids redistribution without prior permission.
 #                              Rebuild with Analysis/scripts/climate_extraction.R.
+#   Analysis/data/derived/locality_year_tmean.rds
+#                              locality x year WorldClim temperatures (same terms);
+#                              rebuilt by Analysis/scripts/referee_anomaly_lag.R.
 #   Analysis/output/models/    ~2 GB of brms objects superseded by the glmmTMB
 #                              engine; no reported number depends on them
 #   archive/                   superseded and retired analyses; preserved in the
@@ -82,6 +85,7 @@ rm -rf \
   "$STAGE/Manuscript/.quarto"
 rm -f \
   "$STAGE/Analysis/data/derived/passer90_climate.rds" \
+  "$STAGE/Analysis/data/derived/locality_year_tmean.rds" \
   "$STAGE/Analysis/scripts/jirinec_gap_analysis.R" \
   "$STAGE/Analysis/scripts/jirinec_gaps_report.R" \
   "$STAGE/Analysis/scripts/atlantic_birds_ms.Rmd" \
@@ -91,7 +95,7 @@ find "$STAGE" -name '.DS_Store' -delete
 find "$STAGE" -name 'REVISION_*.md' -delete
 
 # Refuse to ship anything WorldClim-derived per-record.
-if find "$STAGE" -name 'passer90_climate.rds' | grep -q .; then
+if find "$STAGE" \( -name 'passer90_climate.rds' -o -name 'locality_year_tmean.rds' \) | grep -q .; then
   echo "ERROR: a WorldClim-derived per-record file is still staged. Aborting." >&2
   exit 1
 fi

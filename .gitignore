@@ -20,6 +20,7 @@ worldclim/
 # Analysis/data/derived/ for the dataset, Analysis/output/ for drmSEM caches,
 # archive/ for the superseded un-suffixed caches.
 passer90_climate.rds
+locality_year_tmean.rds
 drmsem_effects_cache*.rds
 drmsem_phylo_prep*.rds
 drmsem_phylo_results*.rds
