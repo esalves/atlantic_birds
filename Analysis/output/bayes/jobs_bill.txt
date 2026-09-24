@@ -1,0 +1,4 @@
+Analysis/output/bayes/jobs/atlantic_multitrait__005__y.rds
+Analysis/output/bayes/jobs/atlantic_multitrait__006__y.rds
+Analysis/output/bayes/jobs/atlantic_multitrait__007__y.rds
+Analysis/output/bayes/jobs/atlantic_multitrait__008__y.rds

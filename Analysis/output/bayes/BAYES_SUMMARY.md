@@ -1,6 +1,6 @@
 # Bayesian (Stan) tier: summary
 
-Generated 2026-09-24 09:03:17. 16 fits. Posterior pooled over trees (mixture); REML = glmmTMB Rubin-pooled over the same trees.
+Generated 2026-09-24 10:17:50. 16 fits. Posterior pooled over trees (mixture); REML = glmmTMB Rubin-pooled over the same trees.
 
 ## How to read the tables
 
@@ -35,8 +35,8 @@ Generated 2026-09-24 09:03:17. 16 fits. Posterior pooled over trees (mixture); R
 | Wing (mean + SD model): baseline | S1 | `atlantic_variance_sigma__002__conc.wing.length__S1` | 8282 | 20 |
 | Wing (mean + SD model): + contributor & municipality | S3 | `atlantic_variance_sigma__004__conc.wing.length__S3` | 8282 | 20 |
 | Isometry vs temperature anomaly [+ municipality] | E3 | `referee_reruns__005__iso__site` | 7070 | 20 |
-| Isometry vs year [+ municipality] | E4b | `referee_reruns__010__iso__site` | 7070 | 20 |
-| Isometry vs year [+ municipality, correlated phylo intercept-slope] | E4b | `referee_reruns__010__iso__site__pcor` | 7070 | 20 |
+| Isometry vs year: fully adjusted [+ municipality] | E4b | `referee_reruns__010__iso__site` | 7070 | 20 |
+| Isometry vs year: fully adjusted [+ municipality, correlated phylo intercept-slope] | E4b | `referee_reruns__010__iso__site__pcor` | 7070 | 20 |
 
 ## Sampler diagnostics (worst tree per fit)
 
@@ -56,8 +56,8 @@ Generated 2026-09-24 09:03:17. 16 fits. Posterior pooled over trees (mixture); R
 | Wing (mean + SD model): baseline | 20 | 1.024 | 270 | 0 | 1043 |
 | Wing (mean + SD model): + contributor & municipality | 20 | 1.030 | 164 | 0 | 3896 |
 | Isometry vs temperature anomaly [+ municipality] | 20 | 1.028 | 155 | 0 | 1639 |
-| Isometry vs year [+ municipality] | 20 | 1.032 | 154 | 0 | 1630 |
-| Isometry vs year [+ municipality, correlated phylo intercept-slope] | 20 | 1.046 | 107 | 0 | 1556 |
+| Isometry vs year: fully adjusted [+ municipality] | 20 | 1.032 | 154 | 0 | 1630 |
+| Isometry vs year: fully adjusted [+ municipality, correlated phylo intercept-slope] | 20 | 1.046 | 107 | 0 | 1556 |
 
 ## Time terms: posterior vs REML
 
@@ -80,8 +80,8 @@ Generated 2026-09-24 09:03:17. 16 fits. Posterior pooled over trees (mixture); R
 | Wing (mean + SD model): baseline | year | -0.925 [-1.395, -0.452] | 1.000 | -0.923 [-1.382, -0.464] | -0.01 | 1.02 |
 | Wing (mean + SD model): + contributor & municipality | year | -0.158 [-0.370, 0.056] | 0.930 | -0.152 [-0.353, 0.050] | -0.06 | 1.05 |
 | Isometry vs temperature anomaly [+ municipality] | temperature anomaly | 0.012 [-0.008, 0.033] | 0.117 | 0.012 [-0.008, 0.031] | 0.06 | 1.05 |
-| Isometry vs year [+ municipality] | year | 0.012 [-0.002, 0.026] | 0.050 | 0.012 [-0.002, 0.025] | -0.01 | 1.02 |
-| Isometry vs year [+ municipality, correlated phylo intercept-slope] | year | 0.009 [-0.017, 0.034] | 0.198 | 0.012 [-0.002, 0.025] | -0.19 | 1.81 |
+| Isometry vs year: fully adjusted [+ municipality] | year | 0.012 [-0.002, 0.026] | 0.050 | 0.012 [-0.002, 0.025] | -0.01 | 1.02 |
+| Isometry vs year: fully adjusted [+ municipality, correlated phylo intercept-slope] | year | 0.009 [-0.017, 0.034] | 0.198 | 0.012 [-0.002, 0.025] | -0.19 | 1.81 |
 
 ## Residual-SD terms (mean + SD models): posterior vs REML
 

@@ -40,11 +40,33 @@ MODEL_NAMES <- tribble(
   "atlantic_variance_sigma__002__conc.wing.length__S1",         "Wing (mean + SD model): baseline",             "S1",
   "atlantic_variance_sigma__004__conc.wing.length__S3",         "Wing (mean + SD model): + contributor & municipality", "S3",
   "referee_reruns__005__iso",                                   "Isometry vs temperature anomaly",              "E3",
-  "referee_reruns__010__iso",                                   "Isometry vs year",                             "E4b")
+  "referee_reruns__010__iso",                                   "Isometry vs year: fully adjusted",                          "E4b",
+  # main-text models added 2026-09-24 (names agreed with ESAS)
+  "atlantic_parallel_controlled__023__conc.wing.length__M3_cc",    "Wing: fully adjusted, complete cases",          "M3_cc",
+  "atlantic_parallel_controlled__027__conc.wing.length__M5src_cc", "Wing: year within vs between contributors, complete cases", "M5src_cc",
+  "atlantic_multitrait__001__y",                                "Body mass (ln): baseline",                     "multitrait M0_baseline",
+  "atlantic_multitrait__004__y",                                "Body mass (ln): year within vs between contributors", "multitrait MWsrc",
+  "atlantic_multitrait__021__y",                                "Body mass (ln): capture-time sample",          "multitrait HOUR0",
+  "atlantic_multitrait__022__y",                                "Body mass (ln): capture-time sample + capture hour", "multitrait HOUR1",
+  "atlantic_multitrait__005__y",                                "Bill width: baseline",                         "multitrait M0_baseline",
+  "atlantic_multitrait__006__y",                                "Bill width: + contributor & municipality",     "multitrait M1_src_site",
+  "atlantic_multitrait__008__y",                                "Bill width: year within vs between contributors", "multitrait MWsrc",
+  "atlantic_variance_sigma__009__conc.wing.length__S7",         "Wing (mean + SD model): + local temperature",  "S7",
+  "atlantic_diet_interaction__012__conc.wing.length",           "Wing x diet category: + contributor & municipality", "diet B_src_site",
+  "referee_reruns__001__wing",                                  "Wing vs temperature anomaly",                  "E3",
+  "referee_reruns__003__lnmass",                                "Body mass (ln) vs temperature anomaly",        "E3",
+  "referee_reruns__006__iso",                                   "Isometry vs temperature anomaly + year",       "E3b",
+  "referee_reruns__009__iso",                                   "Isometry vs year: parsimonious adjustment",    "E4a",
+  "referee_reruns__013__iso",                                   "Isometry vs detrended temperature anomaly",    "E1b (phylo, M3)",
+  "referee_reruns__014__iso",                                   "Isometry vs temperature anomaly + locality-year", "E2a (phylo, M3)",
+  "referee_reruns__011__lnwing",                                "Wing (ln): fully adjusted, shared records",    "E4c",
+  "referee_reruns__012__lnmass",                                "Body mass (ln): fully adjusted, shared records", "E4c")
 VARIANT_NAMES <- c(site = "+ municipality", pcor = "correlated phylo intercept-slope", pslope = "phylo slope")
 TERM_NAMES <- c(b_scaled_yr = "year", b_yr_within_src = "year within contributor", b_yr_src_mean = "contributor mean year",
                 b_dT = "temperature anomaly", `b_scaled_yr:diet_inv_std` = "year x diet (invertebrate share)",
-                sigma_scaled_yr = "year", sigma_SexMale = "male (vs female)")
+                b_yr_mean_src = "contributor mean year", b_dT_detr = "detrended temperature anomaly",
+                b_hour_num = "capture hour", sigma_scaled_yr = "year", sigma_SexMale = "male (vs female)",
+                sigma_scaled_tmean = "local temperature")
 fit_name <- function(id) vapply(id, function(x) {
   parts <- strsplit(x, "__")[[1]]
   sfx <- intersect(parts, names(VARIANT_NAMES)); base <- paste(setdiff(parts, names(VARIANT_NAMES)), collapse = "__")
@@ -96,7 +118,7 @@ out <- list(generated = Sys.time(),
 saveRDS(out, out_path("bayes", "bayes_summary.rds"))
 
 fmt <- function(x) formatC(x, digits = 3, format = "f")
-key <- out$comparison %>% filter(grepl("scaled_yr|dT|yr_within|yr_src|:", par)) %>% arrange(fit)
+key <- out$comparison %>% filter(grepl("scaled_yr|dT|yr_within|yr_src|yr_mean|hour_num|:", par)) %>% arrange(fit)
 diag_tab <- out$diag %>% group_by(fit) %>% arrange(fit) %>%
   summarise(n = n(), r = max(rhat_max), e = min(ess_bulk_min), dv = sum(divergent), s = median(secs))
 legend <- out$meta %>% arrange(fit)
