@@ -126,6 +126,7 @@ dat <- pc %>%
     scaled_alt = as.numeric(scaled_alt),
     Sex    = factor(Sex, levels = c("Female", "Male")),
     src    = factor(Main_researcher),
+    site   = factor(Municipality),  # municipality intercept in every model from E1 on (2026-09-23)
     season = factor(season, levels = c("DJF", "MAM", "JJA", "SON")),
     molt   = factor(ifelse(is.na(Molt), "unknown", as.character(Molt))),
     ind    = factor(paste(Ring, Binomial, sep = "_")),
@@ -168,8 +169,11 @@ note(sprintf("phylogeny: %d trees, %d species", length(A_list), nrow(A_list[[1]]
 # ===========================================================================
 note("E0: reconstructing the parsimonious thermal models reported in REPORT.md 5.5 ...")
 
-par_rhs <- function(resp, xvar) {
-  as.formula(sprintf("%s ~ Sex + %s + scaled_lat + (1 + %s || spp) + (1 | src)", resp, xvar, xvar))
+# site = TRUE (the default) adds the municipality intercept used by every model
+# from E1 on; E0 keeps site = FALSE because it reconstructs the reported model.
+par_rhs <- function(resp, xvar, site = TRUE) {
+  as.formula(sprintf("%s ~ Sex + %s + scaled_lat + (1 + %s || spp) + (1 | src)%s", resp, xvar, xvar,
+                     if (site) " + (1 | site)" else ""))
 }
 
 RES$E0 <- safely("E0", {
@@ -177,7 +181,7 @@ RES$E0 <- safely("E0", {
     list(c("wing", "wing length (mm)"), c("lnmass", "log body mass"),
          c("iso", "isometry contrast lnM-3lnL"), c("relwing", "relative wing lnL-(1/3)lnM")),
     function(x) {
-      fit <- glmmTMB(par_rhs(x[1], "dT"), data = shared, REML = TRUE)
+      fit <- glmmTMB(par_rhs(x[1], "dT", site = FALSE), data = shared, REML = TRUE)
       tidy_tmb(fit, "E0_parsimonious", x[2], terms = "dT")
     }))
 })
@@ -195,7 +199,7 @@ RES$E1 <- safely("E1", {
     resp <- x[1]; lab <- x[2]
     # (a) anomaly AND calendar year in the same model
     f_a <- as.formula(sprintf(
-      "%s ~ Sex + dT + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | src)", resp))
+      "%s ~ Sex + dT + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | src) + (1 | site)", resp))
     fa <- glmmTMB(f_a, data = shared, REML = TRUE)
     rows[[length(rows) + 1]] <- tidy_tmb(fa, "E1a_anomaly_plus_year", lab, terms = c("dT", "scaled_yr"))
     # (b) within-site detrended anomaly
@@ -218,12 +222,12 @@ RES$E2 <- safely("E2", {
     resp <- x[1]; lab <- x[2]
     # (a) locality-year random intercept -- the shared-exposure unit
     f <- as.formula(sprintf(
-      "%s ~ Sex + dT + scaled_lat + (1 + dT || spp) + (1 | src) + (1 | loc_year)", resp))
+      "%s ~ Sex + dT + scaled_lat + (1 + dT || spp) + (1 | src) + (1 | site) + (1 | loc_year)", resp))
     fit <- glmmTMB(f, data = shared, REML = TRUE)
     rows[[length(rows) + 1]] <- tidy_tmb(fit, "E2a_locyear_random_intercept", lab, terms = "dT")
     # (b) cluster-robust SE by locality-year on the parsimonious fit (lme4 + clubSandwich)
     cr <- tryCatch({
-      fl <- lmer(as.formula(sprintf("%s ~ Sex + dT + scaled_lat + (1 + dT || spp) + (1 | src)", resp)),
+      fl <- lmer(as.formula(sprintf("%s ~ Sex + dT + scaled_lat + (1 + dT || spp) + (1 | src) + (1 | site)", resp)),
                  data = shared, REML = TRUE,
                  control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
       ct <- clubSandwich::coef_test(fl, vcov = "CR2", cluster = shared$loc_year, test = "Satterthwaite")
@@ -245,7 +249,7 @@ print(RES$E2)
 note("E3: thermal models at M3 adjustment across ", N_TREES, " trees ...")
 
 m3_thermal <- function(resp, xvar) as.formula(sprintf(
-  "%s ~ Sex + %s + scaled_lat + scaled_lon + scaled_alt + season + molt + (1 + %s || spp) + (1 | src) + (1 | ind)",
+  "%s ~ Sex + %s + scaled_lat + scaled_lon + scaled_alt + season + molt + (1 + %s || spp) + (1 | src) + (1 | site) + (1 | ind)",
   resp, xvar, xvar))
 
 RES$E3 <- safely("E3", {
@@ -263,7 +267,7 @@ RES$E3 <- safely("E3", {
     rows[[length(rows) + 1]] <- as.data.frame(p)
     # same model, plus calendar year (E1 + E3 combined: the strictest test)
     r2 <- run_phylo_trees(
-      as.formula(sprintf("%s ~ Sex + dT + scaled_yr + scaled_lat + scaled_lon + scaled_alt + season + molt + (1 + scaled_yr || spp) + (1 | src) + (1 | ind)", resp)),
+      as.formula(sprintf("%s ~ Sex + dT + scaled_yr + scaled_lat + scaled_lon + scaled_alt + season + molt + (1 + scaled_yr || spp) + (1 | src) + (1 | site) + (1 | ind)", resp)),
       d3, A3, verbose = FALSE)
     p2 <- pool_clean(r2, c("dT", "scaled_yr")) %>%
       transmute(model = "E3b_M3_adjusted_phylo_plus_year", response = lab, term = par,
@@ -288,10 +292,10 @@ RES$E4 <- safely("E4", {
   # (a) contrast fitted DIRECTLY as a response -- exact SE, no delta method
   for (spec in list(
     list(id = "E4a_iso_parsimonious",
-         f = iso ~ Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | src)),
+         f = iso ~ Sex + scaled_yr + scaled_lat + (1 + scaled_yr || spp) + (1 | src) + (1 | site)),
     list(id = "E4b_iso_M3",
          f = iso ~ Sex + scaled_yr + scaled_lat + scaled_lon + scaled_alt + season + molt +
-               (1 + scaled_yr || spp) + (1 | src) + (1 | ind)))) {
+               (1 + scaled_yr || spp) + (1 | src) + (1 | site) + (1 | ind)))) {
     r <- run_phylo_trees(spec$f, d4, A4, verbose = FALSE)
     p <- pool_clean(r, "scaled_yr") %>%
       transmute(model = spec$id, response = "isometry contrast lnM-3lnL", term = par,
@@ -306,7 +310,7 @@ RES$E4 <- safely("E4", {
   #     delta-method contrast (Mizuno c82: how was the covariance obtained?)
   for (resp in c("lnwing", "lnmass")) {
     r <- run_phylo_trees(
-      as.formula(sprintf("%s ~ Sex + scaled_yr + scaled_lat + scaled_lon + scaled_alt + season + molt + (1 + scaled_yr || spp) + (1 | src) + (1 | ind)", resp)),
+      as.formula(sprintf("%s ~ Sex + scaled_yr + scaled_lat + scaled_lon + scaled_alt + season + molt + (1 + scaled_yr || spp) + (1 | src) + (1 | site) + (1 | ind)", resp)),
       d4, A4, verbose = FALSE)
     p <- pool_clean(r, "scaled_yr") %>%
       transmute(model = "E4c_separate_M3_slopes", response = resp, term = par,

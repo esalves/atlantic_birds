@@ -18,6 +18,9 @@
 # REQUIRES: glmmTMB >= 1.1.14 (CRAN; `propto` is a valid covstruct there).
 # ---------------------------------------------------------------------------
 suppressMessages({ library(glmmTMB); library(dplyr) })
+# One TMB thread per process unless asked otherwise: TMB takes every core by
+# default, which on the shared Totoro server starves other users.
+TMB::openmp(as.integer(Sys.getenv("PHYLO_TMB_THREADS", "1")))
 
 # ABT (2018) -> current eBird/Clements names (identical map to atlantic_parallel.R)
 ebird_synonyms <- c(
@@ -165,10 +168,36 @@ run_phylo_trees <- function(formula, data, A_list, keep_fits = FALSE, verbose = 
     if (verbose && (i %% 10 == 0 || i == length(A_list))) message("[phylo] tree ", i, "/", length(A_list), " ", round(as.numeric(Sys.time() - t0, units = "secs")), " s")
   }
   fixed <- do.call(rbind, lapply(tidy, `[[`, "fixed")); varcomp <- do.call(rbind, lapply(tidy, `[[`, "varcomp"))
-  list(pooled = pool_rubin_df(fixed), per_tree_fixed = fixed, varcomp = varcomp,
+  pooled <- pool_rubin_df(fixed)
+  if (nzchar(Sys.getenv("PHYLO_EXPORT_DIR"))) export_phylo_job(formula, data, pooled, parent.frame(), ...)
+  list(pooled = pooled, per_tree_fixed = fixed, varcomp = varcomp,
        varcomp_summary = varcomp %>% summarise(across(where(is.numeric) & !tree, list(mean = mean, lo = ~quantile(.x, .025), hi = ~quantile(.x, .975)))),
        fits = if (keep_fits) fits else NULL, n_trees = length(A_list), secs = as.numeric(Sys.time() - t0, units = "secs"),
        glmmTMB_version = as.character(packageVersion("glmmTMB")))
+}
+
+#' Write a job file for the Bayesian (Stan) tier: the formula, dispformula, exact
+#' model frame and the pooled glmmTMB result of one run_phylo_trees() call. Active
+#' only when PHYLO_EXPORT_DIR is set; see bayes_fit_job.R. The label is taken from
+#' the calling loop's spec name (`nm`, `id`, `spec_id`) when there is one.
+export_phylo_job <- function(formula, data, pooled, caller, dispformula = ~1, species_col = "species_name", ...) {
+  dir <- Sys.getenv("PHYLO_EXPORT_DIR"); dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  script <- sub("\\.R$", "", basename(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])))
+  if (is.na(script)) script <- "interactive"
+  lab <- NA_character_
+  for (v in c("nm", "spec_id", "id")) { x <- get0(v, envir = caller, inherits = FALSE)
+    if (is.character(x) && length(x) == 1) { lab <- x; break } }
+  resp <- all.vars(formula)[1]
+  n_done <- length(list.files(dir, pattern = paste0("^", script, "__")))
+  id <- sprintf("%s__%03d__%s%s", script, n_done + 1, resp, if (is.na(lab)) "" else paste0("__", gsub("[^A-Za-z0-9_]", "", lab)))
+  vars <- unique(c(all.vars(formula), all.vars(dispformula), species_col))
+  job <- list(id = id, script = script, label = lab, formula = formula, dispformula = dispformula,
+              species_col = species_col, data = as.data.frame(data)[, intersect(vars, names(data)), drop = FALSE],
+              glmmtmb_pooled = pooled, exported = Sys.time())
+  saveRDS(job, file.path(dir, paste0(id, ".rds")))
+  cat(sprintf("%s\t%s\t%d\t%s\n", id, lab, nrow(data), paste(deparse(formula), collapse = " ")),
+      file = file.path(dir, "MANIFEST.tsv"), append = TRUE)
+  invisible(id)
 }
 
 #' Species-specific slopes for a covariate from one fit: fixed + BLUP of the (spp) slope.

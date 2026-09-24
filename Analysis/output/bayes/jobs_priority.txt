@@ -1,0 +1,14 @@
+Analysis/output/bayes/jobs/atlantic_parallel_controlled__001__conc.wing.length__M0.rds
+Analysis/output/bayes/jobs/atlantic_parallel_controlled__011__conc.wing.length__M3.rds
+Analysis/output/bayes/jobs/atlantic_parallel_controlled__012__conc.wing.length__M4.rds
+Analysis/output/bayes/jobs/atlantic_parallel_controlled__015__conc.wing.length__M5src.rds
+Analysis/output/bayes/jobs/atlantic_parallel_controlled__038__conc.wing.length__M6.rds
+Analysis/output/bayes/jobs/atlantic_parallel_controlled__017__conc.wing.length__M7.rds
+Analysis/output/bayes/jobs/atlantic_multitrait__003__y.rds
+Analysis/output/bayes/jobs/atlantic_multitrait__007__y.rds
+Analysis/output/bayes/jobs/atlantic_diet_interaction__002__conc.wing.length.rds
+Analysis/output/bayes/jobs/atlantic_diet_interaction__006__conc.wing.length.rds
+Analysis/output/bayes/jobs/atlantic_variance_sigma__002__conc.wing.length__S1.rds
+Analysis/output/bayes/jobs/atlantic_variance_sigma__004__conc.wing.length__S3.rds
+Analysis/output/bayes/jobs/referee_reruns__005__iso.rds
+Analysis/output/bayes/jobs/referee_reruns__010__iso.rds
