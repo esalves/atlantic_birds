@@ -25,7 +25,7 @@ atlantic_birds/
 │   ├── RegisteredReport/ # the registered report (separate, completed deliverable)
 │   └── manuscript_agu_template/  # unused AGU Quarto extension + .cls/.sty (target is html+docx)
 ├── DataManagementPlan/   # project DMP (unchanged)
-└── README.md, CODE_REVIEW.md, REPO_STRUCTURE.md, atlantic_birds.Rproj
+└── README.md, REPO_STRUCTURE.md, LICENSE, LICENSE-DATA.md, CITATION.cff, atlantic_birds.Rproj
 ```
 
 ## Path convention (scripts)

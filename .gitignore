@@ -79,3 +79,18 @@ Analysis/output/bayes/jobs/
 # superseded per-tree fits kept for reference (e.g. trees refitted with longer chains)
 Analysis/output/bayes_old/
 Analysis/scripts/stan/*.rds
+
+# Internal working documents (referee/co-author review triage, audit and
+# revision notes, exploratory side-reports, manuscript drafts). Kept on disk,
+# not published with the repository.
+REVISION_*.md
+REVIEW_RESPONSE_PLAN.md
+SCRIPT_CONSTANTS_AUDIT.md
+Analysis/scripts/REVISION_NOTES_*.md
+Analysis/scripts/REVISION_REVIEW.md
+Analysis/scripts/jirinec_gap*.R
+Analysis/scripts/explore_*.R
+Analysis/output/jirinec_gaps/
+Analysis/output/exploratory/
+Manuscript/drafts/
+Analysis/output/figure_data/fig_isometry_summary.json

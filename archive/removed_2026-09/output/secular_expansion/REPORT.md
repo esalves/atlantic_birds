@@ -1,16 +1,16 @@
 # Relatório: Expansão Analítica Estilo Jirinec e Integração Secular de Dados de Museu
 
 **Data:** 10 de Setembro de 2026  
-**Script de análise:** [`Analysis/scripts/secular_museum_expansion.R`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/scripts/secular_museum_expansion.R)  
-**Objeto de dados gerado:** [`Analysis/output/secular_expansion/secular_expansion_results.rds`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/output/secular_expansion/secular_expansion_results.rds)  
+**Script de análise:** [`Analysis/scripts/secular_museum_expansion.R`](/Analysis/scripts/secular_museum_expansion.R)  
+**Objeto de dados gerado:** [`Analysis/output/secular_expansion/secular_expansion_results.rds`](/Analysis/output/secular_expansion/secular_expansion_results.rds)  
 **Figuras:**
-- [`Analysis/figures/secular_expansion/model_comparison_forest.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/model_comparison_forest.png)
-- [`Analysis/figures/secular_expansion/secular_species_trajectories.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/secular_species_trajectories.png)
-- [`Analysis/figures/secular_expansion/climate_morphometry_coupling.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/climate_morphometry_coupling.png)
-- [`Analysis/figures/secular_expansion/climate_mass_coupling.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/climate_mass_coupling.png)
-- [`Analysis/figures/secular_expansion/climate_allometry_coupling.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/climate_allometry_coupling.png)
-- [`Analysis/figures/secular_expansion/manuscript_thermal_coupling_allometry.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/manuscript_thermal_coupling_allometry.png)
-- [`Analysis/figures/audit_filtering_and_museum_comparison.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/audit_filtering_and_museum_comparison.png)
+- [`Analysis/figures/secular_expansion/model_comparison_forest.png`](/Analysis/figures/secular_expansion/model_comparison_forest.png)
+- [`Analysis/figures/secular_expansion/secular_species_trajectories.png`](/Analysis/figures/secular_expansion/secular_species_trajectories.png)
+- [`Analysis/figures/secular_expansion/climate_morphometry_coupling.png`](/Analysis/figures/secular_expansion/climate_morphometry_coupling.png)
+- [`Analysis/figures/secular_expansion/climate_mass_coupling.png`](/Analysis/figures/secular_expansion/climate_mass_coupling.png)
+- [`Analysis/figures/secular_expansion/climate_allometry_coupling.png`](/Analysis/figures/secular_expansion/climate_allometry_coupling.png)
+- [`Analysis/figures/secular_expansion/manuscript_thermal_coupling_allometry.png`](/Analysis/figures/secular_expansion/manuscript_thermal_coupling_allometry.png)
+- [`Analysis/figures/audit_filtering_and_museum_comparison.png`](/Analysis/figures/audit_filtering_and_museum_comparison.png)
 
 ---
 
@@ -87,7 +87,7 @@ $$\text{Efeito Líquido em Espécimes de Museu (1884–2017)} = -0,294 + 0,303 =
 * A diminuição do comprimento de asa observada em campo não é uma tendência linear uniforme de 150 anos, mas sim um **fenômeno das últimas décadas**, coincidente com o aquecimento acelerado e a fragmentação florestal intensificada pós-1980.
 
 ### Espécies com Continuidade Secular Perfeita
-Para 175 espécies (como *Trichothraupis melanops*, *Drymophila squamata*, *Philydor rufum*, *Dysithamnus mentalis*), as medições de peles históricas alinham-se de maneira contínua com os dados de anilhamento moderno (ver [`secular_species_trajectories.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/secular_species_trajectories.png)). Para esse grupo nuclear de espécies conectadas, o declínio secular de asa é de **$-0,71\%$ por década** ($p = 0,047$).
+Para 175 espécies (como *Trichothraupis melanops*, *Drymophila squamata*, *Philydor rufum*, *Dysithamnus mentalis*), as medições de peles históricas alinham-se de maneira contínua com os dados de anilhamento moderno (ver [`secular_species_trajectories.png`](/Analysis/figures/secular_expansion/secular_species_trajectories.png)). Para esse grupo nuclear de espécies conectadas, o declínio secular de asa é de **$-0,71\%$ por década** ($p = 0,047$).
 
 ---
 
@@ -95,7 +95,7 @@ Para 175 espécies (como *Trichothraupis melanops*, *Drymophila squamata*, *Phil
 
 Para responder se existe um ponto no tempo em que o aquecimento se torna pronunciado e se a morfologia das aves responde de maneira síncrona a essa inflexão, integramos a série instrumental secular (NASA GISS Zonal Anomalies para a faixa latitudinal da Mata Atlântica, $r = 0,744$ com as médias locais de CRU-TS) com os registros morfológicos de 1880 a 2018.
 
-A figura consolidada está disponível em [`Analysis/figures/secular_expansion/climate_morphometry_coupling.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/climate_morphometry_coupling.png).
+A figura consolidada está disponível em [`Analysis/figures/secular_expansion/climate_morphometry_coupling.png`](/Analysis/figures/secular_expansion/climate_morphometry_coupling.png).
 
 ### 5.1. Identificação da Inflexão Climática (Breakpoint em ~1980)
 O algoritmo de regressão linear segmentada (*piecewise regression*) testou quebras candidatas no período instrumental. O ponto de inflexão de máxima verossimilhança e menor erro quadrático situa-se em **$\sim 1976\text{--}1980$** (ótimo em **1980**):
@@ -127,7 +127,7 @@ Testamos o modelo de regressão direta entre a anomalia térmica anual ($\Delta 
 | **Pré-1980 (Histórico)** | $+0,10\text{ mm}/^\circ\text{C}$ | $0,89$ | $+0,11$ | $0,91$ | **Desacoplado:** morfologia indiferente a pequenas variações térmicas |
 | **Pós-1980 (Aquecimento)** | $\mathbf{-1,68\text{ mm}/^\circ\text{C}}$ | $0,60$ | $-2,81$ | $\mathbf{0,005}$ | **Fortemente Acoplado:** encurtamento imediato a cada $+1\ ^\circ\text{C}$ de anomalia |
 
-Figura de referência: [`Analysis/figures/secular_expansion/climate_morphometry_coupling.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/climate_morphometry_coupling.png).
+Figura de referência: [`Analysis/figures/secular_expansion/climate_morphometry_coupling.png`](/Analysis/figures/secular_expansion/climate_morphometry_coupling.png).
 
 ---
 
@@ -140,7 +140,7 @@ Aplicando exatamente o mesmo arcabouço para a massa corporal (50.058 passerifor
   * **Pré-1980:** $\beta = -1,97\%/^\circ\text{C}$ ($t = -0,19, p = 0,86$, nulo).
   * **Pós-1980:** $\beta = +3,68\%/^\circ\text{C}$ ($t = +0,80, p = 0,43$, nulo).
 
-Figura de referência: [`Analysis/figures/secular_expansion/climate_mass_coupling.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/climate_mass_coupling.png).
+Figura de referência: [`Analysis/figures/secular_expansion/climate_mass_coupling.png`](/Analysis/figures/secular_expansion/climate_mass_coupling.png).
 
 > **Conclusão Biológica para a Massa:** A estabilidade corporal das aves da Mata Atlântica não é um artefato de amostragem; a massa é termicamente insensível e desacoplada das flutuações anuais de temperatura ao longo de todo o registro disponível.
 
@@ -159,8 +159,8 @@ Para indivíduos com medição simultânea de asa e massa ($N = 29.871$ passerif
   * Asa Relativa ($\ln L - \frac{1}{3}\ln M$): $\beta = -0,0071$ ($t = -2,17, \mathbf{p = 0,030}$).
 
 Figuras de referência:
-* [`Analysis/figures/secular_expansion/climate_allometry_coupling.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/climate_allometry_coupling.png) (Série Secular com Breakpoint em 1980)
-* [`Analysis/figures/secular_expansion/manuscript_thermal_coupling_allometry.png`](file:///Users/eduardosantos/Documents/Repos/atlantic_birds/Analysis/figures/secular_expansion/manuscript_thermal_coupling_allometry.png) (Dataset do Manuscrito `passer90`)
+* [`Analysis/figures/secular_expansion/climate_allometry_coupling.png`](/Analysis/figures/secular_expansion/climate_allometry_coupling.png) (Série Secular com Breakpoint em 1980)
+* [`Analysis/figures/secular_expansion/manuscript_thermal_coupling_allometry.png`](/Analysis/figures/secular_expansion/manuscript_thermal_coupling_allometry.png) (Dataset do Manuscrito `passer90`)
 
 ---
 

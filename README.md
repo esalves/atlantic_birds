@@ -1,154 +1,142 @@
-# Apparent Morphological Trends in Atlantic Forest Birds Attenuate Under Observer and Spatial Controls
+# Morphological stability and subtle phenotypic shifts in Atlantic Forest birds across two decades of climate warming
 
-This repository contains the data, analytical pipeline, and Quarto manuscript for the study evaluating multi-decadal morphological trajectories (wing length, body mass, and bill width) in Atlantic Forest passerine birds, testing the role of observer turnover, spatial shifts, and environmental drivers.
+Data, analysis code and Quarto source for a study of multi-decadal change in wing
+length, body mass and bill width in Atlantic Forest passerines, using live-capture
+records from ATLANTIC BIRD TRAITS (73 species, 12,571 records, 1995–2018).
 
----
-
-## Quick Navigation
-
-- **Manuscript source:** [`Manuscript/index.qmd`](Manuscript/index.qmd) (renders to HTML and Word via Quarto)
-- **Results synthesis:** [`Analysis/output/RESULTS_SUMMARY.md`](Analysis/output/RESULTS_SUMMARY.md) (comprehensive summary of all model findings)
-- **Repository layout details:** [`REPO_STRUCTURE.md`](REPO_STRUCTURE.md)
-- **Server execution order & live-only filter:** [`Analysis/scripts/LIVE_ONLY_MIGRATION.md`](Analysis/scripts/LIVE_ONLY_MIGRATION.md)
-- **Manuscript rendering instructions:** [`Manuscript/RENDER_STEPS.md`](Manuscript/RENDER_STEPS.md)
-- **R session information & versions:** [`Analysis/R_session_info.txt`](Analysis/R_session_info.txt)
+**Authors:** Eduardo S. A. Santos, Ayumi Mizuno, Santiago Ortega, Gustavo Burin.
+**Status:** manuscript in preparation (preprint forthcoming).
 
 ---
 
-## Repository Structure
+## Quick navigation
 
-The repository cleanly separates immutable inputs, derived data, analytical code, fitted models, and the publication manuscript:
+- **Manuscript source:** [`Manuscript/index.qmd`](Manuscript/index.qmd) and [`Manuscript/supplementary.qmd`](Manuscript/supplementary.qmd) (render to HTML and Word via Quarto)
+- **Stan results used in the text:** [`Analysis/output/bayes/BAYES_SUMMARY.md`](Analysis/output/bayes/BAYES_SUMMARY.md)
+- **Rendering instructions:** [`Manuscript/RENDER_STEPS.md`](Manuscript/RENDER_STEPS.md)
+- **Repository layout and path conventions:** [`REPO_STRUCTURE.md`](REPO_STRUCTURE.md)
+- **Computational environment:** [`renv.lock`](renv.lock) and [`Analysis/output/session_info.txt`](Analysis/output/session_info.txt)
+- **Licences:** code MIT ([`LICENSE`](LICENSE)); data, results, figures and text CC BY 4.0 ([`LICENSE-DATA.md`](LICENSE-DATA.md)). How to cite: [`CITATION.cff`](CITATION.cff)
+
+---
+
+## Analytical approach in brief
+
+- **Sample:** live-captured adults only (museum skins excluded because preparation shrinks them).
+- **Main engine:** a custom Stan phylogenetic mixed model ([`Analysis/scripts/stan/phylo_lmm_marginal.stan`](Analysis/scripts/stan/phylo_lmm_marginal.stan), driven by [`_stan_engine.R`](Analysis/scripts/_stan_engine.R)). The individual random effect is integrated out analytically and the phylogenetic effect is fitted in the eigenbasis of the phylogenetic correlation matrix. Posteriors are pooled as a mixture over 20 trees from McTavish et al. (2025). Results are reported as posterior means, 95 % credible intervals and P(β < 0).
+- **Frequentist check:** every model is also fitted with `glmmTMB` (REML, 50 trees, Rubin's rules; [`_phylo_engine.R`](Analysis/scripts/_phylo_engine.R), see [`GLMMTMB_ENGINE.md`](Analysis/scripts/GLMMTMB_ENGINE.md)). Supplementary Tables S1–S2 report this tier.
+- **Sampling structure:** data contributor and municipality enter the models as random intercepts, because turnover in research groups and sites is confounded with calendar year in the compiled database.
+
+---
+
+## Repository structure
 
 ```text
 atlantic_birds/
 ├── Analysis/
 │   ├── data/
-│   │   ├── raw/             # Raw immutable datasets (ABT trait CSV, EltonTraits, PREDICTS, etc.)
-│   │   └── derived/         # Generated analytical datasets (passer90.rda, passer90_climate.rds, etc.)
-│   ├── scripts/             # Modular R analysis scripts and sampling configs
-│   ├── output/              # Quoted summary statistics (*.rds, *.md)
-│   │   └── models/          # Fitted brms Bayesian model objects across phylogenetic trees (*.rda)
-│   ├── figures/             # Causal DAG diagrams, diagnostic and sensitivity plots
-│   └── R_session_info.txt   # Exact R and package versions used
-├── Manuscript/              # Publication source
-│   ├── index.qmd            # Quarto manuscript (reads precomputed outputs; no refitting needed)
-│   ├── make_figures.py      # Python script generating Figs 1–4 into images/
-│   ├── requirements.txt     # Python dependencies for figure generation
-│   └── references.bib       # BibTeX bibliography
-├── archive/                 # Historical, exploratory, or superseded work (kept for provenance)
-├── DataManagementPlan/      # Formal project data management plan
-├── REPO_STRUCTURE.md        # Detailed directory mapping and path conventions
-└── README.md                # This file
+│   │   ├── raw/          # third-party inputs (ATLANTIC BIRD TRAITS csv, EltonTraits)
+│   │   └── derived/      # analytical data sets (passer90*.rda, passer90_export.csv, phylo_A_50trees.rds)
+│   ├── scripts/          # R analysis code; stan/ holds the Stan program
+│   ├── output/           # result objects read by the manuscript (*.rds, *.md)
+│   │   ├── bayes/        # pooled Stan results (per-tree fits are not tracked; see below)
+│   │   ├── referee_reruns/, phylo_slopes/   # thermal, isometry and slope-structure analyses
+│   │   └── figure_data/  # flat CSV tables read by the Python figure scripts
+│   └── figures/          # diagnostic and supplementary figures
+├── Manuscript/           # index.qmd, supplementary.qmd, references.bib, figure scripts, images/
+├── archive/              # superseded and retired analyses (provenance only; not in the pipeline)
+├── DataManagementPlan/
+├── make_zenodo_archive.sh  # builds the curated Zenodo deposit from git HEAD
+└── renv.lock, CITATION.cff, LICENSE, LICENSE-DATA.md
 ```
 
 ---
 
-## Setup & Dependencies
+## Setup
 
-The project uses **R (>= 4.4)** for data wrangling and Bayesian/SEM modeling, **Python (>= 3.9)** for geographical and trend figures, and **Quarto** for manuscript rendering.
-
-### 1. R Environment & Packages
-
-Install standard CRAN dependencies:
-```R
-install.packages(c(
-  "tidyverse", "brms", "ape", "phytools", "MCMCglmm", "metafor",
-  "data.table", "posterior", "future.apply", "mice", "readr", "ggplot2"
-))
-```
-
-Install packages required for dynamic bird phylogenies (`clootl`, `prepR4pcm`) and distributional structural equation modeling (`drmTMB`, `drmSEM`):
-```R
-# Avian phylogeny retrieval
-install.packages("clootl")
-
-# Taxonomic reconciliation and tree auditing
-if (!requireNamespace("pak", quietly = TRUE)) install.packages("pak")
-pak::pak("itchyshin/prepR4pcm")
-
-# Distributional piecewise structural equation modeling (drmSEM)
-pak::pak(c("drmTMB", "drmSEM"), repos = "https://itchyshin.r-universe.dev")
-```
-
-> **Note:** A snapshot of package versions and system configuration is recorded in [`Analysis/R_session_info.txt`](Analysis/R_session_info.txt).
-
-### 2. Python Environment (for Manuscript Figures)
-
-```bash
-pip install -r Manuscript/requirements.txt
-```
-
-### 3. Quarto CLI
-
-Install Quarto from [quarto.org](https://quarto.org/) to compile the manuscript.
+- **R ≥ 4.5** with the packages in `renv.lock` (`renv::restore()`). `prepR4pcm` is installed from GitHub (`itchyshin/prepR4pcm`).
+- **CmdStan ≥ 2.39** via `cmdstanr`. This is only needed to refit the Stan tier.
+- **Python ≥ 3.11** for the figures: `pip install -r Manuscript/requirements.txt`
+- **Quarto** ([quarto.org](https://quarto.org/)) to render the manuscript.
 
 ---
 
-## How to Reproduce the Work
+## Reproducing the work
 
-### Option A: Fast Reproduction (Inspect Results & Render Manuscript)
+### Option A: render the manuscript from the saved results (minutes)
 
-Because fitting 50-tree Bayesian multi-level models in Stan takes substantial compute time (often hours or days on multi-core workstations), **all fitted model objects (`Analysis/output/models/`) and extracted statistics (`Analysis/output/`) are provided pre-computed in the repository**.
-
-To inspect results or render the manuscript:
+The manuscript only reads saved result objects in `Analysis/output/`, so no model is refitted:
 
 ```bash
-# 1. Regenerate manuscript Figures 1–4 (optional; pre-rendered images are included)
 cd Manuscript
-python3 make_figures.py
-
-# 2. Render the manuscript to HTML and Word DOCX
+python3 make_figures.py            # main-text figures from Analysis/output/figure_data/
+python3 make_isometry_figure.py    # wing–mass isometry figure
 quarto render index.qmd
+quarto render supplementary.qmd
 ```
-The compiled outputs will be generated in `Manuscript/_manuscript/` (and `Manuscript/index.docx`).
 
----
+### Option B: re-run the pipeline
 
-### Option B: Full Pipeline Re-execution (From Raw Data to Models)
-
-To re-run the entire pipeline from the raw datasets (`Status == 'live'`, 73 species, 12,571 records, 1995–2018):
+Scripts are run from the repository root and find `Analysis/` on their own.
 
 ```bash
-cd Analysis/scripts
+# 1. Analytical data set, audits and climate
+Rscript Analysis/scripts/rebuild_passer90_live.R        # -> data/derived/passer90.rda
+Rscript Analysis/scripts/audit_provenance.R             # contributor/site audits, effect_scale.rds
+Rscript Analysis/scripts/climate_extraction.R           # needs a local WorldClim 2.1 download (see below)
 
-# 1. Rebuild the live-only analytical dataset
-Rscript rebuild_passer90_live.R            # -> Analysis/data/derived/passer90.rda
+# 2. glmmTMB phylogenetic tier (50 trees; minutes to ~1 h each)
+Rscript Analysis/scripts/atlantic_parallel_controlled.R --trees 50   # wing length, adjustment ladder
+Rscript Analysis/scripts/atlantic_parallel_mass.R
+Rscript Analysis/scripts/atlantic_parallel_bill.R
+Rscript Analysis/scripts/atlantic_multitrait.R --trees 50
+Rscript Analysis/scripts/atlantic_bivariate_wing_mass.R --trees 50
+Rscript Analysis/scripts/atlantic_diet_interaction.R
+Rscript Analysis/scripts/atlantic_variance_sigma.R
+Rscript Analysis/scripts/atlantic_phylo_slopes.R --trees 50
+Rscript Analysis/scripts/referee_reruns.R               # thermal and isometry models
+Rscript Analysis/scripts/referee_anomaly_lag.R          # lagged temperature anomalies
+Rscript Analysis/scripts/update_descriptive_stats.R     # descriptive_summary.rds, passer90_export.csv
 
-# 2. Extract per-record time-resolved monthly climate (WorldClim)
-Rscript climate_extraction.R               # -> Analysis/data/derived/passer90_climate.rds
+# 3. Stan tier (server scale: roughly 40 min to 6 h per model x tree)
+#    Setting PHYLO_EXPORT_DIR before step 2 makes each glmmTMB model write a job file.
+#    Each job is then refitted in Stan on each tree.
+Analysis/scripts/run_bayes_totoro.sh Analysis/output/bayes/jobs_maintext.txt 1 20
+Rscript Analysis/scripts/bayes_aggregate.R              # -> output/bayes/bayes_summary.rds
+Rscript Analysis/scripts/bayes_derived.R                # -> output/bayes/bayes_derived.rds
 
-# 3. Fit Bayesian phylogenetic models across 50 trees (Rubin's rules pooling)
-Rscript atlantic_parallel.R                # Primary wing length model
-Rscript atlantic_parallel_bill.R           # Bill width model
-Rscript atlantic_parallel_mass.R           # Body mass model
-Rscript atlantic_diet_interaction.R        # Diet x year interaction
-Rscript atlantic_drmsem.R                  # Distributional piecewise SEM (drmSEM)
-Rscript atlantic_sensitivity_thresholds.R  # Sensitivity across inclusion criteria
-
-# 4. Update descriptive statistics and export table for figure generation
-Rscript update_descriptive_stats.R         # -> Analysis/output/descriptive_summary.rds
-                                           # -> Analysis/data/derived/passer90_export.csv
-
-# 5. Refresh figures and render Quarto manuscript
-cd ../../Manuscript
-python3 make_figures.py
-quarto render index.qmd
+# 4. Figures and manuscript
+Rscript Analysis/scripts/make_figures.R export          # -> output/figure_data/*.csv
+# then Option A
 ```
 
-> **Hardware note:** Bayesian sampling configurations (`Analysis/scripts/_sampling_config.R`) automatically detect whether the script runs on a laptop or high-core server (Totoro), defaulting to safe single-worker memory usage on laptops to prevent out-of-memory errors.
+`run_bayes_totoro.sh` was written for the authors' Linux server. Adjust `CONC` and the
+repository path at the top of the script for another machine. See the header of
+[`bayes_fit_job.R`](Analysis/scripts/bayes_fit_job.R) for the per-fit options.
 
 ---
 
-## Data Provenance
+## What is not in the repository
 
-- **`ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv`**: Comprehensive morphometric measurements for Atlantic Forest birds ([Rodrigues et al. 2019](https://doi.org/10.1002/ecy.2647)).
-- **`BirdFuncDat.txt`**: Functional and dietary trait data from EltonTraits 1.0 ([Wilman et al. 2014](https://doi.org/10.1890/13-1917.1)).
-- **`atlantic_ants/`**: Macroecological ant occurrence and abundance data from ATLANTIC ANTS ([Silva et al. 2022](https://doi.org/10.1002/ecy.3580)).
-- **`archive/predicts/`**: Archived PREDICTS invertebrate abundance models ([Hudson et al. 2017](https://doi.org/10.1002/ece3.2579); retired in Phase 4e).
-- **Phylogenetic Trees**: Complete dynamic avian tree cloud ([McTavish et al. 2025](https://doi.org/10.1093/sysbio/syae054)) via `clootl` and `prepR4pcm`.
+- **Per-record WorldClim values** (`passer90_climate.rds`, `locality_year_tmean.rds`). WorldClim's terms do not allow redistribution. `climate_extraction.R` and `referee_anomaly_lag.R` rebuild these files from a WorldClim 2.1 download. The fitted climate trends (`climate_trends.rds`) are included.
+- **Per-tree Stan fits** (`Analysis/output/bayes/fits/`, several GB). The pooled summaries the manuscript reads are included.
+- **Large model objects** from the superseded brms engine (> 100 MB each).
+- Internal planning and review notes. Some code comments still refer to these documents, but they are not needed to run anything.
+
+---
+
+## Data sources
+
+Please cite each source in its own right. Full terms are in [`LICENSE-DATA.md`](LICENSE-DATA.md).
+
+- **ATLANTIC BIRD TRAITS**: morphological records ([Rodrigues et al. 2019, *Ecology*](https://doi.org/10.1002/ecy.2647))
+- **EltonTraits 1.0**: diet ([Wilman et al. 2014, *Ecology*](https://doi.org/10.1890/13-1917.1))
+- **A complete and dynamic tree of birds**: phylogenies via `clootl` ([McTavish et al. 2025, *PNAS*](https://doi.org/10.1073/pnas.2409658122))
+- **WorldClim 2.1**, downscaled from CRU-TS 4.09: temperature ([Fick & Hijmans 2017](https://doi.org/10.1002/joc.5086); [Harris et al. 2020](https://doi.org/10.1038/s41597-020-0453-3))
 
 ---
 
 ## Citation
 
-If you use this codebase or data, please cite the associated manuscript (see [`Manuscript/index.qmd`](Manuscript/index.qmd) for author and citation details).
+Until the preprint is posted, please cite the repository using [`CITATION.cff`](CITATION.cff)
+(GitHub's "Cite this repository" button). A Zenodo DOI will be added when the archive is minted.

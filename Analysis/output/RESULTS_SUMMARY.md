@@ -114,8 +114,8 @@ drmSEM-only curated doc is retained in `../../archive/atlantic_drmsem_results.md
 
 ## Revision diagnostics, fast tier (2026-09)
 
-**Added 2026-09-09** in response to the referee report (`REVISION_PLAN.md`; status
-in `REVISION_STATUS.md`; per-phase notes `../scripts/REVISION_NOTES_P*.md`).
+**Added 2026-09-09** in response to external review of an earlier draft (the
+internal revision plan and per-phase notes are not part of the public repository).
 Everything in this section is a **fast-tier result: `lme4` / `glmmTMB` REML with
 Wald ± 1.96 SE intervals and no phylogenetic term** (species intercepts absorb
 it; the lme4 baseline reproduces the brms −0.92 to two decimals). §1–§5 above are
