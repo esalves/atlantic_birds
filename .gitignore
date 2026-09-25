@@ -76,4 +76,6 @@ dist/
 # Only the pooled summary (BAYES_SUMMARY.md, bayes_summary.rds) is tracked.
 Analysis/output/bayes/fits/
 Analysis/output/bayes/jobs/
+# superseded per-tree fits kept for reference (e.g. trees refitted with longer chains)
+Analysis/output/bayes_old/
 Analysis/scripts/stan/*.rds

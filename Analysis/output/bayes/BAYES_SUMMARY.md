@@ -1,6 +1,6 @@
 # Bayesian (Stan) tier: summary
 
-Generated 2026-09-25 07:38:15. 35 fits. Posterior pooled over trees (mixture); REML = glmmTMB Rubin-pooled over the same trees.
+Generated 2026-09-25 09:16:19. 35 fits. Posterior pooled over trees (mixture); REML = glmmTMB Rubin-pooled over the same trees.
 
 ## How to read the tables
 
@@ -89,13 +89,13 @@ Generated 2026-09-25 07:38:15. 35 fits. Posterior pooled over trees (mixture); R
 | Body mass (ln) vs temperature anomaly [+ municipality] | 20 | 1.019 | 273 | 0 | 8626 |
 | Isometry vs temperature anomaly [+ municipality] | 20 | 1.028 | 155 | 0 | 1639 |
 | Isometry vs temperature anomaly + year [+ municipality] | 20 | 1.031 | 174 | 0 | 3467 |
-| Isometry vs year: parsimonious adjustment [+ municipality] | 20 | 1.053 | 81 | 0 | 959 |
+| Isometry vs year: parsimonious adjustment [+ municipality] | 20 | 1.045 | 156 | 0 | 959 |
 | Isometry vs year: fully adjusted [+ municipality] | 20 | 1.032 | 154 | 0 | 1630 |
 | Isometry vs year: fully adjusted [+ municipality, correlated phylo intercept-slope] | 20 | 1.046 | 107 | 0 | 1556 |
 | Wing (ln): fully adjusted, shared records [+ municipality] | 20 | 1.016 | 342 | 0 | 1782 |
 | Body mass (ln): fully adjusted, shared records [+ municipality] | 20 | 1.021 | 298 | 0 | 1741 |
-| Isometry vs detrended temperature anomaly [+ municipality] | 20 | 1.057 | 57 | 0 | 3591 |
-| Isometry vs temperature anomaly + locality-year [+ municipality] | 20 | 1.054 | 72 | 0 | 3866 |
+| Isometry vs detrended temperature anomaly [+ municipality] | 20 | 1.031 | 171 | 0 | 3591 |
+| Isometry vs temperature anomaly + locality-year [+ municipality] | 20 | 1.047 | 104 | 0 | 3866 |
 
 ## Time terms: posterior vs REML
 
@@ -138,7 +138,7 @@ Generated 2026-09-25 07:38:15. 35 fits. Posterior pooled over trees (mixture); R
 | Isometry vs temperature anomaly [+ municipality] | temperature anomaly | 0.012 [-0.008, 0.033] | 0.117 | 0.012 [-0.008, 0.031] | 0.06 | 1.05 |
 | Isometry vs temperature anomaly + year [+ municipality] | temperature anomaly | 0.009 [-0.010, 0.029] | 0.175 | 0.009 [-0.010, 0.029] | -0.01 | 1.00 |
 | Isometry vs temperature anomaly + year [+ municipality] | year | 0.011 [-0.003, 0.025] | 0.059 | 0.011 [-0.002, 0.025] | 0.00 | 1.03 |
-| Isometry vs year: parsimonious adjustment [+ municipality] | year | 0.012 [-0.002, 0.026] | 0.046 | 0.012 [-0.002, 0.026] | -0.01 | 1.02 |
+| Isometry vs year: parsimonious adjustment [+ municipality] | year | 0.012 [-0.002, 0.026] | 0.046 | 0.012 [-0.002, 0.026] | -0.02 | 1.02 |
 | Isometry vs year: fully adjusted [+ municipality] | year | 0.012 [-0.002, 0.026] | 0.050 | 0.012 [-0.002, 0.025] | -0.01 | 1.02 |
 | Isometry vs year: fully adjusted [+ municipality, correlated phylo intercept-slope] | year | 0.009 [-0.017, 0.034] | 0.198 | 0.012 [-0.002, 0.025] | -0.19 | 1.81 |
 | Wing (ln): fully adjusted, shared records [+ municipality] | year | -0.004 [-0.009, 0.002] | 0.909 | -0.004 [-0.009, 0.002] | 0.02 | 1.03 |

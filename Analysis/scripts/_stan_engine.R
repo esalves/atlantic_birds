@@ -186,6 +186,17 @@ fit_stan_tree <- function(formula, data, A, dispformula = ~1, chains = 4, iter_w
   list(draws = draws, chain = dr$.chain, diag = diag, secs = secs, meta = meta)
 }
 
+#' Keep every `thin`-th draw of each chain of a fit_stan_tree() result. A tree
+#' refitted with longer chains (e.g. --sampling 2000 --thin 4) then contributes
+#' the same number of draws to the tree mixture as the others; diag stays that
+#' of the full run.
+thin_tree_draws <- function(r, thin) {
+  if (thin <= 1) return(r)
+  keep <- unlist(lapply(split(seq_along(r$chain), r$chain), function(i) i[seq(thin, length(i), by = thin)]))
+  r$draws <- r$draws[keep, , drop = FALSE]; r$chain <- r$chain[keep]; r$thin <- thin
+  r
+}
+
 #' Pool per-tree draw matrices (mixture posterior) into a summary table.
 pool_stan_draws <- function(per_tree, pars = NULL) {
   D <- do.call(rbind, lapply(per_tree, `[[`, "draws"))

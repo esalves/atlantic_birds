@@ -8,9 +8,10 @@
 # Bayesian tier on the identical data and formulas of the published REML tier.
 #
 # RUN:  Rscript Analysis/scripts/bayes_fit_job.R --job output/bayes/jobs/<id>.rds --tree 7
-#         [--phylo-slope] [--phylo-cor] [--chains 4] [--warmup 1000] [--sampling 500]
+#         [--phylo-slope] [--phylo-cor] [--chains 4] [--warmup 1000] [--sampling 500] [--thin 1]
 # OUT:  output/bayes/fits/<id>[__pslope|__pcor]/tree_07.rds
 #       (draws on the response scale, sampler diagnostics, timing)
+#       Skipped when tree_07.rds exists or a tree_07.rds.claimed marker does.
 # Driver: run_bayes_totoro.sh runs job x tree pairs in parallel and skips done ones.
 # ---------------------------------------------------------------------------
 suppressMessages({ library(dplyr); library(posterior) })
@@ -51,6 +52,9 @@ dest_dir <- out_path("bayes", "fits", paste0(job$id, variant))
 dir.create(dest_dir, recursive = TRUE, showWarnings = FALSE)
 dest <- file.path(dest_dir, sprintf("tree_%02d.rds", tree))
 if (file.exists(dest)) { message("done already: ", dest); quit(save = "no") }
+# A tree_NN.rds.claimed marker means another host fits this tree (work split
+# between Totoro and Kohaku); its tree_NN.rds is rsynced in afterwards.
+if (file.exists(paste0(dest, ".claimed"))) { message("claimed by another host: ", dest); quit(save = "no") }
 
 A <- phylo_A_list(sort(unique(as.character(job$data[[job$species_col]]))), n_trees = max(tree, 50))[[tree]]
 r <- fit_stan_tree(job$formula, job$data, A, dispformula = job$dispformula,
@@ -59,6 +63,7 @@ r <- fit_stan_tree(job$formula, job$data, A, dispformula = job$dispformula,
                    iter_warmup = as.integer(get_flag("--warmup", "1000")),
                    iter_sampling = as.integer(get_flag("--sampling", "500")),
                    seed = 20240101 + tree)
+r <- thin_tree_draws(r, as.integer(get_flag("--thin", "1")))
 r$tree <- tree; r$job <- job$id; r$variant <- variant
 saveRDS(r, dest)
 message(sprintf("[bayes] %s%s tree %d: %.0f s, rhat_max %.3f, ess_min %.0f, divergent %d",
