@@ -220,6 +220,43 @@ export_figure_data <- function() {
     add_scalar("brms_available", TRUE, "controlled_wing_brms_results.rds")
   } else message("  (no controlled_wing_brms_results.rds yet: brms Tier 2-3 cross-check not shown)")
 
+  # --- Stan phylogenetic tier (main engine since 2026-09-24; bayes_aggregate.R + bayes_derived.R) ---
+  # Posterior pooled over trees (mixture). make_figures.py promotes these layers
+  # over every other tier and then drops the REML comparison layers, so the
+  # figures show the same model as the text.
+  fs <- out_path("bayes", "bayes_summary.rds"); fdv <- out_path("bayes", "bayes_derived.rds")
+  if (file.exists(fs) && file.exists(fdv)) {
+    bs <- readRDS(fs); bd <- readRDS(fdv); DEC <- bd$dec
+    fits <- c(M0 = "atlantic_parallel_controlled__001__conc.wing.length__M0",
+              M3 = "atlantic_parallel_controlled__011__conc.wing.length__M3")
+    ba <- bind_rows(lapply(names(fits), function(m) {
+      r <- bs$fixed[bs$fixed$fit == fits[[m]] & bs$fixed$par == "b_scaled_yr", ]
+      if (nrow(r) != 1) return(NULL)
+      data.frame(model = m, term = "scaled_yr", estimate = r$estimate, ci_lo = r$lower, ci_hi = r$upper,
+                 N = bs$meta$n[bs$meta$fit == fits[[m]]], n_trees = r$n_trees,
+                 mm_per_decade = r$estimate * DEC, mm_per_decade_lo = r$lower * DEC, mm_per_decade_hi = r$upper * DEC)
+    }))
+    wcsv(ba, "fig_controlled_before_after_stan.csv")
+    add_scalar("stan_n_trees", max(ba$n_trees), "bayes_summary.rds")
+    # species labels: the compilation's names (as in the REML tables), mapped from the tree names the Stan fits use
+    nm <- NULL
+    fsl <- out_path("controlled_wing_phylo_species_slopes.rds")
+    if (file.exists(fsl)) nm <- distinct(readRDS(fsl)$M3[, c("spp", "tree_name")])
+    lab <- function(sp) { if (is.null(nm)) return(sp); i <- match(sp, nm$tree_name); ifelse(is.na(i), sp, nm$spp[i]) }
+    sl <- bind_rows(
+      if (!is.null(bd$species_slopes))    data.frame(model = "M3", bd$species_slopes),
+      if (!is.null(bd$species_slopes_M0)) data.frame(model = "M0", bd$species_slopes_M0))
+    sl <- transmute(sl, model, spp = lab(species), tree_name = species, mm_per_decade = estimate,
+                    mm_per_decade_lo = lower, mm_per_decade_hi = upper, p_neg)
+    wcsv(sl, "fig_species_slopes_stan.csv")
+    diet <- bind_rows(
+      if (!is.null(bd$diet_quantile_slopes)) transmute(bd$diet_quantile_slopes, panel = "continuous",
+        group = quantile, diet_inv, mm_per_decade = estimate, mm_per_decade_lo = lower, mm_per_decade_hi = upper),
+      if (!is.null(bd$diet_category_slopes)) transmute(bd$diet_category_slopes, panel = "category",
+        group = category, diet_inv = NA_real_, mm_per_decade = estimate, mm_per_decade_lo = lower, mm_per_decade_hi = upper))
+    wcsv(diet, "fig_diet_slopes_stan.csv")
+  } else message("  (no bayes_summary.rds / bayes_derived.rds: Stan layers not exported)")
+
   wcsv(bind_rows(scal), "fig_scalars.csv")
   invisible(fd)
 }

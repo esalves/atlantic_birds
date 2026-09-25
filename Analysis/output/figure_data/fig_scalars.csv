@@ -102,3 +102,4 @@ slopes_phylo.M0.n_excl_zero_positive,2,controlled_wing_phylo_species_slopes.rds
 slopes_phylo.M0.median_mm_per_decade,-1.18218060562109,controlled_wing_phylo_species_slopes.rds
 slopes_phylo.M0.fixed_slope,-0.922126799225371,controlled_wing_phylo_species_slopes.rds
 slopes_phylo.M0.sd_random_slope,1.72683774091754,controlled_wing_phylo_species_slopes.rds
+stan_n_trees,20,bayes_summary.rds

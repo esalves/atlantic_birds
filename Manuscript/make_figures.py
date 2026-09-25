@@ -246,6 +246,14 @@ if ba_phylo is not None:
     ba = ba_phylo
 if ba_brms is not None:
     ba, tier_label = ba_brms, "brms, Rubin-pooled across phylogenetic trees (95% CrI)"
+# Stan phylogenetic tier (main engine since 2026-09-24): the model every estimate in the
+# text comes from, so it replaces all other tiers and no REML comparison line is drawn
+ba_stan = fd_csv("fig_controlled_before_after_stan.csv", required=False, quiet=True)
+if ba_stan is not None:
+    n_trees_stan = S("stan_n_trees", int, default=None)
+    ba, ba_compare = ba_stan, None
+    tier_label = (f"Stan phylogenetic mixed model, posterior pooled over {n_trees_stan} trees (95% CrI)"
+                  if n_trees_stan is not None else "Stan phylogenetic mixed model (95% CrI)")
 def year_term(df, model, term="scaled_yr"):
     if df is None:
         return None
@@ -351,6 +359,16 @@ if sl is not None:
     if sl_brms is not None and {"spp", "mm_per_decade", "mm_per_decade_lo", "mm_per_decade_hi"} <= set(sl_brms.columns):
         d3, src_label = sl_brms.copy(), "brms, Rubin-pooled across phylogenetic trees"
     d0 = sl[sl.model == "M0"].set_index("spp")
+    # Stan tier (main engine): primary caterpillar and M0 markers from the same engine,
+    # no REML comparison layer
+    sl_stan = fd_csv("fig_species_slopes_stan.csv", required=False, quiet=True)
+    if sl_stan is not None and (sl_stan.model == "M3").any():
+        n_trees_stan = S("stan_n_trees", int, default=None)
+        src_label = (f"Stan phylogenetic mixed model, posterior pooled over {n_trees_stan} trees (95% CrI)"
+                     if n_trees_stan is not None else "Stan phylogenetic mixed model (95% CrI)")
+        d3 = sl_stan[sl_stan.model == "M3"].copy()
+        d0 = sl_stan[sl_stan.model == "M0"].set_index("spp")
+        d3_lme4_compare = None
     d3_cmp = d3_lme4_compare.set_index("spp") if d3_lme4_compare is not None else None
     d3 = d3.sort_values("mm_per_decade").reset_index(drop=True)
     y = np.arange(len(d3))
@@ -541,6 +559,50 @@ ax.set_title(f"Which wing column supplied the coalesced wing length, by year (nu
 ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=3, frameon=False, fontsize=8, title="column populated", title_fontsize=8)
 fig.tight_layout(); fig.savefig(f"{OUT}/fig-s-wingcol.png", bbox_inches="tight"); plt.close(fig)
 note("fig-s-wingcol", "prop right early", p_right_early); note("fig-s-wingcol", "prop generic late", p_generic_late)
+
+# ---------------------------------------------------------------------------
+# FIG - wing-length trajectories by dietary reliance on invertebrates (Stan tier)
+# ---------------------------------------------------------------------------
+# Top: year slope at the p10 / p50 / p90 species-weighted percentiles of invertebrate
+# diet (continuous interaction model, + contributor & municipality). Bottom: year
+# slope for invertebrate-dominated vs other species (category model, same controls).
+# Lines are slope x (year - mean year), i.e. predicted change relative to the mean
+# year; ribbons use the 95% CrI of the slope (bayes_derived.R, draw by draw).
+dt = fd_csv("fig_diet_slopes_stan.csv", required=False, quiet=True)
+if dt is not None and {"continuous", "category"} <= set(dt.panel):
+    n_trees_stan = S("stan_n_trees", int, default=None)
+    yrs = np.linspace(1995, 2018, 50); dz = (yrs - YEAR_CENTRE) / 10
+    panels = [("continuous", {"p10": "#1F77B4", "p50": "#FF7F0E", "p90": "#D62728"},
+               "Year × invertebrate diet proportion (continuous)",
+               lambda r: f"{r.group} ({r.diet_inv:.0f}% invertebrates)"),
+              ("category", {"Other": "#1F77B4", "Invertebrate": "#D62728"},
+               "Year × diet category", lambda r: r.group)]
+    fig, axes = plt.subplots(2, 1, figsize=(6.4, 7.6), sharex=True)
+    for ax, (pn, cols, ttl, labf) in zip(axes, panels):
+        sub = dt[dt.panel == pn]
+        for g, colr in cols.items():
+            r = sub[sub.group == g]
+            if len(r) != 1:
+                continue
+            r = r.iloc[0]
+            ax.fill_between(yrs, r.mm_per_decade_lo * dz, r.mm_per_decade_hi * dz, color=colr, alpha=0.13, lw=0)
+            ax.plot(yrs, r.mm_per_decade * dz, color=colr, lw=2,
+                    label=f"{labf(r)}: {neg(f'{r.mm_per_decade:.2f}')} mm/decade "
+                          f"[{neg(f'{r.mm_per_decade_lo:.2f}')}, {neg(f'{r.mm_per_decade_hi:.2f}')}]")
+            for k in ("mm_per_decade", "mm_per_decade_lo", "mm_per_decade_hi"):
+                note("diet_interaction_plot", f"{pn} {g} {k}", float(r[k]))
+        ax.axhline(0, color="#BBBBBB", lw=0.6, zorder=0)
+        ax.set_ylabel("Predicted change in wing length\nrelative to the mean year (mm)")
+        ax.set_title(ttl, fontsize=9, loc="left")
+        ax.legend(loc="lower left", frameon=False, fontsize=7)
+    axes[1].set_xlabel("Year")
+    fig.suptitle("Wing-length trajectories by dietary reliance on invertebrates, + contributor & municipality\n"
+                 + (f"Stan phylogenetic mixed model, posterior pooled over {n_trees_stan} trees (95% CrI)"
+                    if n_trees_stan is not None else "Stan phylogenetic mixed model (95% CrI)"), fontsize=8.5)
+    fig.tight_layout(); fig.savefig(f"{OUT}/diet_interaction_plot.png", bbox_inches="tight"); plt.close(fig)
+    print("diet_interaction_plot: Stan diet slopes drawn")
+else:
+    print("SKIPPED diet_interaction_plot (fig_diet_slopes_stan.csv missing); the R-drawn copy is kept")
 
 pd.DataFrame(panel_numbers).to_csv(os.path.join(FD, "fig_panel_numbers.csv"), index=False)
 
