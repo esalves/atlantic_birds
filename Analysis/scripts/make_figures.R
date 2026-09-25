@@ -255,6 +255,34 @@ export_figure_data <- function() {
       if (!is.null(bd$diet_category_slopes)) transmute(bd$diet_category_slopes, panel = "category",
         group = category, diet_inv = NA_real_, mm_per_decade = estimate, mm_per_decade_lo = lower, mm_per_decade_hi = upper))
     wcsv(diet, "fig_diet_slopes_stan.csv")
+    # isometry on shared records (fully adjusted + municipality): wing and mass year
+    # slopes (fitted separately, so there is no joint posterior), the mass change
+    # expected under M ~ L^3 from the wing slope, and the directly fitted contrast
+    pct <- function(x, k = 1) 100 * (exp(k * x * DEC) - 1)
+    iso_f <- c(wing = "referee_reruns__011__lnwing__site", mass = "referee_reruns__012__lnmass__site",
+               contrast = "referee_reruns__010__iso__site", contrast_parsimonious = "referee_reruns__009__iso__site")
+    iso <- bind_rows(lapply(names(iso_f), function(k) {
+      r <- bs$fixed[bs$fixed$fit == iso_f[[k]] & bs$fixed$par == "b_scaled_yr", ]
+      if (nrow(r) != 1) return(NULL)
+      out <- data.frame(quantity = k, pct_per_decade = pct(r$estimate), lower = pct(r$lower), upper = pct(r$upper),
+                        p_neg = r$p_neg, N = bs$meta$n[bs$meta$fit == iso_f[[k]]], n_trees = r$n_trees)
+      if (k == "wing") out <- rbind(out, transform(out, quantity = "expected_isometric_mass",
+        pct_per_decade = pct(r$estimate, 3), lower = pct(r$lower, 3), upper = pct(r$upper, 3)))
+      out
+    }))
+    wcsv(iso, "fig_isometry_stan.csv")
+    # species-level wing and mass slopes on the shared records (posterior means of fixed + deviation)
+    sp_sl <- function(fit) {
+      b0 <- bs$fixed$estimate[bs$fixed$fit == fit & bs$fixed$par == "b_scaled_yr"]
+      d <- bs$species_slope_dev[bs$species_slope_dev$fit == fit, ]
+      data.frame(tree_name = sub("^slope_dev_", "", d$par), pct = pct(b0 + d$estimate))
+    }
+    if (all(c(iso_f[["wing"]], iso_f[["mass"]]) %in% bs$species_slope_dev$fit)) {
+      spw <- sp_sl(iso_f[["wing"]]); spm <- sp_sl(iso_f[["mass"]])
+      sps <- merge(setNames(spw, c("tree_name", "pct_per_decade_wing")), setNames(spm, c("tree_name", "pct_per_decade_mass")))
+      sps$spp <- lab(sps$tree_name)
+      wcsv(sps, "fig_isometry_species_stan.csv")
+    }
   } else message("  (no bayes_summary.rds / bayes_derived.rds: Stan layers not exported)")
 
   wcsv(bind_rows(scal), "fig_scalars.csv")

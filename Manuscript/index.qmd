@@ -185,37 +185,6 @@ bill_m1     <- .mt_phylo("Bill_width.mm.", "M1_src_site")
 bill_m3     <- .mt_phylo("Bill_width.mm.", "M3_ring")
 bill_within <- .mt_phylo("Bill_width.mm.", "MWsrc_mundlak_contributor", "yr_within_src")
 
-# isometry shared records
-biv_ind <- biv_phylo$contrasts_independent[biv_phylo$contrasts_independent$model == "M1_src_site", ]
-iso_wing     <- .s1(biv_ind$wing_pct_decade[1])
-iso_wing_lo  <- .s1(biv_ind$wing_pct_decade_lower[1])
-iso_wing_hi  <- .s1(biv_ind$wing_pct_decade_upper[1])
-iso_mass     <- .s1(biv_ind$mass_pct_decade[1])
-iso_mass_lo  <- .s1(biv_ind$mass_pct_decade_lower[1])
-iso_mass_hi  <- .s1(biv_ind$mass_pct_decade_upper[1])
-iso_diff     <- .s1(biv_ind$diff_pct_decade[1])
-iso_diff_lo  <- .s1(biv_ind$diff_lower[1])
-iso_diff_hi  <- .s1(biv_ind$diff_upper[1])
-iso_cont     <- .s1(biv_ind$iso_contrast_pct_decade[1])
-iso_cont_lo  <- .s1(biv_ind$iso_lower[1])
-iso_cont_hi  <- .s1(biv_ind$iso_upper[1])
-
-# M1a parsimonious contributor model
-iso_sum         <- jsonlite::fromJSON("../Analysis/output/figure_data/fig_isometry_summary.json")
-iso_m1a_wing    <- .s1(iso_sum$m1a_wing_pct_decade)
-iso_m1a_wing_lo <- .s1(iso_sum$m1a_wing_lower)
-iso_m1a_wing_hi <- .s1(iso_sum$m1a_wing_upper)
-iso_m1a_mass    <- .s1(iso_sum$m1a_mass_pct_decade)
-iso_m1a_mass_lo <- .s1(iso_sum$m1a_mass_lower)
-iso_m1a_mass_hi <- .s1(iso_sum$m1a_mass_upper)
-iso_m1a_cont    <- .s1(iso_sum$m1a_iso_contrast)
-iso_m1a_cont_lo <- .s1(iso_sum$m1a_iso_lower)
-iso_m1a_cont_hi <- .s1(iso_sum$m1a_iso_upper)
-iso_m1a_exp     <- .s1(iso_sum$m1a_isometric_mass_expected)
-iso_m1a_exp_lo  <- .s1(iso_sum$m1a_isometric_mass_expected_lower)
-iso_m1a_exp_hi  <- .s1(iso_sum$m1a_isometric_mass_expected_upper)
-iso_m1a_diff    <- .s1(iso_sum$m1a_wing_pct_decade - iso_sum$m1a_mass_pct_decade)
-
 # variance results
 var_s0 <- var_phylo$comparison[var_phylo$comparison$tier == "S0" & var_phylo$comparison$term == "scaled_yr", ]
 var_s3 <- var_phylo$comparison[var_phylo$comparison$tier == "S3" & var_phylo$comparison$term == "scaled_yr", ]
@@ -338,6 +307,13 @@ b_isofpcor <- .bz(.fid["iso_fpcor"], "b_scaled_yr", "pct")
 b_lnw <- .bz(.fid["lnw"], "b_scaled_yr", "pct"); b_lnm <- .bz(.fid["lnm"], "b_scaled_yr", "pct")
 b_iso_exp <- if (b_lnw$b == "NA") "NA" else .ss1(100 * ((exp(b_lnw$est * DEC))^3 - 1))
 n_iso_spp <- sum(bayes$species_slope_dev$fit == .fid[["iso_f"]])
+# species posterior means (fixed + deviation) of the shared-record wing and mass
+# slopes: how many fall in the longer-wing / lower-mass quadrant (Fig. isometry B)
+n_iso_decoupled <- local({
+  sp <- function(fit) { b0 <- bayes$fixed$estimate[bayes$fixed$fit == fit & bayes$fixed$par == "b_scaled_yr"]
+    d <- bayes$species_slope_dev[bayes$species_slope_dev$fit == fit, ]; setNames(b0 + d$estimate, d$par) }
+  w <- sp(.fid[["lnw"]]); m <- sp(.fid[["lnm"]])[names(w)]
+  if (!length(w)) NA else sum(w > 0 & m < 0, na.rm = TRUE) })
 # random-effect SDs (mm) of the fully adjusted wing model, posterior means
 .vc <- function(par) .s(bayes$varcomp$estimate[bayes$varcomp$fit == .fid[["w3"]] & bayes$varcomp$par == par])
 cw_sd_src <- .vc("sd_src"); cw_sd_site <- .vc("sd_site")
@@ -480,9 +456,9 @@ On these shared records, under full adjustment, wing length changed by `r b_lnw$
 
 Allowing the species year slopes to covary phylogenetically with the species intercepts left the estimate similar but widened its interval (`r b_isofpcor$b`%/decade, 95% CrI: `r b_isofpcor$lo` to `r b_isofpcor$hi`%), and the phylogenetic share of slope variance was again poorly constrained ($h^2 = `r h2s_i$b`$, 95% CrI: `r h2s_i$lo` to `r h2s_i$hi`).
 
-In bivariate morphospace (@fig-isometry B), the 95% credible ellipse for the Atlantic Forest assemblage sits in the region of stasis and mild mass retention, and excludes the decoupling quadrant reported for the central Amazon [@jirinec2021morphological], where wings lengthened as body mass declined. We note that even a clear departure in this contrast would reject only proportional co-variation between mass and wing length; because wing length is itself a functionally labile trait that can change independently of overall structural size, it would not on its own establish a change in whole-body shape.
+In bivariate morphospace (@fig-isometry B), the assemblage estimate lies close to stasis and above the isometry line, not in the quadrant of longer wings and lower mass that corresponds to the direction of change reported for the central Amazon [@jirinec2021morphological], although the credible intervals of both traits include zero. Only `r n_iso_decoupled` of `r n_iso_spp` species had posterior mean slopes in that quadrant. We note that even a clear departure in this contrast would reject only proportional co-variation between mass and wing length; because wing length is itself a functionally labile trait that can change independently of overall structural size, it would not on its own establish a change in whole-body shape.
 
-![Bivariate temporal allometry and test of geometric isometry on shared individuals. **(A)** Decadal rates of morphological change (% per decade) on `r .n(rr_n_therm)` shared records (`r n_iso_spp` species) with simultaneous wing length and body mass measurements, under full adjustment. Points and horizontal bars indicate posterior means and 95% credible intervals, pooled over 20 phylogenetic trees, for wing length, body mass, the mass change expected under cubic geometric scaling ($M \propto L^3$), and the isometry contrast ($\Delta_{\text{iso}} = \ln M - 3\ln L$, fitted directly). The central Amazonian benchmark from @jirinec2021morphological is shown for comparison. **(B)** Bivariate morphological state space ($\Delta\text{Wing}$ vs. $\Delta\text{Mass}$). The solid black line indicates strict geometric isometry ($y = 3x$), the dotted line indicates equal rates ($y = x$), and shaded zones denote proportional shrinkage (blue) and morphological decoupling/slenderisation (red). The green ellipse denotes the 95% credible ellipse for the Atlantic Forest assemblage, encompassing mass stasis and excluding Amazonian slenderisation. Semi-transparent circles represent species-specific estimates ($n = `r n_iso_spp`$).](images/fig-isometry.png){#fig-isometry}
+![Bivariate temporal allometry and test of geometric isometry on shared individuals. **(A)** Decadal rates of morphological change (% per decade) on `r .n(rr_n_therm)` shared records (`r n_iso_spp` species) with simultaneous wing length and body mass measurements, under full adjustment. Points and horizontal bars indicate posterior means and 95% credible intervals, pooled over `r bz$n_trees` phylogenetic trees, for wing length, body mass, the mass change expected under cubic geometric scaling ($M \propto L^3$), and the isometry contrast ($\Delta_{\text{iso}} = \ln M - 3\ln L$, fitted directly under the full and the parsimonious adjustment sets). **(B)** Bivariate morphological state space ($\Delta\text{Wing}$ vs. $\Delta\text{Mass}$). The solid black line indicates strict geometric isometry ($y = 3x$), the dotted line indicates equal rates ($y = x$), and the shaded quadrant (longer wings, lower mass) marks the direction of change reported for the central Amazon [@jirinec2021morphological], which is shown qualitatively because that study reports species-level rather than community-level rates. The green point is the Atlantic Forest assemblage estimate with the marginal 95% credible intervals of wing and mass change; the two traits were fitted in separate models, so no joint credible region is shown. Semi-transparent circles are species posterior means ($n = `r n_iso_spp`$).](images/fig-isometry.png){#fig-isometry}
 
 ## Annual temperature anomalies are not associated with the wing–mass relationship
 

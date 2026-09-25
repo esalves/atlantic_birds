@@ -135,37 +135,6 @@ bill_m1     <- .mt_phylo("Bill_width.mm.", "M1_src_site")
 bill_m3     <- .mt_phylo("Bill_width.mm.", "M3_ring")
 bill_within <- .mt_phylo("Bill_width.mm.", "MWsrc_mundlak_contributor", "yr_within_src")
 
-# isometry shared records
-biv_ind <- biv_phylo$contrasts_independent[biv_phylo$contrasts_independent$model == "M1_src_site", ]
-iso_wing     <- .s1(biv_ind$wing_pct_decade[1])
-iso_wing_lo  <- .s1(biv_ind$wing_pct_decade_lower[1])
-iso_wing_hi  <- .s1(biv_ind$wing_pct_decade_upper[1])
-iso_mass     <- .s1(biv_ind$mass_pct_decade[1])
-iso_mass_lo  <- .s1(biv_ind$mass_pct_decade_lower[1])
-iso_mass_hi  <- .s1(biv_ind$mass_pct_decade_upper[1])
-iso_diff     <- .s1(biv_ind$diff_pct_decade[1])
-iso_diff_lo  <- .s1(biv_ind$diff_lower[1])
-iso_diff_hi  <- .s1(biv_ind$diff_upper[1])
-iso_cont     <- .s1(biv_ind$iso_contrast_pct_decade[1])
-iso_cont_lo  <- .s1(biv_ind$iso_lower[1])
-iso_cont_hi  <- .s1(biv_ind$iso_upper[1])
-
-# M1a parsimonious contributor model
-iso_sum         <- jsonlite::fromJSON("../Analysis/output/figure_data/fig_isometry_summary.json")
-iso_m1a_wing    <- .s1(iso_sum$m1a_wing_pct_decade)
-iso_m1a_wing_lo <- .s1(iso_sum$m1a_wing_lower)
-iso_m1a_wing_hi <- .s1(iso_sum$m1a_wing_upper)
-iso_m1a_mass    <- .s1(iso_sum$m1a_mass_pct_decade)
-iso_m1a_mass_lo <- .s1(iso_sum$m1a_mass_lower)
-iso_m1a_mass_hi <- .s1(iso_sum$m1a_mass_upper)
-iso_m1a_cont    <- .s1(iso_sum$m1a_iso_contrast)
-iso_m1a_cont_lo <- .s1(iso_sum$m1a_iso_lower)
-iso_m1a_cont_hi <- .s1(iso_sum$m1a_iso_upper)
-iso_m1a_exp     <- .s1(iso_sum$m1a_isometric_mass_expected)
-iso_m1a_exp_lo  <- .s1(iso_sum$m1a_isometric_mass_expected_lower)
-iso_m1a_exp_hi  <- .s1(iso_sum$m1a_isometric_mass_expected_upper)
-iso_m1a_diff    <- .s1(iso_sum$m1a_wing_pct_decade - iso_sum$m1a_mass_pct_decade)
-
 # variance results
 var_s0 <- var_phylo$comparison[var_phylo$comparison$tier == "S0" & var_phylo$comparison$term == "scaled_yr", ]
 var_s3 <- var_phylo$comparison[var_phylo$comparison$tier == "S3" & var_phylo$comparison$term == "scaled_yr", ]
@@ -265,40 +234,29 @@ tbl_mass_data <- data.frame(
     "Full sample (N = 11,077): Body mass M0 Baseline (sex + latitude + phylogeny)",
     "Full sample (N = 11,077): Body mass M1 (+ Contributor intercept)",
     "Full sample (N = 11,077): Body mass M3 Full controls (+ Season + Moult + Individual)",
-    "Full sample (N = 11,077): Body mass Mundlak within-contributor slope",
-    "Shared records (N = 7,577): Wing length rate (Contributor control)",
-    "Shared records (N = 7,577): Body mass rate (Contributor control)",
-    "Shared records (N = 7,577): Geometric isometry contrast (Mass − 3 × Wing)"
+    "Full sample (N = 11,077): Body mass Mundlak within-contributor slope"
   ),
   Beta = c(
-    mass_m0$b, mass_m1a$b, mass_m3$b, mass_within$b,
-    "—", "—", "—"
+    mass_m0$b, mass_m1a$b, mass_m3$b, mass_within$b
   ),
   CI_95 = c(
     paste0("[", mass_m0$lo, ", ", mass_m0$hi, "]"),
     paste0("[", mass_m1a$lo, ", ", mass_m1a$hi, "]"),
     paste0("[", mass_m3$lo, ", ", mass_m3$hi, "]"),
-    paste0("[", mass_within$lo, ", ", mass_within$hi, "]"),
-    paste0("[", iso_m1a_wing_lo, ", ", iso_m1a_wing_hi, "]"),
-    paste0("[", iso_m1a_mass_lo, ", ", iso_m1a_mass_hi, "]"),
-    paste0("[", iso_m1a_cont_lo, ", ", iso_m1a_cont_hi, "]")
+    paste0("[", mass_within$lo, ", ", mass_within$hi, "]")
   ),
   Rate_pct_dec = c(
     paste0(mass_m0$pct, "%"),
     paste0(mass_m1a$pct, "%"),
     paste0(mass_m3$pct, "%"),
-    paste0(mass_within$pct, "%"),
-    paste0(iso_m1a_wing, "%"),
-    paste0(iso_m1a_mass, "%"),
-    paste0("+", iso_m1a_cont, "%")
+    paste0(mass_within$pct, "%")
   ),
   N = c(
-    mass_m0$n, mass_m1a$n, mass_m3$n, mass_within$n,
-    "7,577", "7,577", "7,577"
+    mass_m0$n, mass_m1a$n, mass_m3$n, mass_within$n
   )
 )
-knitr::kable(tbl_mass_data, col.names = c("Model specification / Contrast", "β (per SD-yr)", "95% CI", "Rate (%/dec)", "N"),
-             caption = "**Supplementary Table S2.** Body mass temporal models across control tiers, and bivariate allometry on shared individuals (50 phylogenetic trees).")
+knitr::kable(tbl_mass_data, col.names = c("Model specification", "β (per SD-yr)", "95% CI", "Rate (%/dec)", "N"),
+             caption = "**Supplementary Table S2.** Body mass temporal models across control tiers (REML check on the Bayesian estimates, 50 phylogenetic trees).")
 ```
 
 # References {.unnumbered}
