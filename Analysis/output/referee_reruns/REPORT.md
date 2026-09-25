@@ -2,7 +2,7 @@
 
 Generated: 2026-09-23 11:12 | trees: 50 | glmmTMB 1.1.14
 
-Commissioned from the co-author review of 2026-09-18. See `REVIEW_RESPONSE_PLAN.md`.
+Commissioned from the co-author review of 2026-09-18.
 
 **Reproduction note.** The script that produced the reported thermal-coupling
 estimates was not in the repository; block E0 refits that model from

@@ -124,7 +124,10 @@ Analysis/output/diet_interaction_phylo.rds
 Analysis/output/climate_trends.rds
 Analysis/output/effect_scale.rds
 Analysis/output/referee_reruns/referee_reruns.rds
-Analysis/output/figure_data/fig_isometry_summary.json
+Analysis/output/referee_reruns/anomaly_lag.rds
+Analysis/output/phylo_slopes/phylo_slopes_results.rds
+Analysis/output/bayes/bayes_summary.rds
+Analysis/output/bayes/bayes_derived.rds
 Analysis/output/session_info.txt
 renv.lock
 Manuscript/index.qmd
