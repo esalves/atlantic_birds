@@ -73,6 +73,17 @@ cw_m6           <- .cw("M6")
 cw_m7           <- .cw("M7")
 cw_noanom       <- .cw("M3_noanom")
 cw_long         <- .cw("M3_longrun")
+cw_m5site_within <- .cw("M5", "yr_within_site")
+cw_m5srccc_within <- .cw("M5src_cc", "yr_within_src")
+b_atten_full    <- sprintf("%.0f", 100 * (1 - cw_phylo$before_after$estimate[cw_phylo$before_after$model == "M3"] /
+                                          cw_phylo$before_after$estimate[cw_phylo$before_after$model == "M0"]))
+# contributors and municipalities in the full sample and in the wing sample
+prov <- local({
+  e <- new.env(); load("../Analysis/data/derived/passer90.rda", envir = e)
+  d <- e$passer90; w <- subset(d, !is.na(conc.wing.length))
+  list(n_src = length(unique(d$Main_researcher)), n_site = length(unique(d$Municipality)),
+       n_src_w = length(unique(w$Main_researcher)), n_site_w = length(unique(w$Municipality)))
+})
 
 # effect scale
 if (!is.null(es)) {
@@ -154,13 +165,13 @@ clim_tm <- clim$pooled[clim$pooled$variable == "tmean" & clim$pooled$weighting =
 
 ## Supplementary Note S1: Macroecological Provenance and Contributor Turnover
 
-Large-scale biodiversity trait compilations aggregate measurements across numerous independent research initiatives spanning wide geographical territories and multiple decades [@rodrigues_atlantic_2019]. In the ATLANTIC BIRD TRAITS database, 42 primary researchers coordinated field mist-netting across 139 named municipalities between 1995 and 2018 (@fig-s-records).
+Large-scale biodiversity trait compilations aggregate measurements across numerous independent research initiatives spanning wide geographical territories and multiple decades [@rodrigues_atlantic_2019]. In our analytical sample from the ATLANTIC BIRD TRAITS database, `r prov$n_src` contributors (research groups, identified by their principal investigator) carried out field mist-netting in `r prov$n_site` municipalities between 1995 and 2018 (`r prov$n_src_w` contributors and `r prov$n_site_w` municipalities in the wing sample; @fig-s-records).
 
-A provenance audit revealed substantial compositional turnover among active research teams over time: only 6 of the 42 primary researchers sampled birds in both the early quartile (1995–2006; 12 active contributors) and the late quartile (2013–2018; 33 active contributors; @fig-s-records). Furthermore, spatial sampling expanded northward and into higher-elevation montane habitats during the latter half of the time series. In avian morphometrics, inter-observer measurement differences frequently reach 1–3 mm for wing length and 0.5–1 mm for bill dimensions [@weeks2020]. When contributor identity is left uncontrolled, compositional turnover can mimic temporal phenotypic change: the unadjusted wing-length decline attenuates by approximately 60% once it is modelled, and the apparent trends in bill width and trait variance do not persist.
+A provenance audit revealed substantial compositional turnover among active research teams over time: only 6 of the `r prov$n_src_w` contributors in the wing sample sampled birds in both the early period (1995–2006; 12 active contributors) and the late period (2013–2018; 33 active contributors; @fig-s-records). Furthermore, spatial sampling expanded northward and into higher-elevation montane habitats during the latter half of the time series. In avian morphometrics, inter-observer measurement differences frequently reach 1–3 mm for wing length and 0.5–1 mm for bill dimensions [@weeks2020]. When contributor identity is left uncontrolled, compositional turnover can mimic temporal phenotypic change: the unadjusted wing-length decline attenuates by approximately `r b_atten_full`% once contributor, municipality and the other covariates are modelled (Table S1), and the apparent trends in bill width and trait variance do not persist.
 
-To resolve genuine biological change from sampling turnover, all primary models incorporate random intercepts for primary researcher (`(1 | Main_researcher)`). In addition, within-between random effects models [Mundlak REWB; @mundlak1978pooling; @bell2019fixed] show no directional change in morphological traits within individual contributors over time (e.g., within-contributor wing slope: $-0.32$ mm/decade, 95% CI: $-1.59$ to $+0.96$ mm/decade; complete cases: $+0.03$ mm/decade, 95% CI: $-0.58$ to $+0.63$).
+To resolve genuine biological change from sampling turnover, all models beyond the baseline incorporate random intercepts for contributor and municipality (`(1 | Main_researcher)`, `(1 | Municipality)`). Within-between random effects models [Mundlak REWB; @mundlak1978pooling; @bell2019fixed] do not detect directional change within contributors, but estimate it imprecisely (within-contributor wing slope: `r cw_m5src_within$dec` mm/decade, 95% CI: `r cw_m5src_within$dec_lo` to `r cw_m5src_within$dec_hi`; complete cases: `r cw_m5srccc_within$dec` mm/decade, 95% CI: `r cw_m5srccc_within$dec_lo` to `r cw_m5srccc_within$dec_hi`; REML).
 
-![**Supplementary Figure S1.** Temporal distribution of live-capture passerine wing records across primary researchers (1995–2018). (Top) Number of wing records per calendar year, stacked by the 12 largest research contributors (and an aggregated "Other (30)" category). Daggers (†) mark research teams that continuously sampled birds across both the early (1995–2006) and late (2013–2018) periods. (Bottom) Number of active research contributors per calendar year.](images/fig-s-records-by-source.png){#fig-s-records}
+![**Supplementary Figure S1.** Temporal distribution of live-capture passerine wing records across contributors (1995–2018). (Top) Number of wing records per calendar year, stacked by the 12 largest research contributors (and an aggregated "Other (30)" category). Daggers (†) mark contributors that sampled birds in both the early (1995–2006) and late (2013–2018) periods. (Bottom) Number of active research contributors per calendar year.](images/fig-s-records-by-source.png){#fig-s-records}
 
 ![**Supplementary Figure S2.** Relative proportion of wing-length measurement columns populated in the ATLANTIC BIRD TRAITS database by year. Bars indicate the annual percentage of records reporting right wing length, left wing length, or side-unspecified wing length. Sample sizes ($n$) above bars indicate total annual captures with wing data.](images/fig-s-wingcol.png){#fig-s-wingcol}
 
@@ -203,60 +214,36 @@ A further caveat is one of exposure window rather than statistics. Wing length i
 # Supplementary Tables
 
 ```{r tbl-s-wing, echo=FALSE}
-tbl_cw_data <- data.frame(
-  Model = c("M0: Baseline (sex + latitude + phylogeny)",
-            "M1: + Contributor intercept (Main_researcher)",
-            "M2: + Wing-column proxy + Longitude + Altitude",
-            "M3: Full controls (+ Season + Moult + Individual)",
-            "M3_cc: Full controls on complete cases (N = 8,282)",
-            "M5src: Within-contributor temporal slope (Mundlak REWB)",
-            "M6: Unknown-sex replication (full M3 controls)",
-            "M7: First captures only (no recaptures)"),
-  Beta = c(cw_m0$b, cw_m1a$b, cw_m2$b, cw_m3$b, cw_m3_cc$b, cw_m5src_within$b, cw_m6$b, cw_m7$b),
-  CI = c(paste0("[", cw_m0$lo, ", ", cw_m0$hi, "]"),
-         paste0("[", cw_m1a$lo, ", ", cw_m1a$hi, "]"),
-         paste0("[", cw_m2$lo, ", ", cw_m2$hi, "]"),
-         paste0("[", cw_m3$lo, ", ", cw_m3$hi, "]"),
-         paste0("[", cw_m3_cc$lo, ", ", cw_m3_cc$hi, "]"),
-         paste0("[", cw_m5src_within$lo, ", ", cw_m5src_within$hi, "]"),
-         paste0("[", cw_m6$lo, ", ", cw_m6$hi, "]"),
-         paste0("[", cw_m7$lo, ", ", cw_m7$hi, "]")),
-  Rate = c(cw_m0$dec, cw_m1a$dec, cw_m2$dec, cw_m3$dec, cw_m3_cc$dec, cw_m5src_within$dec, cw_m6$dec, cw_m7$dec),
-  N = c(cw_m0$n, cw_m1a$n, cw_m2$n, cw_m3$n, cw_m3_cc$n, cw_m5src_within$n, cw_m6$n, cw_m7$n)
-)
-knitr::kable(tbl_cw_data, col.names = c("Model specification", "β (mm/SD-yr)", "95% CI", "Rate (mm/dec)", "N"),
-             caption = "**Supplementary Table S1.** Phylogenetic mixed models of wing length across 50 trees, evaluating temporal trajectories across sequential control tiers.")
+.row <- function(label, x) data.frame(Model = label, Beta = x$b, CI = paste0("[", x$lo, ", ", x$hi, "]"),
+                                      Rate = x$dec, N = x$n)
+tbl_cw_data <- rbind(
+  .row("M0: Baseline (sex + latitude + phylogeny)", cw_m0),
+  .row("M1a: + Contributor intercept only", cw_m1a),
+  .row("M1: + Contributor and municipality intercepts", cw_m1),
+  .row("M2: M1 + Wing-column proxy + Longitude + Altitude", cw_m2),
+  .row("M3: Full controls (M2 + Season + Moult + Individual)", cw_m3),
+  .row(paste0("M3_cc: Full controls on complete cases (N = ", cw_m3_cc$n, ")"), cw_m3_cc),
+  .row("M3_noanom: Full controls without the anomalous sampling blocks", cw_noanom),
+  .row("M5src: Within-contributor temporal slope (Mundlak REWB)", cw_m5src_within),
+  .row("M5: Within-municipality temporal slope (Mundlak REWB)", cw_m5site_within),
+  .row("M6: Unknown-sex replication (full M3 controls)", cw_m6),
+  .row("M7: First captures only (no recaptures)", cw_m7))
+knitr::kable(tbl_cw_data, row.names = FALSE,
+             col.names = c("Model specification", "β (mm/SD-yr)", "95% CI", "Rate (mm/dec)", "N"),
+             caption = "**Supplementary Table S1.** REML phylogenetic mixed models of wing length (glmmTMB, pooled across 50 trees; Wald 95% CI), evaluating temporal trajectories across sequential control tiers. M1a is shown to separate the contributor term from the municipality term, which M1 adds together.")
 ```
 
 ```{r tbl-s-mass, echo=FALSE}
-tbl_mass_data <- data.frame(
-  Specification = c(
-    "Full sample (N = 11,077): Body mass M0 Baseline (sex + latitude + phylogeny)",
-    "Full sample (N = 11,077): Body mass M1 (+ Contributor intercept)",
-    "Full sample (N = 11,077): Body mass M3 Full controls (+ Season + Moult + Individual)",
-    "Full sample (N = 11,077): Body mass Mundlak within-contributor slope"
-  ),
-  Beta = c(
-    mass_m0$b, mass_m1a$b, mass_m3$b, mass_within$b
-  ),
-  CI_95 = c(
-    paste0("[", mass_m0$lo, ", ", mass_m0$hi, "]"),
-    paste0("[", mass_m1a$lo, ", ", mass_m1a$hi, "]"),
-    paste0("[", mass_m3$lo, ", ", mass_m3$hi, "]"),
-    paste0("[", mass_within$lo, ", ", mass_within$hi, "]")
-  ),
-  Rate_pct_dec = c(
-    paste0(mass_m0$pct, "%"),
-    paste0(mass_m1a$pct, "%"),
-    paste0(mass_m3$pct, "%"),
-    paste0(mass_within$pct, "%")
-  ),
-  N = c(
-    mass_m0$n, mass_m1a$n, mass_m3$n, mass_within$n
-  )
-)
-knitr::kable(tbl_mass_data, col.names = c("Model specification", "β (per SD-yr)", "95% CI", "Rate (%/dec)", "N"),
-             caption = "**Supplementary Table S2.** Body mass temporal models across control tiers (REML check on the Bayesian estimates, 50 phylogenetic trees).")
+.mrow <- function(label, x) data.frame(Specification = label, Beta = x$b, CI_95 = paste0("[", x$lo, ", ", x$hi, "]"),
+                                       Rate_pct_dec = paste0(x$pct, "%"), N = x$n)
+tbl_mass_data <- rbind(
+  .mrow("Body mass M0 Baseline (sex + latitude + phylogeny)", mass_m0),
+  .mrow("Body mass M1 (+ Contributor and municipality intercepts)", mass_m1),
+  .mrow("Body mass M3 Full controls (M1 + Longitude + Altitude + Season + Individual)", mass_m3),
+  .mrow("Body mass Mundlak within-contributor slope", mass_within))
+knitr::kable(tbl_mass_data, row.names = FALSE,
+             col.names = c("Model specification", "β (per SD-yr)", "95% CI", "Rate (%/dec)", "N"),
+             caption = "**Supplementary Table S2.** Body mass temporal models across control tiers (REML check on the Bayesian estimates, glmmTMB pooled across 50 phylogenetic trees). Moult is not included because it is not recorded for enough of the body-mass records; M3 and the within-contributor model use the complete-case sample.")
 ```
 
 # References {.unnumbered}
