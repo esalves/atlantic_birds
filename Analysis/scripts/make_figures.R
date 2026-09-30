@@ -255,12 +255,13 @@ export_figure_data <- function() {
       if (!is.null(bd$diet_category_slopes)) transmute(bd$diet_category_slopes, panel = "category",
         group = category, diet_inv = NA_real_, mm_per_decade = estimate, mm_per_decade_lo = lower, mm_per_decade_hi = upper))
     wcsv(diet, "fig_diet_slopes_stan.csv")
-    # isometry on shared records (fully adjusted + municipality): wing and mass year
-    # slopes (fitted separately, so there is no joint posterior), the mass change
-    # expected under M ~ L^3 from the wing slope, and the directly fitted contrast
+    # isometry on all shared records (fully adjusted + municipality; no temperature
+    # anomaly required, bayes_export_isometry_all.R): wing and mass year slopes
+    # (fitted separately, so there is no joint posterior), the mass change expected
+    # under M ~ L^3 from the wing slope, and the directly fitted contrast
     pct <- function(x, k = 1) 100 * (exp(k * x * DEC) - 1)
-    iso_f <- c(wing = "referee_reruns__011__lnwing__site", mass = "referee_reruns__012__lnmass__site",
-               contrast = "referee_reruns__010__iso__site", contrast_parsimonious = "referee_reruns__009__iso__site")
+    iso_f <- c(wing = "referee_reruns__017__lnwing__all", mass = "referee_reruns__018__lnmass__all",
+               contrast = "referee_reruns__016__iso__all", contrast_parsimonious = "referee_reruns__015__iso__all")
     iso <- bind_rows(lapply(names(iso_f), function(k) {
       r <- bs$fixed[bs$fixed$fit == iso_f[[k]] & bs$fixed$par == "b_scaled_yr", ]
       if (nrow(r) != 1) return(NULL)

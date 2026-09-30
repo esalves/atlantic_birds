@@ -9,18 +9,18 @@ fig-map,late: coordinate sites,146
 fig-map,late: shared sites,4
 fig-map,late: species,70
 fig-map,late: contributors,33
-fig-wingtrend,M3 est,-0.369445507155703
-fig-wingtrend,M0 est,-0.927647170468436
-fig-wingtrend,M3 lo,-0.780474930663443
-fig-wingtrend,M0 lo,-1.42586392087267
-fig-wingtrend,M3 hi,0.0477250062521394
-fig-wingtrend,M0 hi,-0.431792169283915
-fig-wingtrend,M3 mmd,-0.735958204449241
-fig-wingtrend,M0 mmd,-1.8479302974786
-fig-wingtrend,M3 mmd_lo,-1.55475413143036
-fig-wingtrend,M0 mmd_lo,-2.84040874951593
-fig-wingtrend,M3 mmd_hi,0.0950711518433771
-fig-wingtrend,M0 mmd_hi,-0.860156595347374
+fig-wingtrend,M3 est,-0.369912411721209
+fig-wingtrend,M0 est,-0.925286327343004
+fig-wingtrend,M3 lo,-0.781624080893443
+fig-wingtrend,M0 lo,-1.42325454905632
+fig-wingtrend,M3 hi,0.0483752388542267
+fig-wingtrend,M0 hi,-0.432807129894111
+fig-wingtrend,M3 mmd,-0.736888307100439
+fig-wingtrend,M0 mmd,-1.84322735256811
+fig-wingtrend,M3 mmd_lo,-1.55704330946483
+fig-wingtrend,M0 mmd_lo,-2.83521072014622
+fig-wingtrend,M3 mmd_hi,0.0963664552346425
+fig-wingtrend,M0 mmd_hi,-0.862178459394435
 fig-wingtrend,M3 N,8478
 fig-wingtrend,M0 N,8478
 fig-wingtrend,M3 tier,"Stan phylogenetic mixed model, posterior pooled over 20 trees (95% CrI)"
@@ -28,25 +28,25 @@ fig-species-slopes,n species,72
 fig-species-slopes,n negative,49
 fig-species-slopes,n excl zero negative,13
 fig-species-slopes,n excl zero positive,2
-fig-species-slopes,median mm/decade,-0.5532028698961755
+fig-species-slopes,median mm/decade,-0.5486148698864826
 fig-species-slopes,tier,"Stan phylogenetic mixed model, posterior pooled over 20 trees (95% CrI)"
 fig-s-records-by-source,wing records,8478
 fig-s-records-by-source,contributors with wing records,42
 fig-s-records-by-source,contributors spanning both periods,6
 fig-s-wingcol,prop right early,0.873839662447257
 fig-s-wingcol,prop generic late,0.674564459930314
-diet_interaction_plot,continuous p10 mm_per_decade,-1.81248055054679
-diet_interaction_plot,continuous p10 mm_per_decade_lo,-3.04548438344326
-diet_interaction_plot,continuous p10 mm_per_decade_hi,-0.585397202925519
-diet_interaction_plot,continuous p50 mm_per_decade,-1.072054740362
-diet_interaction_plot,continuous p50 mm_per_decade_lo,-1.895619073904
-diet_interaction_plot,continuous p50 mm_per_decade_hi,-0.246277539455102
-diet_interaction_plot,continuous p90 mm_per_decade,-0.146522477631017
-diet_interaction_plot,continuous p90 mm_per_decade_lo,-1.3616017173053
-diet_interaction_plot,continuous p90 mm_per_decade_hi,1.10186037296046
-diet_interaction_plot,category Other mm_per_decade,-1.32112851061247
-diet_interaction_plot,category Other mm_per_decade_lo,-2.38844764839751
-diet_interaction_plot,category Other mm_per_decade_hi,-0.250790380281989
-diet_interaction_plot,category Invertebrate mm_per_decade,-0.55678131022418
-diet_interaction_plot,category Invertebrate mm_per_decade_lo,-1.69546220765629
-diet_interaction_plot,category Invertebrate mm_per_decade_hi,0.609317589797783
+diet_interaction_plot,continuous p10 mm_per_decade,-1.80935648854288
+diet_interaction_plot,continuous p10 mm_per_decade_lo,-3.040581176649
+diet_interaction_plot,continuous p10 mm_per_decade_hi,-0.587739205438972
+diet_interaction_plot,continuous p50 mm_per_decade,-1.06922740918077
+diet_interaction_plot,continuous p50 mm_per_decade_lo,-1.89201363746942
+diet_interaction_plot,continuous p50 mm_per_decade_hi,-0.250170788238361
+diet_interaction_plot,continuous p90 mm_per_decade,-0.144066059978134
+diet_interaction_plot,continuous p90 mm_per_decade_lo,-1.3559884102035
+diet_interaction_plot,continuous p90 mm_per_decade_hi,1.09155669193738
+diet_interaction_plot,category Other mm_per_decade,-1.3222413934742
+diet_interaction_plot,category Other mm_per_decade_lo,-2.39089261616191
+diet_interaction_plot,category Other mm_per_decade_hi,-0.252447199880022
+diet_interaction_plot,category Invertebrate mm_per_decade,-0.556292084646994
+diet_interaction_plot,category Invertebrate mm_per_decade_lo,-1.69458739867451
+diet_interaction_plot,category Invertebrate mm_per_decade_hi,0.607442439611459
