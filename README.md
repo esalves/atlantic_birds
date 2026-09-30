@@ -101,7 +101,11 @@ Rscript Analysis/scripts/update_descriptive_stats.R     # descriptive_summary.rd
 # 3. Stan tier (server scale: roughly 40 min to 6 h per model x tree)
 #    Setting PHYLO_EXPORT_DIR before step 2 makes each glmmTMB model write a job file.
 #    Each job is then refitted in Stan on each tree.
+Rscript Analysis/scripts/bayes_export_thermal.R         # thermal and isometry jobs (anomaly subset)
+Rscript Analysis/scripts/bayes_export_isometry_all.R    # year-only isometry jobs on all shared records
 Analysis/scripts/run_bayes_totoro.sh Analysis/output/bayes/jobs_maintext.txt 1 20
+#    Trees whose focal parameters had R-hat > 1.01 were refitted with
+#    --warmup 2000 --sampling 2000 --thin 4 (listed in output/bayes/refit_rhat_trees.txt)
 Rscript Analysis/scripts/bayes_aggregate.R              # -> output/bayes/bayes_summary.rds
 Rscript Analysis/scripts/bayes_derived.R                # -> output/bayes/bayes_derived.rds
 
