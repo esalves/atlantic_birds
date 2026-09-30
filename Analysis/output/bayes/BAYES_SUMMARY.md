@@ -1,6 +1,6 @@
 # Bayesian (Stan) tier: summary
 
-Generated 2026-09-25 09:16:19. 35 fits. Posterior pooled over trees (mixture); REML = glmmTMB Rubin-pooled over the same trees.
+Generated 2026-09-30 09:17:09. 40 fits. Posterior pooled over trees (mixture); REML = glmmTMB Rubin-pooled over the same trees.
 
 ## How to read the tables
 
@@ -56,15 +56,20 @@ Generated 2026-09-25 09:16:19. 35 fits. Posterior pooled over trees (mixture); R
 | Body mass (ln): fully adjusted, shared records [+ municipality] | E4c | `referee_reruns__012__lnmass__site` | 7070 | 20 |
 | Isometry vs detrended temperature anomaly [+ municipality] | E1b (phylo, M3) | `referee_reruns__013__iso__site` | 7070 | 20 |
 | Isometry vs temperature anomaly + locality-year [+ municipality] | E2a (phylo, M3) | `referee_reruns__014__iso__site` | 7070 | 20 |
+| referee_reruns__015__iso__all |  | `referee_reruns__015__iso__all` | 7409 | 20 |
+| referee_reruns__016__iso__all |  | `referee_reruns__016__iso__all` | 7409 | 20 |
+| referee_reruns__016__iso__all__pcor [correlated phylo intercept-slope] |  | `referee_reruns__016__iso__all__pcor` | 7409 | 20 |
+| referee_reruns__017__lnwing__all |  | `referee_reruns__017__lnwing__all` | 7409 | 20 |
+| referee_reruns__018__lnmass__all |  | `referee_reruns__018__lnmass__all` | 7409 | 20 |
 
 ## Sampler diagnostics (worst tree per fit)
 
 | model | trees | max R-hat | min bulk-ESS | divergences | median s/tree |
 |---|---|---|---|---|---|
-| Wing x diet: baseline | 20 | 1.021 | 233 | 0 | 997 |
-| Wing x diet: + contributor & municipality | 20 | 1.017 | 312 | 0 | 1442 |
-| Wing x diet category: + contributor & municipality | 20 | 1.013 | 247 | 0 | 2908 |
-| Body mass (ln): baseline | 20 | 1.016 | 288 | 0 | 3549 |
+| Wing x diet: baseline | 20 | 1.021 | 233 | 0 | 1223 |
+| Wing x diet: + contributor & municipality | 20 | 1.017 | 312 | 0 | 1700 |
+| Wing x diet category: + contributor & municipality | 20 | 1.012 | 247 | 0 | 2861 |
+| Body mass (ln): baseline | 20 | 1.013 | 293 | 0 | 3818 |
 | Body mass (ln): fully adjusted | 20 | 1.028 | 283 | 0 | 18411 |
 | Body mass (ln): year within vs between contributors | 20 | 1.024 | 274 | 0 | 18639 |
 | Bill width: baseline | 20 | 1.007 | 752 | 0 | 307 |
@@ -73,16 +78,16 @@ Generated 2026-09-25 09:16:19. 35 fits. Posterior pooled over trees (mixture); R
 | Bill width: year within vs between contributors | 20 | 1.017 | 377 | 0 | 755 |
 | Body mass (ln): capture-time sample | 20 | 1.022 | 271 | 0 | 3033 |
 | Body mass (ln): capture-time sample + capture hour | 20 | 1.031 | 182 | 0 | 3413 |
-| Wing: baseline | 20 | 1.035 | 159 | 0 | 988 |
-| Wing: fully adjusted | 20 | 1.024 | 307 | 0 | 13135 |
-| Wing: fully adjusted [correlated phylo intercept-slope] | 20 | 1.014 | 355 | 0 | 4050 |
-| Wing: fully adjusted + per-contributor trends | 20 | 1.032 | 225 | 0 | 15879 |
-| Wing: year within vs between contributors | 20 | 1.026 | 249 | 0 | 13866 |
-| Wing: fully adjusted, first captures only | 20 | 1.016 | 293 | 0 | 1460 |
+| Wing: baseline | 20 | 1.016 | 219 | 0 | 2201 |
+| Wing: fully adjusted | 20 | 1.013 | 324 | 0 | 15328 |
+| Wing: fully adjusted [correlated phylo intercept-slope] | 20 | 1.014 | 355 | 0 | 4134 |
+| Wing: fully adjusted + per-contributor trends | 20 | 1.032 | 225 | 0 | 16140 |
+| Wing: year within vs between contributors | 20 | 1.019 | 249 | 0 | 14770 |
+| Wing: fully adjusted, first captures only | 20 | 1.014 | 293 | 0 | 1496 |
 | Wing: fully adjusted, complete cases | 20 | 1.018 | 305 | 0 | 11973 |
-| Wing: year within vs between contributors, complete cases | 20 | 1.024 | 254 | 0 | 11493 |
+| Wing: year within vs between contributors, complete cases | 20 | 1.018 | 340 | 0 | 14941 |
 | Wing: fully adjusted, unknown-sex birds | 20 | 1.013 | 304 | 0 | 650 |
-| Wing (mean + SD model): baseline | 20 | 1.024 | 270 | 0 | 1043 |
+| Wing (mean + SD model): baseline | 20 | 1.024 | 270 | 0 | 1174 |
 | Wing (mean + SD model): + contributor & municipality | 20 | 1.030 | 164 | 0 | 3896 |
 | Wing (mean + SD model): + local temperature | 20 | 1.021 | 352 | 0 | 5836 |
 | Wing vs temperature anomaly [+ municipality] | 20 | 1.015 | 284 | 0 | 8787 |
@@ -91,23 +96,28 @@ Generated 2026-09-25 09:16:19. 35 fits. Posterior pooled over trees (mixture); R
 | Isometry vs temperature anomaly + year [+ municipality] | 20 | 1.031 | 174 | 0 | 3467 |
 | Isometry vs year: parsimonious adjustment [+ municipality] | 20 | 1.045 | 156 | 0 | 959 |
 | Isometry vs year: fully adjusted [+ municipality] | 20 | 1.032 | 154 | 0 | 1630 |
-| Isometry vs year: fully adjusted [+ municipality, correlated phylo intercept-slope] | 20 | 1.046 | 107 | 0 | 1556 |
+| Isometry vs year: fully adjusted [+ municipality, correlated phylo intercept-slope] | 20 | 1.046 | 107 | 0 | 1566 |
 | Wing (ln): fully adjusted, shared records [+ municipality] | 20 | 1.016 | 342 | 0 | 1782 |
 | Body mass (ln): fully adjusted, shared records [+ municipality] | 20 | 1.021 | 298 | 0 | 1741 |
 | Isometry vs detrended temperature anomaly [+ municipality] | 20 | 1.031 | 171 | 0 | 3591 |
 | Isometry vs temperature anomaly + locality-year [+ municipality] | 20 | 1.047 | 104 | 0 | 3866 |
+| referee_reruns__015__iso__all | 20 | 1.038 | 181 | 0 | 380 |
+| referee_reruns__016__iso__all | 20 | 1.027 | 175 | 0 | 1255 |
+| referee_reruns__016__iso__all__pcor [correlated phylo intercept-slope] | 20 | 1.036 | 122 | 0 | 1607 |
+| referee_reruns__017__lnwing__all | 20 | 1.014 | 341 | 0 | 3384 |
+| referee_reruns__018__lnmass__all | 20 | 1.030 | 214 | 0 | 2865 |
 
 ## Time terms: posterior vs REML
 
 | model | term | posterior mean [95% CrI] | P(<0) | REML [95% CI] | shift (post. SD) | SD ratio |
 |---|---|---|---|---|---|---|
-| Wing x diet: baseline | year | -0.860 [-1.337, -0.383] | 1.000 | -0.858 [-1.327, -0.389] | -0.01 | 1.02 |
-| Wing x diet: baseline | year x diet (invertebrate share) | 0.661 [0.205, 1.120] | 0.003 | 0.663 [0.218, 1.108] | -0.01 | 1.03 |
-| Wing x diet: + contributor & municipality | year | -0.465 [-0.875, -0.050] | 0.986 | -0.465 [-0.865, -0.066] | 0.00 | 1.03 |
-| Wing x diet: + contributor & municipality | year x diet (invertebrate share) | 0.319 [-0.027, 0.670] | 0.036 | 0.321 [-0.017, 0.658] | -0.01 | 1.03 |
-| Wing x diet category: + contributor & municipality | year | -0.663 [-1.199, -0.126] | 0.992 | -0.668 [-1.191, -0.146] | 0.02 | 1.03 |
-| Wing x diet category: + contributor & municipality | b_scaled_yr:diet_cat2Invertebrate | 0.384 [-0.365, 1.135] | 0.154 | 0.396 [-0.327, 1.119] | -0.03 | 1.03 |
-| Body mass (ln): baseline | year | -0.007 [-0.017, 0.002] | 0.934 | -0.007 [-0.017, 0.002] | -0.01 | 1.02 |
+| Wing x diet: baseline | year | -0.860 [-1.337, -0.380] | 1.000 | -0.858 [-1.327, -0.389] | -0.00 | 1.02 |
+| Wing x diet: baseline | year x diet (invertebrate share) | 0.661 [0.198, 1.121] | 0.003 | 0.663 [0.218, 1.108] | -0.01 | 1.03 |
+| Wing x diet: + contributor & municipality | year | -0.463 [-0.874, -0.052] | 0.986 | -0.465 [-0.865, -0.066] | 0.01 | 1.03 |
+| Wing x diet: + contributor & municipality | year x diet (invertebrate share) | 0.318 [-0.026, 0.667] | 0.036 | 0.321 [-0.017, 0.658] | -0.01 | 1.02 |
+| Wing x diet category: + contributor & municipality | year | -0.664 [-1.200, -0.127] | 0.992 | -0.668 [-1.191, -0.146] | 0.02 | 1.03 |
+| Wing x diet category: + contributor & municipality | b_scaled_yr:diet_cat2Invertebrate | 0.385 [-0.362, 1.137] | 0.153 | 0.396 [-0.327, 1.119] | -0.03 | 1.03 |
+| Body mass (ln): baseline | year | -0.007 [-0.017, 0.002] | 0.935 | -0.007 [-0.017, 0.002] | -0.02 | 1.03 |
 | Body mass (ln): fully adjusted | year | -0.005 [-0.014, 0.005] | 0.830 | -0.005 [-0.014, 0.005] | -0.01 | 1.02 |
 | Body mass (ln): year within vs between contributors | year within contributor | -0.003 [-0.010, 0.004] | 0.798 | -0.003 [-0.010, 0.004] | 0.02 | 1.02 |
 | Body mass (ln): year within vs between contributors | contributor mean year | 0.006 [-0.033, 0.044] | 0.374 | 0.006 [-0.030, 0.042] | -0.00 | 1.04 |
@@ -119,18 +129,18 @@ Generated 2026-09-25 09:16:19. 35 fits. Posterior pooled over trees (mixture); R
 | Body mass (ln): capture-time sample | year | -0.008 [-0.020, 0.005] | 0.873 | -0.008 [-0.020, 0.005] | 0.00 | 1.02 |
 | Body mass (ln): capture-time sample + capture hour | year | -0.006 [-0.019, 0.006] | 0.835 | -0.006 [-0.019, 0.006] | 0.01 | 1.01 |
 | Body mass (ln): capture-time sample + capture hour | capture hour | 0.004 [0.003, 0.005] | 0.000 | 0.004 [0.003, 0.005] | -0.01 | 1.00 |
-| Wing: baseline | year | -0.928 [-1.426, -0.432] | 1.000 | -0.922 [-1.400, -0.444] | -0.02 | 1.04 |
-| Wing: fully adjusted | year | -0.369 [-0.780, 0.048] | 0.959 | -0.371 [-0.777, 0.035] | 0.01 | 1.02 |
-| Wing: fully adjusted [correlated phylo intercept-slope] | year | -0.268 [-1.148, 0.679] | 0.763 | -0.371 [-0.777, 0.035] | 0.23 | 2.17 |
-| Wing: fully adjusted + per-contributor trends | year | -0.874 [-1.809, 0.040] | 0.970 | -0.875 [-1.758, 0.007] | 0.00 | 1.04 |
-| Wing: year within vs between contributors | year within contributor | -0.164 [-0.807, 0.491] | 0.692 | -0.159 [-0.798, 0.481] | -0.02 | 1.02 |
-| Wing: year within vs between contributors | contributor mean year | -1.299 [-2.486, -0.097] | 0.983 | -1.289 [-2.421, -0.158] | -0.02 | 1.04 |
-| Wing: fully adjusted, first captures only | year | -0.373 [-0.788, 0.040] | 0.962 | -0.379 [-0.783, 0.024] | 0.03 | 1.02 |
-| Wing: fully adjusted, complete cases | year | -0.283 [-0.656, 0.091] | 0.932 | -0.285 [-0.648, 0.077] | 0.01 | 1.03 |
-| Wing: year within vs between contributors, complete cases | year within contributor | 0.027 [-0.590, 0.665] | 0.471 | 0.025 [-0.578, 0.629] | 0.00 | 1.03 |
-| Wing: year within vs between contributors, complete cases | contributor mean year | -1.206 [-2.448, 0.031] | 0.973 | -1.206 [-2.377, -0.034] | 0.00 | 1.05 |
+| Wing: baseline | year | -0.925 [-1.423, -0.433] | 1.000 | -0.922 [-1.400, -0.444] | -0.01 | 1.03 |
+| Wing: fully adjusted | year | -0.370 [-0.782, 0.048] | 0.958 | -0.371 [-0.777, 0.035] | 0.01 | 1.02 |
+| Wing: fully adjusted [correlated phylo intercept-slope] | year | -0.270 [-1.156, 0.681] | 0.766 | -0.371 [-0.777, 0.035] | 0.22 | 2.19 |
+| Wing: fully adjusted + per-contributor trends | year | -0.874 [-1.808, 0.043] | 0.969 | -0.875 [-1.758, 0.007] | 0.00 | 1.04 |
+| Wing: year within vs between contributors | year within contributor | -0.165 [-0.807, 0.486] | 0.694 | -0.159 [-0.798, 0.481] | -0.02 | 1.01 |
+| Wing: year within vs between contributors | contributor mean year | -1.301 [-2.481, -0.099] | 0.983 | -1.289 [-2.421, -0.158] | -0.02 | 1.04 |
+| Wing: fully adjusted, first captures only | year | -0.374 [-0.786, 0.036] | 0.963 | -0.379 [-0.783, 0.024] | 0.03 | 1.02 |
+| Wing: fully adjusted, complete cases | year | -0.283 [-0.656, 0.091] | 0.933 | -0.285 [-0.648, 0.077] | 0.01 | 1.03 |
+| Wing: year within vs between contributors, complete cases | year within contributor | 0.029 [-0.580, 0.662] | 0.469 | 0.025 [-0.578, 0.629] | 0.01 | 1.02 |
+| Wing: year within vs between contributors, complete cases | contributor mean year | -1.205 [-2.429, 0.040] | 0.972 | -1.206 [-2.377, -0.034] | 0.00 | 1.05 |
 | Wing: fully adjusted, unknown-sex birds | year | -0.698 [-1.229, -0.154] | 0.993 | -0.690 [-1.206, -0.173] | -0.03 | 1.04 |
-| Wing (mean + SD model): baseline | year | -0.925 [-1.395, -0.452] | 1.000 | -0.923 [-1.382, -0.464] | -0.01 | 1.02 |
+| Wing (mean + SD model): baseline | year | -0.923 [-1.393, -0.452] | 1.000 | -0.923 [-1.382, -0.464] | -0.00 | 1.02 |
 | Wing (mean + SD model): + contributor & municipality | year | -0.158 [-0.370, 0.056] | 0.930 | -0.152 [-0.353, 0.050] | -0.06 | 1.05 |
 | Wing (mean + SD model): + local temperature | year | -0.184 [-0.439, 0.064] | 0.927 | -0.182 [-0.421, 0.056] | -0.01 | 1.05 |
 | Wing vs temperature anomaly [+ municipality] | temperature anomaly | -0.007 [-0.417, 0.392] | 0.510 | 0.010 [-0.369, 0.390] | -0.09 | 1.07 |
@@ -140,8 +150,8 @@ Generated 2026-09-25 09:16:19. 35 fits. Posterior pooled over trees (mixture); R
 | Isometry vs temperature anomaly + year [+ municipality] | year | 0.011 [-0.003, 0.025] | 0.059 | 0.011 [-0.002, 0.025] | 0.00 | 1.03 |
 | Isometry vs year: parsimonious adjustment [+ municipality] | year | 0.012 [-0.002, 0.026] | 0.046 | 0.012 [-0.002, 0.026] | -0.02 | 1.02 |
 | Isometry vs year: fully adjusted [+ municipality] | year | 0.012 [-0.002, 0.026] | 0.050 | 0.012 [-0.002, 0.025] | -0.01 | 1.02 |
-| Isometry vs year: fully adjusted [+ municipality, correlated phylo intercept-slope] | year | 0.009 [-0.017, 0.034] | 0.198 | 0.012 [-0.002, 0.025] | -0.19 | 1.81 |
-| Wing (ln): fully adjusted, shared records [+ municipality] | year | -0.004 [-0.009, 0.002] | 0.909 | -0.004 [-0.009, 0.002] | 0.02 | 1.03 |
+| Isometry vs year: fully adjusted [+ municipality, correlated phylo intercept-slope] | year | 0.009 [-0.017, 0.034] | 0.199 | 0.012 [-0.002, 0.025] | -0.19 | 1.81 |
+| Wing (ln): fully adjusted, shared records [+ municipality] | year | -0.004 [-0.009, 0.002] | 0.910 | -0.004 [-0.009, 0.002] | 0.02 | 1.03 |
 | Body mass (ln): fully adjusted, shared records [+ municipality] | year | -0.001 [-0.010, 0.007] | 0.631 | -0.001 [-0.010, 0.007] | -0.01 | 1.01 |
 
 ## Residual-SD terms (mean + SD models): posterior vs REML
@@ -152,8 +162,8 @@ the residual SD shrinks (for year: that wing length became less variable over ti
 
 | model | term | posterior mean [95% CrI] | % SD change [95% CrI] | P(<0) | REML [95% CI] | shift (post. SD) | SD ratio |
 |---|---|---|---|---|---|---|---|
-| Wing (mean + SD model): baseline | year | 0.047 [0.032, 0.062] | +4.8 [+3.2, +6.4] | 0.000 | 0.047 [0.031, 0.062] | -0.01 | 1.00 |
-| Wing (mean + SD model): baseline | male (vs female) | 0.022 [-0.010, 0.055] | +2.3 [-1.0, +5.7] | 0.092 | 0.022 [-0.010, 0.055] | -0.01 | 1.00 |
+| Wing (mean + SD model): baseline | year | 0.047 [0.032, 0.062] | +4.8 [+3.2, +6.4] | 0.000 | 0.047 [0.031, 0.062] | -0.00 | 1.00 |
+| Wing (mean + SD model): baseline | male (vs female) | 0.022 [-0.011, 0.056] | +2.3 [-1.1, +5.7] | 0.094 | 0.022 [-0.010, 0.055] | -0.00 | 1.01 |
 | Wing (mean + SD model): + contributor & municipality | year | -0.034 [-0.074, 0.006] | -3.3 [-7.1, +0.6] | 0.951 | -0.033 [-0.072, 0.007] | -0.07 | 1.00 |
 | Wing (mean + SD model): + contributor & municipality | male (vs female) | -0.010 [-0.045, 0.025] | -1.0 [-4.4, +2.5] | 0.719 | -0.010 [-0.045, 0.025] | -0.00 | 1.00 |
 | Wing (mean + SD model): + local temperature | year | -0.036 [-0.076, 0.005] | -3.5 [-7.3, +0.5] | 0.957 | -0.035 [-0.076, 0.005] | -0.02 | 1.01 |

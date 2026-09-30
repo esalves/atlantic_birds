@@ -120,6 +120,7 @@ Analysis/output/multitrait_phylo_results.rds
 Analysis/output/multitrait_results.rds
 Analysis/output/bivariate_phylo_results.rds
 Analysis/output/variance_phylo_results.rds
+Analysis/output/variance_results.rds
 Analysis/output/diet_interaction_phylo.rds
 Analysis/output/climate_trends.rds
 Analysis/output/effect_scale.rds
