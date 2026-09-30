@@ -727,13 +727,10 @@ The Bayesian models were fitted on Linux servers in R 4.5.3 (R 4.6.1 for the all
 
 # Competing interests {.unnumbered}
 
-<!-- TODO(submission): confirm for all authors before submitting. Default text below. -->
 No competing interests declared.
 
 # Author contributions {.unnumbered}
 
-<!-- TODO(submission): verify against the CRediT roles in the YAML header and
-     confirm with each co-author. -->
 E.S.A.S. conceived the study, curated the data, designed and performed the
 analyses, produced the figures, and wrote the original draft. A.M., S.O. and
 G.B. contributed to the methodology, validated the analyses, and reviewed and
@@ -741,9 +738,6 @@ edited the manuscript. All authors approved the final version.
 
 # Funding {.unnumbered}
 
-<!-- TODO(submission): grant numbers and funders required. Biology Open asks for
-     funder names and award numbers, and Crossref Funder Registry IDs where
-     available. This cannot be completed from the repository. -->
 G.B. was funded by the European Union's Horizon research and innovation programme under the Marie Skłodowska-Curie grant CAUSATION (Grant Agreement ID: 101150734). A.M. was supported by a Japan Society for the Promotion of Science (JSPS) Overseas Research Fellowship. E.S.A.S. and S.O. were supported by a Canada Excellence Research Chair (CERC-2022-00074).
 
 # Data and resource availability {.unnumbered}
@@ -760,12 +754,6 @@ summaries needed to reproduce every value reported here are archived at Zenodo
 
 # Ethics {.unnumbered}
 
-<!-- TODO(submission): confirm whether a statement is required. This study is a
-     secondary analysis of previously published, openly available records and
-     involved no new capture or handling of animals; the original licences and
-     permits are those of the contributing projects reported in
-     @rodrigues_atlantic_2019. Confirm with co-authors and with the journal
-     whether anything further is needed. -->
 This study is a secondary analysis of previously published, openly available
 records. No new animal capture or handling was undertaken. Capture and ringing
 permits for the primary data are those held by the contributing research
