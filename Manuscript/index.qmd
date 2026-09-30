@@ -723,7 +723,7 @@ authors have verified the claims that remain.
 
 ## Reproducible software environment
 
-The Bayesian models were fitted on Linux servers in R 4.5.3 (R 4.6.1 for the all-record isometry models and the trees refitted with longer chains) with CmdStan 2.39.0 through `cmdstanr` (v0.9.0), using the Stan program archived as `Analysis/scripts/stan/phylo_lmm_marginal.stan`. All other analyses and manuscript generation were conducted in R 4.6.0 with `glmmTMB` (v1.1.14), `prepR4pcm` (v0.5.0.9000), `metafor` (v5.0-1), `lme4` (v2.0-1), `ape` (v5.8-1), `phytools` (v2.5-2), `sf` (v1.1-2) and `terra` (v1.9-27), alongside Python (3.11 or later) with `matplotlib` and `pandas` for the figures. The complete environment, giving the exact version and source of every package, is recorded in `renv.lock` at the root of the archived repository and can be restored with `renv::restore()`; `Analysis/output/session_info.txt` gives the same information in human-readable form. Each saved glmmTMB result object additionally records the R and engine version under which it was fitted. All analysis scripts, curated datasets and the pooled posterior summaries of every fitted model are archived, with the outputs needed to reproduce every reported value, in the project repository (DOI: 10.5281/zenodo.atlantic_birds).
+The Bayesian models were fitted on Linux servers in R 4.5.3 (R 4.6.1 for the all-record isometry models and the trees refitted with longer chains) with CmdStan 2.39.0 through `cmdstanr` (v0.9.0), using the Stan program archived as `Analysis/scripts/stan/phylo_lmm_marginal.stan`. All other analyses and manuscript generation were conducted in R 4.6.0 with `glmmTMB` (v1.1.14), `prepR4pcm` (v0.5.0.9000), `metafor` (v5.0-1), `lme4` (v2.0-1), `ape` (v5.8-1), `phytools` (v2.5-2), `sf` (v1.1-2) and `terra` (v1.9-27), alongside Python (3.11 or later) with `matplotlib` and `pandas` for the figures. The complete environment, giving the exact version and source of every package, is recorded in `renv.lock` at the root of the archived repository and can be restored with `renv::restore()`; `Analysis/output/session_info.txt` gives the same information in human-readable form. Each saved glmmTMB result object additionally records the R and engine version under which it was fitted. All analysis scripts, curated datasets and the pooled posterior summaries of every fitted model are archived, with the outputs needed to reproduce every reported value, in the project repository (Zenodo, DOI: [10.5281/zenodo.23070825](https://doi.org/10.5281/zenodo.23070825)).
 
 # Competing interests {.unnumbered}
 
@@ -755,10 +755,8 @@ monthly weather series [CRU-TS 4.09 downscaled; @harris2020crudata; @fick2017wor
 @mctavish2025tree. Dietary data are from EltonTraits 1.0 [@wilman2014eltontraits].
 
 Analysis code, the derived analytical datasets, and the pooled posterior
-summaries needed to reproduce every value reported here are archived at
-<!-- TODO(submission): mint the Zenodo DOI and replace this placeholder; the
-     current string in the Methods is not a resolvable DOI. -->
-*[repository DOI to be minted]*.
+summaries needed to reproduce every value reported here are archived at Zenodo
+([https://doi.org/10.5281/zenodo.23070825](https://doi.org/10.5281/zenodo.23070825)).
 
 # Ethics {.unnumbered}
 

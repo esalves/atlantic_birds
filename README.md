@@ -143,4 +143,5 @@ Please cite each source in its own right. Full terms are in [`LICENSE-DATA.md`](
 ## Citation
 
 Until the preprint is posted, please cite the repository using [`CITATION.cff`](CITATION.cff)
-(GitHub's "Cite this repository" button). A Zenodo DOI will be added when the archive is minted.
+(GitHub's "Cite this repository" button). The archived version is on Zenodo:
+[https://doi.org/10.5281/zenodo.23070825](https://doi.org/10.5281/zenodo.23070825).

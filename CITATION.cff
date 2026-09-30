@@ -54,5 +54,11 @@ keywords:
 license: CC-BY-4.0
 license-url: 'https://creativecommons.org/licenses/by/4.0/'
 repository-code: 'https://github.com/esalves/atlantic_birds'
-# TODO(submission): add `version:`, `date-released:` and the Zenodo `doi:`
-# once the deposit is published, then add `preferred-citation:` for the paper.
+version: 1.0.0
+date-released: '2026-09-30'
+doi: 10.5281/zenodo.23070825
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23070825
+    description: Zenodo archive of this version
+# TODO(submission): add `preferred-citation:` for the paper once the preprint is posted.
