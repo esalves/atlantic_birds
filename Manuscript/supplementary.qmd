@@ -1,5 +1,5 @@
 ---
-title: "Supplementary Material: Morphological stability and subtle phenotypic shifts in Atlantic Forest birds across two decades of climate warming"
+title: "Supplementary Material: Weak and species-specific morphological change in Atlantic Forest birds across two decades of warming"
 author:
   - name: Eduardo S.A. Santos
     affiliations:
@@ -15,6 +15,8 @@ author:
       - Department of Biological and Environmental Sciences, University of Gothenburg, Sweden
 bibliography: references.bib
 number-sections: true
+filters:
+  - strip_authors.lua   # no-op unless rendered with -M anonymous=true
 format:
   docx:
     reference-doc: custom-reference.docx

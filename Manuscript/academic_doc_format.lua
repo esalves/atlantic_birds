@@ -18,6 +18,15 @@ function Pandoc(doc)
 
   local pagebreak = pandoc.RawBlock('openxml', '<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
 
+  -- Output modes, set by Quarto profiles (see _quarto-oikos-*.yml):
+  --   anonymous: true        -> double-anonymised manuscript: no authors on the
+  --                             cover page and no sections classed .title-page
+  --   title-page-only: true  -> separate title page: cover page plus the
+  --                             .title-page and .declaration sections only
+  local function flag(x) return x == true or to_str(x) == "true" end
+  local anonymous = flag(meta.anonymous)
+  local title_page_only = flag(meta['title-page-only'])
+
   -- =========================================================================
   -- PAGE 1: COVER PAGE
   -- =========================================================================
@@ -35,6 +44,7 @@ function Pandoc(doc)
 
   -- Quarto's manuscript engine organizes authors into meta['by-author']
   local authors = meta['by-author'] or meta.author or meta.authors
+  if anonymous then authors = nil end
 
   if authors and type(authors) == "table" then
     for i, auth in ipairs(authors) do
@@ -112,6 +122,7 @@ function Pandoc(doc)
 
   -- Affiliations list
   local affils = meta['by-affiliation'] or meta.affiliations
+  if anonymous then affils = nil end
   if affils and type(affils) == "table" then
     for i, aff in ipairs(affils) do
       local aff_name = ""
@@ -169,6 +180,7 @@ function Pandoc(doc)
   -- PAGE 2: ABSTRACT & KEYWORDS
   -- =========================================================================
   
+  if not title_page_only then
   table.insert(blocks, pandoc.Header(1, { pandoc.Str("Abstract") }, pandoc.Attr("", {"unnumbered"})))
 
   if meta.abstract then
@@ -197,19 +209,39 @@ function Pandoc(doc)
     table.insert(blocks, pandoc.Para(kw_p))
   end
 
-  if meta["plain-language-summary"] then
+  if meta["plain-language-summary"] and not anonymous then
     table.insert(blocks, pandoc.Header(2, { pandoc.Str("Plain Language Summary") }, pandoc.Attr("", {"unnumbered"})))
     table.insert(blocks, pandoc.Para({ pandoc.Str(to_str(meta["plain-language-summary"])) }))
   end
 
   -- Page break at end of Abstract Page
   table.insert(blocks, pagebreak)
+  end
 
   -- =========================================================================
   -- PAGE 3+: MAIN TEXT
   -- =========================================================================
+  -- A classed section runs from its level-1 header to the next header of any
+  -- level (the declaration sections have no sub-headings; the References
+  -- header that follows them is level 2).
+  local section = nil
   for _, blk in ipairs(doc.blocks) do
-    table.insert(blocks, blk)
+    if blk.t == "Header" then
+      section = nil
+      if blk.level == 1 then
+        if blk.classes:includes("title-page") then section = "title-page"
+        elseif blk.classes:includes("declaration") then section = "declaration" end
+      end
+    end
+    local keep
+    if title_page_only then
+      keep = section ~= nil
+    elseif anonymous then
+      keep = section ~= "title-page"
+    else
+      keep = true
+    end
+    if keep then table.insert(blocks, blk) end
   end
 
   -- Clear metadata so Pandoc does not emit duplicate unformatted headers

@@ -1,0 +1,9 @@
+# Oikos initial submission, separate title page (not sent to reviewers):
+#   quarto render index.qmd --profile oikos-title --to docx
+# Title, authors, affiliations, ORCIDs, correspondence, then the declaration
+# sections (conflict of interest, contributions, funding, data availability,
+# ethics, acknowledgements).
+title-page-only: true
+format:
+  docx:
+    reference-doc: oikos-reference.docx

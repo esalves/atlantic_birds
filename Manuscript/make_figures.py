@@ -207,9 +207,6 @@ handles = [Line2D([0], [0], marker="o", color="none", markerfacecolor=UNIQUE, ma
 fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, fontsize=8, bbox_to_anchor=(0.5, -0.02))
 mun_sh, mun_n = S("municipality_wing.n_shared", int), S("municipality_wing.n_units", int)
 loc_sh, loc_n = S("locality_wing.n_shared", int), S("locality_wing.n_units", int)
-fig.suptitle(f"Sampling sites of {N_SPP} Atlantic Forest passerine species, early vs late period\n"
-             f"coordinate sites sampled in both periods: {n_shared_sites} of {len(sites)}; named localities {loc_sh} of {loc_n}; "
-             f"municipalities {mun_sh} of {mun_n}", fontsize=9.5, y=1.0)
 fig.savefig(f"{OUT}/fig-map.png", bbox_inches="tight"); plt.close(fig)
 print(f"fig-map: sites early {int((sites.n_early > 0).sum())}, late {int((sites.n_late > 0).sum())}, shared {n_shared_sites}")
 
@@ -307,8 +304,6 @@ else:
     print("WARNING: fig-wingtrend drawn WITHOUT model lines (controlled results missing)")
 ax.set_ylim(w.dev.quantile(.005), w.dev.quantile(.995)); ax.tick_params(labelbottom=False)
 ax.set_ylabel("Deviation from species × sex\nmean wing length (mm)")
-ax.set_title(f"Within-species-centred wing length, 1995–2018 (N = {len(w):,} records, {w.Binomial.nunique()} species)\n"
-             f"fitted year effects: {tier_label}", fontsize=9)
 ax.text(0.01, 0.98, "a", transform=ax.transAxes, fontweight="bold", va="top")
 # inset: wing records per year (top-left, where the early years have few extreme records)
 ins = ax.inset_axes([0.06, 0.70, 0.28, 0.27])
@@ -409,7 +404,6 @@ if sl is not None:
            f"median {neg(f'{d3.mm_per_decade.median():.2f}')} mm/decade")
     if m3:
         ttl += f"\nblue line/band: pooled M3 year effect {neg(f'{m3['mmd']:.2f}')} [{neg(f'{m3['mmd_lo']:.2f}')}, {neg(f'{m3['mmd_hi']:.2f}')}] mm/decade"
-    ax.set_title(ttl, fontsize=8.2, loc="left")
     handles = [Line2D([0], [0], marker="o", color=DEC, lw=0, label="negative slope"),
                Line2D([0], [0], marker="o", color=INC, lw=0, label="positive slope"),
                Line2D([0], [0], marker="o", color="none", markerfacecolor="white", markeredgecolor="black", label="interval includes zero"),
@@ -488,7 +482,7 @@ for ax, (metric, lab) in zip(axes, traits_fig4):
     ax.axvspan(mlo, mhi, color="#5B7FB5", alpha=0.18); ax.axvline(mu, color="#2E5090", lw=1.3)
     ax.set_yticks(y); ax.set_yticklabels([s.replace("_", " ") for s in t["sp"]], fontsize=4.2, style="italic")
     ax.set_xlabel("lnCVR (late vs early) · 95% CI")
-    ax.set_title(f"{lab}\nmeta-analytic mean = {mu:.2f} [{mlo:.2f}, {mhi:.2f}]", fontsize=9)
+    ax.set_title(lab, fontsize=9)
     print(f"{lab}: metafor mean {mu} [{mlo}, {mhi}]; python re-check {chk[0]:.3f} [{chk[1]:.3f}, {chk[2]:.3f}] (k={len(t)})")
 fig.tight_layout(); fig.savefig(f"{OUT}/fig-variability.png", bbox_inches="tight"); plt.close(fig)
 
@@ -521,9 +515,6 @@ for c, colr in zip(piv.columns, palette):
     bottom += piv[c].to_numpy()
 ax.set_ylabel("Wing-length records"); ax.set_xticks(years[::2]); ax.tick_params(labelbottom=False)
 n_span, n_contrib_w, rec_span = S("n_span_both_wing", int), S("n_wing_contributors", int), S("wing_records_from_spanners", int)
-ax.set_title(f"Wing records per year by contributor (Main_researcher; N = {int(piv.to_numpy().sum()):,} records, {n_contrib_w} contributors)\n"
-             f"† contributor with wing records in both 1995–{EARLY_MAX} and {LATE_MIN}–2018: {n_span} of {n_contrib_w} ({rec_span:,} records)",
-             fontsize=9)
 ax.legend(loc="upper left", fontsize=6.6, frameon=False, ncol=2, title="contributor", title_fontsize=7)
 ax2 = fig.add_subplot(gs[1], sharex=ax)
 ax2.bar(cpy.Year, cpy.n_contributors_wing, width=0.85, color="#6E6E6E")
@@ -553,9 +544,6 @@ for yr, n in nyr.items():
 ax.set_ylim(0, 1.16); ax.set_yticks([0, .25, .5, .75, 1]); ax.set_yticklabels(["0", "25", "50", "75", "100"])
 ax.set_ylabel("Share of wing records (%)"); ax.set_xlabel("Year"); ax.set_xticks(years[::2])
 p_right_early, p_generic_late = S("prop_right_early"), S("prop_generic_late")
-ax.set_title(f"Which wing column supplied the coalesced wing length, by year (numbers above bars = records)\n"
-             f"protocol proxy: {100 * p_right_early:.0f}% right-wing column in 1995–{EARLY_MAX} vs "
-             f"{100 * p_generic_late:.0f}% side-unspecified column in {LATE_MIN}–2018", fontsize=9)
 ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=3, frameon=False, fontsize=8, title="column populated", title_fontsize=8)
 fig.tight_layout(); fig.savefig(f"{OUT}/fig-s-wingcol.png", bbox_inches="tight"); plt.close(fig)
 note("fig-s-wingcol", "prop right early", p_right_early); note("fig-s-wingcol", "prop generic late", p_generic_late)
@@ -573,10 +561,10 @@ if dt is not None and {"continuous", "category"} <= set(dt.panel):
     n_trees_stan = S("stan_n_trees", int, default=None)
     yrs = np.linspace(1995, 2018, 50); dz = (yrs - YEAR_CENTRE) / 10
     panels = [("continuous", {"p10": "#1F77B4", "p50": "#FF7F0E", "p90": "#D62728"},
-               "Year × invertebrate diet proportion (continuous)",
+               "A",
                lambda r: f"{r.group} ({r.diet_inv:.0f}% invertebrates)"),
               ("category", {"Other": "#1F77B4", "Invertebrate": "#D62728"},
-               "Year × diet category", lambda r: r.group)]
+               "B", lambda r: r.group)]
     fig, axes = plt.subplots(2, 1, figsize=(6.4, 7.6), sharex=True)
     for ax, (pn, cols, ttl, labf) in zip(axes, panels):
         sub = dt[dt.panel == pn]
@@ -593,12 +581,9 @@ if dt is not None and {"continuous", "category"} <= set(dt.panel):
                 note("diet_interaction_plot", f"{pn} {g} {k}", float(r[k]))
         ax.axhline(0, color="#BBBBBB", lw=0.6, zorder=0)
         ax.set_ylabel("Predicted change in wing length\nrelative to the mean year (mm)")
-        ax.set_title(ttl, fontsize=9, loc="left")
+        ax.set_title(ttl, fontsize=10, fontweight="bold", loc="left")
         ax.legend(loc="lower left", frameon=False, fontsize=7)
     axes[1].set_xlabel("Year")
-    fig.suptitle("Wing-length trajectories by dietary reliance on invertebrates, + contributor & municipality\n"
-                 + (f"Stan phylogenetic mixed model, posterior pooled over {n_trees_stan} trees (95% CrI)"
-                    if n_trees_stan is not None else "Stan phylogenetic mixed model (95% CrI)"), fontsize=8.5)
     fig.tight_layout(); fig.savefig(f"{OUT}/diet_interaction_plot.png", bbox_inches="tight"); plt.close(fig)
     print("diet_interaction_plot: Stan diet slopes drawn")
 else:

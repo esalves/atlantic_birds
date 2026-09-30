@@ -89,7 +89,7 @@ ax1.text(XL, 1.55, "Isometry contrast: > 0 = mass retained relative to wing", fo
 ax1.set_xlim(XL - 0.4, 12.0); ax1.set_ylim(-0.5, 5.2)
 ax1.set_yticks([]); ax1.spines["left"].set_visible(False)
 ax1.set_xlabel("Rate of change (% per decade) · posterior mean and 95% CrI", fontsize=8.8)
-ax1.set_title("A. Decadal rates and the isometry contrast", fontsize=10.5, fontweight="bold", loc="left", pad=10)
+ax1.set_title("A", fontsize=10.5, fontweight="bold", loc="left", pad=10)
 
 # ---------------------------------------------------------------------------
 # Panel B: bivariate state space
@@ -117,7 +117,7 @@ ax2.errorbar(w.pct_per_decade, m.pct_per_decade,
 n_decoupled = int(((spp.pct_per_decade_wing > 0) & (spp.pct_per_decade_mass < 0)).sum())
 ax2.set_xlabel("Wing length change (% per decade)", fontsize=8.8)
 ax2.set_ylabel("Body mass change (% per decade)", fontsize=8.8)
-ax2.set_title("B. Bivariate state space", fontsize=10.5, fontweight="bold", loc="left", pad=10)
+ax2.set_title("B", fontsize=10.5, fontweight="bold", loc="left", pad=10)
 ax2.legend(handles=[
     Line2D([0], [0], color="#1A202C", lw=1.8, label="strict isometry (y = 3x)"),
     Line2D([0], [0], color="#718096", lw=1.1, ls=":", label="equal rates (y = x)"),
@@ -127,8 +127,6 @@ ax2.legend(handles=[
            ms=5, label=f"species posterior means (n = {len(spp)}; {n_decoupled} in the shaded quadrant)")],
     loc="upper left", frameon=True, facecolor="white", framealpha=0.9, edgecolor="#E2E8F0", fontsize=7.0)
 
-fig.suptitle("Stan phylogenetic mixed models, fully adjusted (+ municipality)"
-             + (f"; posterior pooled over {n_trees} trees" if n_trees else ""), fontsize=8.5, y=1.0)
 plt.tight_layout()
 fig_path = os.path.join(OUT, "fig-isometry.png")
 fig.savefig(fig_path, bbox_inches="tight"); plt.close(fig)

@@ -1,0 +1,9 @@
+# Oikos initial submission, double-anonymised manuscript:
+#   quarto render index.qmd --profile oikos-anon --to docx
+# No authors, affiliations, funding, contributions, acknowledgements or data
+# statement (Oikos takes the data availability statement in the submission
+# form). Double-spaced, continuous line numbers, page numbers.
+anonymous: true
+format:
+  docx:
+    reference-doc: oikos-reference.docx

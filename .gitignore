@@ -94,3 +94,6 @@ Analysis/output/jirinec_gaps/
 Analysis/output/exploratory/
 Manuscript/drafts/
 Analysis/output/figure_data/fig_isometry_summary.json
+
+# Rendered Oikos submission files (regenerate with Manuscript/render_oikos.sh)
+Manuscript/submission_oikos/
