@@ -55,9 +55,9 @@ license-url: 'https://creativecommons.org/licenses/by/4.0/'
 repository-code: 'https://github.com/esalves/atlantic_birds'
 version: 1.1.0
 date-released: '2026-10-01'
-doi: TODO-DOI
+doi: 10.5281/zenodo.23087760
 identifiers:
   - type: doi
-    value: TODO-DOI
+    value: 10.5281/zenodo.23087760
     description: Zenodo archive of this version
 # TODO(submission): add `preferred-citation:` for the paper once the preprint is posted.

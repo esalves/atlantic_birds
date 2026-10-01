@@ -144,5 +144,5 @@ Please cite each source in its own right. Full terms are in [`LICENSE-DATA.md`](
 
 Until the preprint is posted, please cite the repository using [`CITATION.cff`](CITATION.cff)
 (GitHub's "Cite this repository" button). The archived versions are on Zenodo:
-v1.1.0 [TODO-DOI](https://doi.org/TODO-DOI) (this version) and v1.0.0
+v1.1.0 [10.5281/zenodo.23087760](https://doi.org/10.5281/zenodo.23087760) (this version) and v1.0.0
 [10.5281/zenodo.23070825](https://doi.org/10.5281/zenodo.23070825) (the first preprint).
