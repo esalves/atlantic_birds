@@ -270,6 +270,45 @@ knitr::kable(th, row.names = FALSE, col.names = c("Specification", "Response", "
              caption = "**Supplementary Table S3.** Temperature-anomaly associations across specifications (REML, glmmTMB). The anomaly effect is per °C and the year effect per SD of year; the isometry contrast is ln M − 3 ln L. E1a, E1b and E2a are fits without phylogeny, with contributor and municipality intercepts (a simpler control set than M3); E2a adds a locality-year intercept. E3 and E3b use the full M3 adjustment set across 50 phylogenetic trees; `Trees` is the number of trees whose fits converged and were pooled (E3 converged on fewer than 50 trees for body mass and the isometry contrast, whereas every E3b fit used all 50).")
 ```
 
+```{r tab-s-recovery, echo=FALSE}
+rs <- readRDS("../Analysis/output/referee_reruns/recovery_sim.rds")
+.scen <- c(clean = "Clean", real = "Real conditional modes", artefact = "Calibrated artefact")
+rt <- rs$summary
+rt <- rt[order(match(rt$scenario, names(.scen)), -rt$planted, match(rt$model, c("M0", "M1", "M3", "M5src"))), ]
+rt <- data.frame(Scenario = .scen[rt$scenario], Planted = sprintf("%.1f", rt$planted), Model = rt$model,
+                 Mean = sprintf("%.2f", rt$mean_est), Bias = sprintf("%.2f", rt$bias), RMSE = sprintf("%.2f", rt$rmse),
+                 Coverage = sprintf("%.2f", rt$coverage), Excl0 = sprintf("%.2f", rt$excl_zero))
+knitr::kable(rt, row.names = FALSE,
+             col.names = c("Scenario", "Planted (mm/dec)", "Model", "Mean estimate", "Bias", "RMSE", "Coverage of 95% CI", "Share of CIs excluding 0"),
+             caption = sprintf("**Supplementary Table S4.** Recovery of planted wing-length trends in the real sampling structure (%d simulated data sets per scenario and planted value; lme4 REML). Clean: contributor and municipality effects drawn independently of year. Real: their conditional modes from the model fitted to the real data. Calibrated artefact: independent draws plus a contributor shift proportional to the contributor's mean capture year, sized to reproduce the real gap between the baseline and fully adjusted estimates. M5src gives the within-contributor slope. Estimates in mm/decade. A cluster bootstrap over contributors (%d draws) gave a 95%% interval of %.2f to %.2f mm/decade for the difference between the M3 and M0 slopes.",
+                               rs$reps, rs$attenuation$n_boot, rs$attenuation$diff_ci95[1], rs$attenuation$diff_ci95[2]))
+```
+
+```{r tab-s-logwing, echo=FALSE}
+lw <- readRDS("../Analysis/output/referee_reruns/logwing.rds")
+.lwm <- c(M0 = "M0: Baseline", M1 = "M1: + Contributor and municipality", M3 = "M3: Full controls",
+          M5src = "M5src: Within-contributor slope", M3_noanom = "M3_noanom: Full controls without anomalous blocks")
+lt <- lw$summary
+lt <- data.frame(Model = .lwm[lt$model], Response = ifelse(lt$response == "log", "log wing length", "wing length (mm)"),
+                 Rate = sprintf("%.2f", lt$per_decade), CI = sprintf("[%.2f, %.2f]", lt$lo, lt$hi),
+                 Unit = lt$unit, Trees = lt$m_used)
+knitr::kable(lt, row.names = FALSE, col.names = c("Model", "Response", "Rate", "95% CI", "Unit", "Trees"),
+             caption = "**Supplementary Table S5.** Wing-length ladder with millimetre and log-scale responses (glmmTMB REML with the phylogenetic species intercept, Rubin-pooled over the trees with a positive-definite Hessian; Wald 95% CI). Log-scale slopes are expressed as % per decade.")
+```
+
+```{r tab-s-anombase, echo=FALSE}
+ab <- readRDS("../Analysis/output/referee_reruns/anomaly_baseline.rds")
+.abr <- c("wing length (mm)" = "Wing length (mm)", "log body mass" = "log body mass", "isometry contrast lnM-3lnL" = "Isometry contrast (ln M − 3 ln L)")
+.abt <- c(dT = "ΔT, baseline over the locality's records", dT_full = "ΔT, baseline over 1995–2018", scaled_yr = "Year (per SD)")
+at <- ab$fits
+at <- data.frame(Response = .abr[at$response], Model = at$model, Term = .abt[at$term],
+                 Estimate = signif(at$estimate, 3), CI = sprintf("[%s, %s]", signif(at$lower, 3), signif(at$upper, 3)),
+                 Trees = at$trees_used)
+knitr::kable(at, row.names = FALSE, col.names = c("Response", "Model", "Term", "Estimate", "95% CI", "Trees"),
+             caption = sprintf("**Supplementary Table S6.** Temperature-anomaly models under two baselines (full M3 adjustment, glmmTMB REML, phylogenetic species intercept, Rubin-pooled; n = %s). The primary anomaly subtracts the locality's mean over its own records (correlation with capture year %.2f); the alternative subtracts the locality's unweighted mean over every year from 1995 to 2018 (correlation %.2f), so it retains the regional warming trend and is shown with and without calendar year.",
+                               format(ab$n, big.mark = ","), ab$baselines$cor_year[1], ab$baselines$cor_year[2]))
+```
+
 # References {.unnumbered}
 
 ::: {#refs}
