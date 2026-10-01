@@ -4,7 +4,8 @@
 # contrasts its trends with the central Amazonian study of Jirinec et al. (2021,
 # Sci. Adv. 7: eabk1743) but never put the two on the same scale. This script
 # derives the Amazonian benchmark from that paper's supplementary Table S6
-# (data/external/jirinec2021_tableS6.csv) and plots it against our estimates.
+# (data/external/jirinec2021_tableS6.csv) and puts our estimates on the same
+# scale; the manuscript reports the comparison in the Discussion (no figure).
 #
 # Benchmark. Table S6 gives, per species, model-estimated means in 1980 and 2019
 # and their change in %. The community benchmark is the mean of the 77 species'
@@ -18,9 +19,9 @@
 # without propagating its uncertainty.
 #
 # RUN:  Rscript Analysis/scripts/jirinec_benchmark.R
-# OUT:  output/jirinec_benchmark.rds, Manuscript/images/fig-amazon.png
+# OUT:  output/jirinec_benchmark.rds
 # ---------------------------------------------------------------------------
-suppressMessages({ library(dplyr); library(ggplot2) })
+suppressMessages(library(dplyr))
 
 .find_analysis_dir <- function() {
   d <- normalizePath(getwd(), winslash = "/")
@@ -78,35 +79,3 @@ saveRDS(list(generated = Sys.time(), source = "Jirinec et al. 2021 Sci. Adv. 7: 
              span_decades = SPAN_DEC, warming_bdffp_per_decade = WARM, warming_af_per_decade = warm_af,
              benchmark = bench, ours = ours, wing_pct_factor = wpct),
         out_path("jirinec_benchmark.rds"))
-
-# --- figure ---------------------------------------------------------------------------
-pb <- filter(bench, set == "passerines")
-lev <- c("Central Amazon\n(68 passerines)", "Atlantic Forest,\nunadjusted", "Atlantic Forest,\nfully adjusted")
-dA <- bind_rows(
-  transmute(ours, trait, who = ifelse(model == "unadjusted", lev[2], lev[3]), est, lo, hi, panel = "A"),
-  transmute(pb, trait, who = lev[1], est = mean_pct_dec, lo = min_pct_dec, hi = max_pct_dec, panel = "A"))
-dB <- bind_rows(
-  transmute(filter(ours, model == "fully adjusted"), trait, who = lev[3], est = est / warm_af, lo = lo / warm_af, hi = hi / warm_af, panel = "B"),
-  transmute(pb, trait, who = lev[1], est = mean_pct_dec / mean(WARM), lo = pmin(per_degC_lo, per_degC_hi),
-            hi = pmax(per_degC_lo, per_degC_hi), panel = "B"))
-d <- bind_rows(dA, dB) %>% mutate(who = factor(who, levels = rev(lev)), trait = factor(trait, levels = c("Body mass", "Wing length")))
-cols <- setNames(c("#C05621", "#A0AEC0", "#276749"), lev)
-shp  <- setNames(c(18, 1, 16), lev)
-xlab <- c(A = "Change (% per decade)", B = "Change (% per °C of local warming)")
-mk <- function(p) {
-  ggplot(filter(d, panel == p), aes(est, who, colour = who, shape = who)) +
-    geom_vline(xintercept = 0, colour = "grey60", linetype = "dashed", linewidth = 0.4) +
-    geom_errorbar(aes(xmin = lo, xmax = hi), width = 0, linewidth = 0.8, orientation = "y") +
-    geom_point(size = 3, fill = "white") +
-    facet_wrap(~trait, ncol = 1) +
-    scale_colour_manual(values = cols, guide = "none") + scale_shape_manual(values = shp, guide = "none") +
-    scale_y_discrete(drop = FALSE) +                       # same rows in both panels
-    labs(x = xlab[[p]], y = NULL, title = p) +
-    theme_classic(base_size = 10, base_family = "Helvetica") +
-    theme(plot.title = element_text(face = "bold", size = 11), strip.background = element_blank(),
-          strip.text = element_text(face = "bold", hjust = 0), panel.spacing = unit(1, "lines"))
-}
-fig <- (function(a, b) { g <- gridExtra::arrangeGrob(a, b, ncol = 2, widths = c(1.15, 1)); g })(mk("A"), mk("B") + theme(axis.text.y = element_blank()))
-fig_file <- file.path(dirname(ANALYSIS_DIR), "Manuscript", "images", "fig-amazon.png")
-ggsave(fig_file, fig, width = 7.2, height = 4.0, dpi = 300, bg = "white")
-message("wrote ", fig_file)
