@@ -9,6 +9,54 @@ fig-map,late: coordinate sites,146
 fig-map,late: shared sites,4
 fig-map,late: species,70
 fig-map,late: contributors,33
+fig-wingtrend,M0 year effect 1995,1.77571156058806
+fig-wingtrend,M0 year effect 1996,2.64203555799309
+fig-wingtrend,M0 year effect 1997,1.32332987057803
+fig-wingtrend,M0 year effect 1998,2.04367075489214
+fig-wingtrend,M0 year effect 1999,1.95565966638335
+fig-wingtrend,M0 year effect 2000,1.58356145513292
+fig-wingtrend,M0 year effect 2001,1.17332759430569
+fig-wingtrend,M0 year effect 2002,0.808051624543331
+fig-wingtrend,M0 year effect 2003,0.630716590966134
+fig-wingtrend,M0 year effect 2004,0.789079162795048
+fig-wingtrend,M0 year effect 2005,0.782602580203141
+fig-wingtrend,M0 year effect 2006,0.989135021581479
+fig-wingtrend,M0 year effect 2007,1.05893221430193
+fig-wingtrend,M0 year effect 2008,-0.11979864425271
+fig-wingtrend,M0 year effect 2009,-0.175656353450247
+fig-wingtrend,M0 year effect 2010,0.430358379275784
+fig-wingtrend,M0 year effect 2011,-0.129034462174132
+fig-wingtrend,M0 year effect 2012,0.291668653553345
+fig-wingtrend,M0 year effect 2013,-0.0065214822171582
+fig-wingtrend,M0 year effect 2014,-0.0703113460920203
+fig-wingtrend,M0 year effect 2015,-0.580321762204532
+fig-wingtrend,M0 year effect 2016,-2.3373800743042
+fig-wingtrend,M0 year effect 2017,-2.22803258057428
+fig-wingtrend,M0 year effect 2018,0.354612701328851
+fig-wingtrend,M3 year effect 1995,0.664584668052601
+fig-wingtrend,M3 year effect 1996,0.190381869513218
+fig-wingtrend,M3 year effect 1997,1.38583317793551
+fig-wingtrend,M3 year effect 1998,2.19858673843564
+fig-wingtrend,M3 year effect 1999,1.12083102612231
+fig-wingtrend,M3 year effect 2000,0.747176357871678
+fig-wingtrend,M3 year effect 2001,0.673521553673398
+fig-wingtrend,M3 year effect 2002,0.238920148596398
+fig-wingtrend,M3 year effect 2003,0.316891899899627
+fig-wingtrend,M3 year effect 2004,0.29673272133574
+fig-wingtrend,M3 year effect 2005,0.052332659621857
+fig-wingtrend,M3 year effect 2006,0.264167909919066
+fig-wingtrend,M3 year effect 2007,0.494325359349823
+fig-wingtrend,M3 year effect 2008,0.293614655424692
+fig-wingtrend,M3 year effect 2009,0.257332318093278
+fig-wingtrend,M3 year effect 2010,0.275266507680523
+fig-wingtrend,M3 year effect 2011,-0.0548826904282981
+fig-wingtrend,M3 year effect 2012,0.0965163542827165
+fig-wingtrend,M3 year effect 2013,-0.306358110317813
+fig-wingtrend,M3 year effect 2014,-0.0677265872994098
+fig-wingtrend,M3 year effect 2015,-0.694391373336751
+fig-wingtrend,M3 year effect 2016,-1.07760141943257
+fig-wingtrend,M3 year effect 2017,-0.43309669143822
+fig-wingtrend,M3 year effect 2018,0.260670891214595
 fig-wingtrend,M3 est,-0.369912411721209
 fig-wingtrend,M0 est,-0.925286327343004
 fig-wingtrend,M3 lo,-0.781624080893443

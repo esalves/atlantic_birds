@@ -16,8 +16,8 @@ Panel B: bivariate state space (dWing vs dMass). Wing and mass are fitted in
   shown with its two marginal 95% CrIs, not an ellipse. Species points are
   posterior means of fixed + species deviation. The quadrant of longer wings
   and lower mass is the direction of change reported for the central Amazon
-  (Jirinec et al. 2021); it is drawn qualitatively because that study reports
-  species-level trends, not a community-level rate comparable with ours.
+  (Jirinec et al. 2021), drawn as a direction; the rates themselves are compared
+  in fig-amazon (Analysis/scripts/jirinec_benchmark.R).
 
 Inputs (Rscript Analysis/scripts/make_figures.R export):
   Analysis/output/figure_data/fig_isometry_stan.csv
@@ -53,42 +53,33 @@ def neg(val, fmt=".1f"):
 def sgn(val, fmt=".1f"):
     return neg(val, "+" + fmt)
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.4, 5.6), gridspec_kw={"width_ratios": [1.15, 1.0]})
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10.4, 4.6), gridspec_kw={"width_ratios": [1.0, 1.0]})
 
 # ---------------------------------------------------------------------------
-# Panel A: rates and isometry contrast
+# Panel A: rates and isometry contrast -- a plain forest plot (Shinichi Nakagawa's
+# comment, 2026-09-30: the earlier version with shaded blocks, sub-labels and value
+# annotations was hard to read). Values are given in the text and legend.
 # ---------------------------------------------------------------------------
 rows = [
-    ("wing", "Wing length (ΔL)", "fitted on log wing length", "#2B6CB0", "o", "#2B6CB0", "-"),
-    ("mass", "Body mass (ΔM)", "fitted on log body mass", "#C53030", "o", "#C53030", "-"),
-    ("expected_isometric_mass", "Mass change expected under isometry",
-     "M ∝ L³: three times the wing slope", "#B7791F", "s", "white", "--"),
-    ("contrast", "Isometry contrast (ln M − 3 ln L)", "fitted directly · full adjustment", "#2F855A", "D", "#2F855A", "-"),
-    ("contrast_parsimonious", "Isometry contrast (ln M − 3 ln L)", "fitted directly · parsimonious adjustment",
-     "#2F855A", "D", "white", "-"),
+    ("wing", "Wing length", "#4A5568", "o", "#4A5568", "-"),
+    ("mass", "Body mass", "#4A5568", "o", "#4A5568", "-"),
+    ("expected_isometric_mass", "Mass expected under isometry", "#4A5568", "s", "white", "--"),
+    ("contrast", "Isometry contrast, full adjustment", "#2F855A", "D", "#2F855A", "-"),
+    ("contrast_parsimonious", "Isometry contrast, parsimonious", "#2F855A", "D", "white", "-"),
 ]
-ys = [4.4, 3.4, 2.4, 1.1, 0.2]
-ax1.axvline(0, color="#718096", lw=1.0, ls="--", zorder=1)
-ax1.axhspan(1.85, 4.95, color="#F7FAFC", zorder=0)
-ax1.axhspan(-0.4, 1.65, color="#F0FFF4", zorder=0)
-XL = -13.5
-for (key, lab, sub, col, mk, mfc, ls), y in zip(rows, ys):
+ys = [4, 3, 2, 0.8, -0.2]
+ax1.axvline(0, color="#A0AEC0", lw=0.9, ls="--", zorder=1)
+ax1.axhline(1.4, color="#E2E8F0", lw=0.8, zorder=0)
+for (key, lab, col, mk, mfc, ls), y in zip(rows, ys):
     r = iso.loc[key]
     ax1.plot([r.lower, r.upper], [y, y], color=col, lw=1.8, ls=ls, zorder=3)
     ax1.plot(r.pct_per_decade, y, marker=mk, ms=7, color=col, markerfacecolor=mfc, markeredgewidth=1.5, zorder=4)
-    ax1.text(XL, y + 0.13, lab, fontsize=8.2, fontweight="bold", color="#1A202C", va="center")
-    ax1.text(XL, y - 0.19, sub, fontsize=7.2, color="#4A5568", va="center")
-    ax1.text(r.upper + 0.35, y, f"{sgn(r.pct_per_decade)}%  [{sgn(r.lower)}, {sgn(r.upper)}]",
-             fontsize=7.6, color=col, va="center", fontweight="bold")
-    if key.startswith("contrast"):
-        ax1.text(r.upper + 0.35, y - 0.28, f"P(β > 0) = {1 - r.p_neg:.2f}", fontsize=7, color=col, va="center")
-ax1.text(XL, 4.85, f"Atlantic Forest, shared records (N = {N:,}; {len(spp)} species)", fontsize=8.5,
-         fontweight="bold", color="#2D3748")
-ax1.text(XL, 1.55, "Isometry contrast: > 0 = mass retained relative to wing", fontsize=8.5,
-         fontweight="bold", color="#22543D")
-ax1.set_xlim(XL - 0.4, 12.0); ax1.set_ylim(-0.5, 5.2)
-ax1.set_yticks([]); ax1.spines["left"].set_visible(False)
-ax1.set_xlabel("Rate of change (% per decade) · posterior mean and 95% CrI", fontsize=8.8)
+ax1.set_yticks(ys); ax1.set_yticklabels([r[1] for r in rows], fontsize=8.6)
+ax1.tick_params(axis="y", length=0)
+lo = min(iso.loc[[r[0] for r in rows], "lower"].min(), -1.0); hi = max(iso.loc[[r[0] for r in rows], "upper"].max(), 1.0)
+ax1.set_xlim(lo - 0.8, hi + 0.8); ax1.set_ylim(-0.8, 4.6)
+ax1.spines["left"].set_visible(False)
+ax1.set_xlabel("Change (% per decade)", fontsize=8.8)
 ax1.set_title("A", fontsize=10.5, fontweight="bold", loc="left", pad=10)
 
 # ---------------------------------------------------------------------------
@@ -99,7 +90,7 @@ xlim = (min(-6.0, spp.pct_per_decade_wing.min() - pad), max(4.0, spp.pct_per_dec
 ylim = (min(-8.0, spp.pct_per_decade_mass.min() - pad), max(6.0, spp.pct_per_decade_mass.max() + pad))
 ax2.set_xlim(xlim); ax2.set_ylim(ylim)
 ax2.add_patch(Rectangle((0, ylim[0]), xlim[1], -ylim[0], facecolor="#FFF5F5", edgecolor="none", zorder=0))
-ax2.text(xlim[1] - 0.15, ylim[0] + 0.4, "Longer wings, lower mass:\ndirection reported for the\ncentral Amazon (Jirinec et al. 2021)",
+ax2.text(xlim[1] - 0.15, ylim[0] + 0.4, "longer wings, lower mass\n(central Amazon)",
          fontsize=7.4, color="#9B2C2C", style="italic", ha="right", va="bottom")
 ax2.axvline(0, color="#A0AEC0", lw=0.9, ls="--", zorder=1)
 ax2.axhline(0, color="#A0AEC0", lw=0.9, ls="--", zorder=1)
@@ -119,13 +110,13 @@ ax2.set_xlabel("Wing length change (% per decade)", fontsize=8.8)
 ax2.set_ylabel("Body mass change (% per decade)", fontsize=8.8)
 ax2.set_title("B", fontsize=10.5, fontweight="bold", loc="left", pad=10)
 ax2.legend(handles=[
-    Line2D([0], [0], color="#1A202C", lw=1.8, label="strict isometry (y = 3x)"),
+    Line2D([0], [0], color="#1A202C", lw=1.8, label="isometry (y = 3x)"),
     Line2D([0], [0], color="#718096", lw=1.1, ls=":", label="equal rates (y = x)"),
     Line2D([0], [0], marker="o", color="#276749", mec="white", ms=7, lw=1.8,
-           label="assemblage estimate, marginal 95% CrIs"),
+           label="assemblage, 95% CrIs"),
     Line2D([0], [0], marker="o", color="none", markerfacecolor="#718096", markeredgecolor="#4A5568", alpha=0.6,
-           ms=5, label=f"species posterior means (n = {len(spp)}; {n_decoupled} in the shaded quadrant)")],
-    loc="upper left", frameon=True, facecolor="white", framealpha=0.9, edgecolor="#E2E8F0", fontsize=7.0)
+           ms=5, label=f"species (n = {len(spp)})")],
+    loc="upper left", frameon=True, facecolor="white", framealpha=0.9, edgecolor="#E2E8F0", fontsize=7.4)
 
 plt.tight_layout()
 fig_path = os.path.join(OUT, "fig-isometry.png")

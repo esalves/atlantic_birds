@@ -278,9 +278,25 @@ if ba is not None:
     m0, m3 = year_term(ba, "M0"), year_term(ba, "M3")
 if ba_compare is not None:
     m3_compare = year_term(ba_compare, "M3")
+# Panel b shows model-based year effects (wing_year_effects.R: M0 and M3 with year as a
+# factor, centred on the record-weighted mean year, REML over the phylogenetic trees).
+# Raw annual means +/- 1.96 SE treat records as independent and understate the
+# uncertainty of well-sampled years (Shinichi Nakagawa's comment, 2026-09-30); they are
+# drawn only as a fallback when the year-effect table is missing.
+ye = fd_csv("fig_wingtrend_year_effects.csv", required=False, quiet=True)
+if ye is not None:
+    for mdl, off, face, col, lab in (("M0", -0.17, "white", "#777777", "M0 year effects ± 95% CI"),
+                                      ("M3", 0.17, "#2E5090", "#2E5090", "M3 year effects ± 95% CI")):
+        r = ye[ye.model == mdl].sort_values("year")
+        axz.errorbar(r.year + off, r.estimate, yerr=[r.estimate - r.lo, r.hi - r.estimate], fmt="o", ms=3.4,
+                     mfc=face, mec=col, color=col, ecolor=col, elinewidth=0.8, capsize=1.2, zorder=4, label=lab)
+        for _, x in r.iterrows():
+            note("fig-wingtrend", f"{mdl} year effect {int(x.year)}", float(x.estimate))
+else:
+    print("WARNING: fig_wingtrend_year_effects.csv missing; panel b falls back to raw annual means")
+    axz.errorbar(ann.Year, ann["mean"], yerr=1.96 * ann.se, fmt="o", ms=3.2, color="black", ecolor="#555555",
+                 elinewidth=0.8, capsize=1.5, zorder=4, label="annual mean ± 95% CI (records treated as independent)")
 for a in (ax, axz):
-    a.errorbar(ann.Year, ann["mean"], yerr=1.96 * ann.se, fmt="o", ms=3.2, color="black", ecolor="#555555",
-               elinewidth=0.8, capsize=1.5, zorder=4, label="annual mean ± 95% CI")
     a.axhline(0, color="#BBBBBB", lw=0.6, zorder=0)
     if m0:
         a.plot(yr_grid, m0["est"] * z, color="#777777", lw=1.6, ls="--", zorder=3,
@@ -313,9 +329,14 @@ ins.tick_params(labelsize=5.5, length=2, pad=1)
 ins.set_xticks([1995, 2000, 2005, 2010, 2015]); ins.spines[["top", "right"]].set_visible(False)
 ins.patch.set_alpha(0.85)
 # zoom panel: annual means and the fitted lines on the scale of the effect
-zl = max(3.0, float(np.nanmax(np.abs(ann["mean"] + np.sign(ann["mean"]) * 1.96 * ann.se))) * 1.05)
+if ye is not None:
+    # the end years (1995: 19 records, 2018: 12) have very wide intervals; let their bars run off the panel
+    inner = ye[(ye.n_records >= 40)]
+    zl = max(3.0, float(np.nanmax(np.abs(np.r_[inner.lo, inner.hi]))) * 1.05)
+else:
+    zl = max(3.0, float(np.nanmax(np.abs(ann["mean"] + np.sign(ann["mean"]) * 1.96 * ann.se))) * 1.05)
 axz.set_ylim(-zl, zl); axz.set_xlabel("Year")
-axz.set_ylabel("Deviation from species × sex\nmean wing length (mm), zoom")
+axz.set_ylabel("Year effect on wing length (mm)" if ye is not None else "Deviation from species × sex\nmean wing length (mm), zoom")
 axz.text(0.01, 0.98, "b", transform=axz.transAxes, fontweight="bold", va="top")
 axz.legend(loc="lower left", frameon=False, fontsize=7.2)
 fig.savefig(f"{OUT}/fig-wingtrend.png", bbox_inches="tight"); plt.close(fig)
