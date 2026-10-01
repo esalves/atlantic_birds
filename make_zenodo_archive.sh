@@ -7,7 +7,12 @@
 # with a SHA-256 for every file, then a single .zip.
 #
 #   ./make_zenodo_archive.sh              # -> dist/atlantic_birds_<short-sha>.zip
-#   ./make_zenodo_archive.sh v1.0.0       # -> dist/atlantic_birds_v1.0.0.zip
+#   ./make_zenodo_archive.sh v1.1.0       # -> dist/atlantic_birds_v1.1.0.zip
+#
+# A versioned build (any argument starting with "v") refuses to run while
+# CITATION.cff or .zenodo.json still carry the TODO-DOI placeholder: reserve the
+# new version's DOI on Zenodo first and write it into both files and the
+# manuscript.
 #
 # WHAT IS EXCLUDED, AND WHY
 #   Analysis/data/raw/worldclim, terraclimate, AvesDataLite*
@@ -26,7 +31,10 @@
 #   jirinec_gap_analysis.R, jirinec_gaps_report.R, Analysis/output/jirinec_gaps/
 #                              an exploratory side-report, never part of the
 #                              manuscript; shipping it would invite readers to
-#                              treat it as a result of this paper
+#                              treat it as a result of this paper. (The Amazonian
+#                              benchmark the manuscript does use -- jirinec_benchmark.R,
+#                              its output and data/external/jirinec2021_tableS6.csv,
+#                              CC BY-NC 4.0 -- IS shipped; see LICENSE-DATA.md.)
 #   Analysis/scripts/atlantic_birds_ms*            legacy Rmd + 440 MB knitr cache
 #   Analysis/scripts/body_mass_descriptive.html    legacy 4.2 MB render
 #   REVISION_*.md, REVIEW_RESPONSE_PLAN.md, CODE_REVIEW.md
@@ -40,6 +48,10 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO"
 
 VERSION="${1:-$(git rev-parse --short HEAD)}"
+if [[ "$VERSION" == v* ]] && grep -q 'TODO-DOI' CITATION.cff .zenodo.json; then
+  echo "ERROR: CITATION.cff or .zenodo.json still carries TODO-DOI; reserve the Zenodo DOI first." >&2
+  exit 1
+fi
 STAGE_NAME="atlantic_birds_${VERSION}"
 DIST="$REPO/dist"
 STAGE="$DIST/$STAGE_NAME"
@@ -58,6 +70,7 @@ echo "Assembling $STAGE_NAME from $(git rev-parse --short HEAD) ..."
 INCLUDE=(
   'Analysis/scripts'
   'Analysis/data/derived'
+  'Analysis/data/external'
   'Analysis/data/raw/ATLANTIC_BIRD_TRAITS_completed_2018_11_d05.csv'
   'Analysis/data/raw/BirdFuncDat.txt'
   'Analysis/output'
@@ -100,10 +113,10 @@ if find "$STAGE" \( -name 'passer90_climate.rds' -o -name 'locality_year_tmean.r
   exit 1
 fi
 
-# Refuse to ship the exploratory Jirinec side-report.
-if find "$STAGE" -iname '*jirinec*' | grep -q .; then
+# Refuse to ship the exploratory Jirinec side-report (the benchmark files are wanted).
+if find "$STAGE" \( -iname '*jirinec_gap*' -o -path '*jirinec_gaps*' \) | grep -q .; then
   echo "ERROR: Jirinec gap-analysis material is still staged. Aborting." >&2
-  find "$STAGE" -iname '*jirinec*' >&2
+  find "$STAGE" \( -iname '*jirinec_gap*' -o -path '*jirinec_gaps*' \) >&2
   exit 1
 fi
 
@@ -126,6 +139,13 @@ Analysis/output/climate_trends.rds
 Analysis/output/effect_scale.rds
 Analysis/output/referee_reruns/referee_reruns.rds
 Analysis/output/referee_reruns/anomaly_lag.rds
+Analysis/output/referee_reruns/recovery_sim.rds
+Analysis/output/referee_reruns/logwing.rds
+Analysis/output/referee_reruns/anomaly_baseline.rds
+Analysis/output/jirinec_benchmark.rds
+Analysis/output/wing_year_effects.rds
+Analysis/output/figure_data/fig_wingtrend_year_effects.csv
+Analysis/data/external/jirinec2021_tableS6.csv
 Analysis/output/phylo_slopes/phylo_slopes_results.rds
 Analysis/output/bayes/bayes_summary.rds
 Analysis/output/bayes/bayes_derived.rds

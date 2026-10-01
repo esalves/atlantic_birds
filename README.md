@@ -1,4 +1,4 @@
-# Morphological stability and subtle phenotypic shifts in Atlantic Forest birds across two decades of climate warming
+# Weak and species-specific morphological change in Atlantic Forest birds across two decades of warming
 
 Data, analysis code and Quarto source for a study of multi-decadal change in wing
 length, body mass and bill width in Atlantic Forest passerines, using live-capture
@@ -16,7 +16,7 @@ records from ATLANTIC BIRD TRAITS (73 species, 12,571 records, 1995–2018).
 - **Rendering instructions:** [`Manuscript/RENDER_STEPS.md`](Manuscript/RENDER_STEPS.md)
 - **Repository layout and path conventions:** [`REPO_STRUCTURE.md`](REPO_STRUCTURE.md)
 - **Computational environment:** [`renv.lock`](renv.lock) and [`Analysis/output/session_info.txt`](Analysis/output/session_info.txt)
-- **Licences:** code MIT ([`LICENSE`](LICENSE)); data, results, figures and text CC BY 4.0 ([`LICENSE-DATA.md`](LICENSE-DATA.md)). How to cite: [`CITATION.cff`](CITATION.cff)
+- **Licences:** code MIT ([`LICENSE`](LICENSE)); data, results, figures and text CC BY 4.0, except one third-party table kept under its CC BY-NC 4.0 licence ([`LICENSE-DATA.md`](LICENSE-DATA.md)). How to cite: [`CITATION.cff`](CITATION.cff)
 
 ---
 
@@ -143,5 +143,6 @@ Please cite each source in its own right. Full terms are in [`LICENSE-DATA.md`](
 ## Citation
 
 Until the preprint is posted, please cite the repository using [`CITATION.cff`](CITATION.cff)
-(GitHub's "Cite this repository" button). The archived version is on Zenodo:
-[https://doi.org/10.5281/zenodo.23070825](https://doi.org/10.5281/zenodo.23070825).
+(GitHub's "Cite this repository" button). The archived versions are on Zenodo:
+v1.1.0 [TODO-DOI](https://doi.org/TODO-DOI) (this version) and v1.0.0
+[10.5281/zenodo.23070825](https://doi.org/10.5281/zenodo.23070825) (the first preprint).

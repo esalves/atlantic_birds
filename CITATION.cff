@@ -1,8 +1,6 @@
 cff-version: 1.2.0
 title: >-
-  Analysis code and derived data for "Morphological stability and subtle
-  phenotypic shifts in Atlantic Forest birds across two decades of climate
-  warming"
+  Analysis code and derived data for "Weak and species-specific morphological change in Atlantic Forest birds across two decades of warming"
 message: >-
   If you use this software or the derived data, please cite both this archive
   and the associated paper. Please also cite the primary data sources listed
@@ -43,7 +41,8 @@ abstract: >-
   REML result objects reproducing every value reported in a study of morphological change in 73
   Atlantic Forest passerine species across 24 years (1995-2018) of regional
   warming, using ATLANTIC BIRD TRAITS. Code is MIT licensed; data, results and
-  text are CC BY 4.0. See LICENSE and LICENSE-DATA.md.
+  text are CC BY 4.0, except one transcribed third-party table (CC BY-NC 4.0).
+  See LICENSE and LICENSE-DATA.md.
 keywords:
   - body size
   - climate change
@@ -54,11 +53,11 @@ keywords:
 license: CC-BY-4.0
 license-url: 'https://creativecommons.org/licenses/by/4.0/'
 repository-code: 'https://github.com/esalves/atlantic_birds'
-version: 1.0.0
-date-released: '2026-09-30'
-doi: 10.5281/zenodo.23070825
+version: 1.1.0
+date-released: '2026-10-01'
+doi: TODO-DOI
 identifiers:
   - type: doi
-    value: 10.5281/zenodo.23070825
+    value: TODO-DOI
     description: Zenodo archive of this version
 # TODO(submission): add `preferred-citation:` for the paper once the preprint is posted.
