@@ -25,9 +25,10 @@ The code is licensed separately under the MIT licence; see `LICENSE`.
 
 ## Please cite
 
-Santos, E. S. A., A. Mizuno, S. Ortega and G. Burin. Weak and species-specific
-morphological change in Atlantic Forest birds across two decades of warming.
-<!-- TODO(submission): replace with the published/preprint citation and DOI. -->
+Santos, E. S. A., A. Mizuno, S. Ortega and G. Burin. 2026. Weak and
+species-specific morphological change in Atlantic Forest birds across two
+decades of warming. EcoEvoRxiv (preprint, version 2).
+<https://doi.org/10.32942/X2810F>
 
 ## Third-party sources
 

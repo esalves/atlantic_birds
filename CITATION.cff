@@ -60,4 +60,27 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.23087760
     description: Zenodo archive of this version
-# TODO(submission): add `preferred-citation:` for the paper once the preprint is posted.
+preferred-citation:
+  type: article
+  title: >-
+    Weak and species-specific morphological change in Atlantic Forest birds
+    across two decades of warming
+  authors:
+    - given-names: Eduardo
+      name-particle: S. A.
+      family-names: Santos
+      orcid: 'https://orcid.org/0000-0002-0434-3655'
+    - given-names: Ayumi
+      family-names: Mizuno
+      orcid: 'https://orcid.org/0000-0003-0822-5637'
+    - given-names: Santiago
+      family-names: Ortega
+      orcid: 'https://orcid.org/0000-0002-3518-276X'
+    - given-names: Gustavo
+      family-names: Burin
+      orcid: 'https://orcid.org/0000-0001-7851-0666'
+  journal: EcoEvoRxiv
+  year: 2026
+  doi: 10.32942/X2810F
+  url: 'https://doi.org/10.32942/X2810F'
+  notes: Preprint, version 2.
