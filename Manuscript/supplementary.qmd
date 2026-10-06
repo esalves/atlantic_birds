@@ -252,6 +252,7 @@ As an independent check on the estimation engine, every model except the detrend
 # Supplementary Tables
 
 ```{r tab-s-wing, echo=FALSE}
+#| tbl-colwidths: [54, 13, 12, 14, 7]   # widths set in Word, 2026-10-06
 .row <- function(label, x) data.frame(Model = label, Beta = x$b, CI = paste0("[", x$lo, ", ", x$hi, "]"),
                                       Rate = x$dec, N = x$n)
 tbl_cw_data <- rbind(
@@ -274,6 +275,7 @@ knitr::kable(tbl_cw_data, row.names = FALSE,
 ```
 
 ```{r tab-s-mass, echo=FALSE}
+#| tbl-colwidths: [55, 12, 14, 12, 7]   # widths set in Word, 2026-10-06
 .mrow <- function(label, x) data.frame(Specification = label, Beta = x$b, CI_95 = paste0("[", x$lo, ", ", x$hi, "]"),
                                        Rate_pct_dec = paste0(x$pct, "%"), N = x$n)
 tbl_mass_data <- rbind(
@@ -287,6 +289,7 @@ knitr::kable(tbl_mass_data, row.names = FALSE,
 ```
 
 ```{r tab-s-thermal, echo=FALSE}
+#| tbl-colwidths: [19, 19, 19, 10, 13, 7, 6, 7]   # widths set in Word, 2026-10-06
 .lab_m <- c(E1a_anomaly_plus_year = "E1a: anomaly + year", E1b_detrended_anomaly = "E1b: detrended anomaly",
             E2a_locyear_random_intercept = "E2a: + locality-year intercept",
             E3_M3_adjusted_phylo = "E3: M3 adjustment", E3b_M3_adjusted_phylo_plus_year = "E3b: M3 adjustment + year")
@@ -306,6 +309,7 @@ knitr::kable(th, row.names = FALSE, col.names = c("Specification", "Response", "
 ```
 
 ```{r tab-s-recovery, echo=FALSE}
+#| tbl-colwidths: [18, 15, 8, 12, 6, 7, 16, 18]   # widths set in Word, 2026-10-06
 rs <- readRDS("../Analysis/output/referee_reruns/recovery_sim.rds")
 .scen <- c(clean = "Clean", real = "Real conditional modes", artefact = "Calibrated artefact")
 rt <- rs$summary
@@ -320,6 +324,7 @@ knitr::kable(rt, row.names = FALSE,
 ```
 
 ```{r tab-s-logwing, echo=FALSE}
+#| tbl-colwidths: [48, 16, 6, 14, 10, 6]   # widths set in Word, 2026-10-06
 lw <- readRDS("../Analysis/output/referee_reruns/logwing.rds")
 .lwm <- c(M0 = "M0: Baseline", M1 = "M1: + Contributor and municipality", M3 = "M3: Full controls",
           M5src = "M5src: Within-contributor slope", M3_noanom = "M3_noanom: Full controls without anomalous blocks")
@@ -332,6 +337,7 @@ knitr::kable(lt, row.names = FALSE, col.names = c("Model", "Response", "Rate", "
 ```
 
 ```{r tab-s-anombase, echo=FALSE}
+#| tbl-colwidths: [27, 12, 33, 7, 15, 6]   # widths set in Word, 2026-10-06
 ab <- readRDS("../Analysis/output/referee_reruns/anomaly_baseline.rds")
 .abr <- c("wing length (mm)" = "Wing length (mm)", "log body mass" = "log body mass", "isometry contrast lnM-3lnL" = "Isometry contrast (ln M − 3 ln L)")
 .abt <- c(dT = "ΔT, baseline over the locality's records", dT_full = "ΔT, baseline over 1995–2018", scaled_yr = "Year (per SD)")
